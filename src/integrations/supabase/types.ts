@@ -341,7 +341,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      user_owns_config: {
+        Args: { config_id: string; user_id_check: string }
+        Returns: boolean
+      }
+      user_owns_version: {
+        Args: { user_id_check: string; version_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
