@@ -1,12 +1,37 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState } from 'react';
+import DynamicSimulator from '@/components/financial/DynamicSimulator';
+import VersionsManager from '@/components/financial/VersionsManager';
+import ConfigurationForm from '@/components/financial/ConfigurationForm';
+import ProgramsManager from '@/components/financial/ProgramsManager';
+import SideMenu from '@/components/financial/SideMenu';
 
 const Index = () => {
+  const [currentView, setCurrentView] = useState('simulator');
+  const [menuOpen, setMenuOpen] = useState(false);
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
+    <div>
+      <SideMenu
+        isOpen={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        onNavigate={setCurrentView}
+      />
+      
+      {currentView === 'simulator' && (
+        <DynamicSimulator onMenuClick={() => setMenuOpen(true)} />
+      )}
+      
+      {currentView === 'versions' && (
+        <VersionsManager onBack={() => setCurrentView('simulator')} />
+      )}
+      
+      {currentView === 'configurations' && (
+        <ConfigurationForm onBack={() => setCurrentView('simulator')} />
+      )}
+      
+      {currentView === 'programs' && (
+        <ProgramsManager onBack={() => setCurrentView('simulator')} />
+      )}
     </div>
   );
 };
