@@ -54,7 +54,10 @@ export default function ConfigurationForm({ onBack }: Props) {
       .select('*')
       .eq('config_id', configId)
       .order('account_code');
-    setVariables(data || []);
+    setVariables((data || []).map(v => ({
+      ...v,
+      calculation_type: (v.calculation_type || 'AUTO') as 'AUTO' | 'MANUAL' | 'FORMULA'
+    })));
   };
 
   const handleSaveConfig = async () => {
