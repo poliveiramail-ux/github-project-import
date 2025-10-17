@@ -112,7 +112,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
   };
 
   const loadVersion = async (versionId: string) => {
-    const { data } = await supabase
+    const { data } = await (supabase as any)
       .from('Simulation')
       .select('*')
       .eq('version_id', versionId)
@@ -243,7 +243,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
         });
       }
 
-      const { error: varsError } = await supabase
+      const { error: varsError } = await (supabase as any)
         .from('Simulation')
         .insert(variablesToInsert);
 
@@ -278,7 +278,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
           const key = `${variable.account_code}-${variable.year}-${variable.month}`;
           const value = variableValues.get(key) || 0;
           
-          await supabase
+          await (supabase as any)
             .from('Simulation')
             .update({ [monthColumn]: value })
             .eq('id', variable.id);

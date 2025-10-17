@@ -105,13 +105,13 @@ export default function DynamicSimulator({ onMenuClick }: Props) {
   };
 
   const loadVersion = async (versionId: string) => {
-    const { data } = await supabase
+    const { data } = await (supabase as any)
       .from('Simulation')
       .select('*')
       .eq('version_id', versionId)
       .order('account_code');
     
-    setVariables((data || []).map(v => ({
+    setVariables((data || []).map((v: any) => ({
       ...v,
       calculation_type: (v.calculation_type || 'AUTO') as 'AUTO' | 'MANUAL' | 'FORMULA'
     })));
@@ -199,7 +199,7 @@ export default function DynamicSimulator({ onMenuClick }: Props) {
         dec: 0
       }));
 
-      const { error: varsError } = await supabase
+      const { error: varsError } = await (supabase as any)
         .from('Simulation')
         .insert(variablesToInsert);
 
@@ -226,7 +226,7 @@ export default function DynamicSimulator({ onMenuClick }: Props) {
     try {
       for (const variable of variables) {
         if (isLeafAccount(variable.account_code, variables)) {
-          await supabase
+          await (supabase as any)
             .from('Simulation')
             .update({
               jan: variable.jan || 0,
