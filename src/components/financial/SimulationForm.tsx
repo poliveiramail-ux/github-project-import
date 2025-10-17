@@ -119,6 +119,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
       .order('account_code');
     
     if (data) {
+      const monthColumns = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+      
       const vars = data.map((v: any) => ({
         ...v,
         calculation_type: (v.calculation_type || 'AUTO') as 'AUTO' | 'MANUAL' | 'FORMULA',
@@ -148,11 +150,13 @@ export default function SimulationForm({ onMenuClick }: Props) {
       
       setPeriods(sortedPeriods);
       
-      // Build value map
+      // Build value map from the actual month column values
       const valueMap = new Map<string, number>();
-      vars.forEach(v => {
-        const key = `${v.account_code}-${v.year}-${v.month}`;
-        valueMap.set(key, 0);
+      data.forEach((v: any) => {
+        const monthIndex = (v.month || 1) - 1;
+        const monthColumn = monthColumns[monthIndex];
+        const key = `${v.account_code}-${v.year || new Date().getFullYear()}-${v.month || 1}`;
+        valueMap.set(key, v[monthColumn] || 0);
       });
       setVariableValues(valueMap);
     }
@@ -264,20 +268,22 @@ export default function SimulationForm({ onMenuClick }: Props) {
     setSaveStatus('saving');
 
     try {
-      // Save only editable values
-      const updates = [];
-      variables.forEach(variable => {
+      const monthColumns = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+      
+      // Group variables by account_code, month, and year to update each record
+      for (const variable of variables) {
         if (isLeafAccount(variable.account_code, variables)) {
-          periods.forEach(period => {
-            const key = `${variable.account_code}-${period.year}-${period.month}`;
-            const value = variableValues.get(key) || 0;
-            updates.push({
-              id: variable.id,
-              value: value
-            });
-          });
+          const monthIndex = variable.month - 1;
+          const monthColumn = monthColumns[monthIndex];
+          const key = `${variable.account_code}-${variable.year}-${variable.month}`;
+          const value = variableValues.get(key) || 0;
+          
+          await supabase
+            .from('variables')
+            .update({ [monthColumn]: value })
+            .eq('id', variable.id);
         }
-      });
+      }
       
       setSaveStatus('success');
       setTimeout(() => setSaveStatus('idle'), 3000);
