@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 
 interface Program {
-  id: string;
+  id_lob: string;
   name: string;
 }
 
@@ -20,7 +20,7 @@ export default function ProgramsManager({ onBack }: Props) {
   const [programs, setPrograms] = useState<Program[]>([]);
   const [editingProgram, setEditingProgram] = useState<Program | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({ id: '', name: '' });
+  const [formData, setFormData] = useState({ id_lob: '', name: '' });
   const { toast } = useToast();
 
   useEffect(() => {
@@ -31,7 +31,7 @@ export default function ProgramsManager({ onBack }: Props) {
     const { data, error } = await (supabase as any)
       .from('lob')
       .select('*')
-      .order('id');
+      .order('id_lob');
     
     if (error) {
       toast({ title: 'Erro', description: 'Erro ao carregar programas', variant: 'destructive' });
@@ -41,7 +41,7 @@ export default function ProgramsManager({ onBack }: Props) {
   };
 
   const handleSave = async () => {
-    if (!formData.id || !formData.name) {
+    if (!formData.id_lob || !formData.name) {
       toast({ title: 'Atenção', description: 'Preencha o ID e o Nome do programa' });
       return;
     }
@@ -50,7 +50,7 @@ export default function ProgramsManager({ onBack }: Props) {
       const { error } = await (supabase as any)
         .from('lob')
         .update({ name: formData.name })
-        .eq('id', editingProgram.id);
+        .eq('id_lob', editingProgram.id_lob);
       
       if (error) {
         toast({ title: 'Erro', description: 'Erro ao atualizar programa', variant: 'destructive' });
@@ -69,18 +69,18 @@ export default function ProgramsManager({ onBack }: Props) {
     
     setShowForm(false);
     setEditingProgram(null);
-    setFormData({ id: '', name: '' });
+    setFormData({ id_lob: '', name: '' });
     loadPrograms();
     toast({ title: 'Sucesso', description: 'Programa guardado com sucesso' });
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id_lob: string) => {
     if (!window.confirm('Tem certeza que deseja eliminar este programa?')) return;
 
     const { error } = await (supabase as any)
       .from('lob')
       .delete()
-      .eq('id', id);
+      .eq('id_lob', id_lob);
     
     if (error) {
       toast({ title: 'Erro', description: 'Erro ao eliminar programa', variant: 'destructive' });
@@ -102,7 +102,7 @@ export default function ProgramsManager({ onBack }: Props) {
         <Button onClick={() => {
           setShowForm(true);
           setEditingProgram(null);
-          setFormData({ id: '', name: '' });
+          setFormData({ id_lob: '', name: '' });
         }}>
           <Plus className="h-4 w-4 mr-2" />
           Novo Programa
@@ -116,8 +116,8 @@ export default function ProgramsManager({ onBack }: Props) {
             <div>
               <Label>ID do Programa</Label>
               <Input
-                value={formData.id}
-                onChange={(e) => setFormData({ ...formData, id: e.target.value })}
+                value={formData.id_lob}
+                onChange={(e) => setFormData({ ...formData, id_lob: e.target.value })}
                 disabled={!!editingProgram}
                 placeholder="Ex: PROG-2025"
               />
@@ -135,7 +135,7 @@ export default function ProgramsManager({ onBack }: Props) {
               <Button variant="outline" onClick={() => {
                 setShowForm(false);
                 setEditingProgram(null);
-                setFormData({ id: '', name: '' });
+                setFormData({ id_lob: '', name: '' });
               }}>
                 Cancelar
               </Button>
@@ -156,8 +156,8 @@ export default function ProgramsManager({ onBack }: Props) {
             </thead>
             <tbody>
               {programs.map(program => (
-                <tr key={program.id} className="border-t hover:bg-muted/50 transition-colors">
-                  <td className="px-4 py-3 font-mono">{program.id}</td>
+                <tr key={program.id_lob} className="border-t hover:bg-muted/50 transition-colors">
+                  <td className="px-4 py-3 font-mono">{program.id_lob}</td>
                   <td className="px-4 py-3">{program.name}</td>
                   <td className="px-4 py-3 text-right">
                     <Button
@@ -165,7 +165,7 @@ export default function ProgramsManager({ onBack }: Props) {
                       size="icon"
                       onClick={() => {
                         setEditingProgram(program);
-                        setFormData({ id: program.id, name: program.name });
+                        setFormData({ id_lob: program.id_lob, name: program.name });
                         setShowForm(true);
                       }}
                     >
@@ -174,7 +174,7 @@ export default function ProgramsManager({ onBack }: Props) {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => handleDelete(program.id)}
+                      onClick={() => handleDelete(program.id_lob)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

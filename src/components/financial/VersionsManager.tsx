@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 
 interface Program {
-  id: string;
+  id_lob: string;
   name: string;
 }
 
@@ -53,7 +53,7 @@ export default function VersionsManager({ onBack }: Props) {
   }, [selectedProgram, selectedConfig]);
 
   const loadPrograms = async () => {
-    const { data } = await (supabase as any).from('lob').select('*').order('id');
+    const { data } = await (supabase as any).from('lob').select('*').order('id_lob');
     setPrograms(data || []);
   };
 
@@ -113,7 +113,7 @@ export default function VersionsManager({ onBack }: Props) {
               </SelectTrigger>
               <SelectContent>
                 {programs.map(p => (
-                  <SelectItem key={p.id} value={p.id}>{p.id} - {p.name}</SelectItem>
+                  <SelectItem key={p.id_lob} value={p.id_lob}>{p.id_lob} - {p.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -156,7 +156,7 @@ export default function VersionsManager({ onBack }: Props) {
                 </thead>
                 <tbody>
                   {versions.map(version => {
-                    const program = programs.find(p => p.id === version.program_id);
+                    const program = programs.find(p => p.id_lob === version.program_id);
                     const config = configs.find(c => c.id === version.config_id);
                     
                     return (
@@ -165,7 +165,7 @@ export default function VersionsManager({ onBack }: Props) {
                         <td className="px-4 py-3">
                           {new Date(version.created_at).toLocaleString('pt-PT')}
                         </td>
-                        <td className="px-4 py-3 font-mono text-sm">{program?.id}</td>
+                        <td className="px-4 py-3 font-mono text-sm">{program?.id_lob}</td>
                         <td className="px-4 py-3">{config?.name}</td>
                         <td className="px-4 py-3 text-right">
                           <Button
