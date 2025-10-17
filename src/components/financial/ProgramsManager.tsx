@@ -28,8 +28,8 @@ export default function ProgramsManager({ onBack }: Props) {
   }, []);
 
   const loadPrograms = async () => {
-    const { data, error } = await supabase
-      .from('programs')
+    const { data, error } = await (supabase as any)
+      .from('lob')
       .select('*')
       .order('id');
     
@@ -47,8 +47,8 @@ export default function ProgramsManager({ onBack }: Props) {
     }
 
     if (editingProgram) {
-      const { error } = await supabase
-        .from('programs')
+      const { error } = await (supabase as any)
+        .from('lob')
         .update({ name: formData.name })
         .eq('id', editingProgram.id);
       
@@ -57,8 +57,8 @@ export default function ProgramsManager({ onBack }: Props) {
         return;
       }
     } else {
-      const { error } = await supabase
-        .from('programs')
+      const { error } = await (supabase as any)
+        .from('lob')
         .insert([formData]);
       
       if (error) {
@@ -77,8 +77,8 @@ export default function ProgramsManager({ onBack }: Props) {
   const handleDelete = async (id: string) => {
     if (!window.confirm('Tem certeza que deseja eliminar este programa?')) return;
 
-    const { error } = await supabase
-      .from('programs')
+    const { error } = await (supabase as any)
+      .from('lob')
       .delete()
       .eq('id', id);
     

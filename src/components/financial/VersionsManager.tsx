@@ -53,7 +53,7 @@ export default function VersionsManager({ onBack }: Props) {
   }, [selectedProgram, selectedConfig]);
 
   const loadPrograms = async () => {
-    const { data } = await supabase.from('programs').select('*').order('id');
+    const { data } = await (supabase as any).from('lob').select('*').order('id');
     setPrograms(data || []);
   };
 
