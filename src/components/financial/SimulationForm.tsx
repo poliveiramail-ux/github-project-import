@@ -28,7 +28,7 @@ interface SimulationVersion {
 }
 
 interface Variable {
-  id: string;
+  id_sim: string;
   version_id: string;
   account_code: string;
   name: string;
@@ -281,7 +281,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
           await (supabase as any)
             .from('simulation')
             .update({ [monthColumn]: value })
-            .eq('id', variable.id);
+            .eq('id_sim', variable.id_sim);
         }
       }
       

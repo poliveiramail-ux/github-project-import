@@ -28,7 +28,7 @@ interface SimulationVersion {
 }
 
 interface Variable {
-  id: string;
+  id_sim: string;
   version_id: string;
   account_code: string;
   name: string;
@@ -242,7 +242,7 @@ export default function DynamicSimulator({ onMenuClick }: Props) {
               nov: variable.nov || 0,
               dec: variable.dec || 0
             })
-            .eq('id', variable.id);
+            .eq('id_sim', variable.id_sim);
         }
       }
       
@@ -520,7 +520,7 @@ export default function DynamicSimulator({ onMenuClick }: Props) {
                                     (calcType === 'MANUAL' || calcType === 'AUTO');
                   
                   return (
-                    <tr key={variable.id} className="border-b hover:bg-muted/50 transition-colors">
+                    <tr key={variable.id_sim} className="border-b hover:bg-muted/50 transition-colors">
                       <td className="px-4 py-2">
                         <div 
                           className="flex items-center gap-2"
