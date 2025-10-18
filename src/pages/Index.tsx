@@ -4,6 +4,8 @@ import SimulationForm from '@/components/financial/SimulationForm';
 import VersionsManager from '@/components/financial/VersionsManager';
 import ConfigurationForm from '@/components/financial/ConfigurationForm';
 import ProgramsManager from '@/components/financial/ProgramsManager';
+import ProjectsManager from '@/components/financial/ProjectsManager';
+import LanguagesManager from '@/components/financial/LanguagesManager';
 import SideMenu from '@/components/financial/SideMenu';
 
 const Index = () => {
@@ -36,6 +38,14 @@ const Index = () => {
       
       {currentView === 'programs' && (
         <ProgramsManager onBack={() => setCurrentView('simulator')} />
+      )}
+      
+      {currentView === 'projects' && (
+        <ProjectsManager onBack={() => setCurrentView('simulator')} />
+      )}
+      
+      {currentView === 'languages' && (
+        <LanguagesManager onBack={() => setCurrentView('simulator')} />
       )}
     </div>
   );
