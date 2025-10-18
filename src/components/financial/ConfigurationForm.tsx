@@ -280,6 +280,14 @@ export default function ConfigurationForm({ onBack }: Props) {
     toast({ title: 'Sucesso', description: 'Ordem atualizada' });
   };
 
+  const getHierarchyLevel = (name: string): number => {
+    // Conta os pontos no nome para determinar o nível (ex: "1" = 0, "1.1" = 1, "1.1.1" = 2)
+    const match = name.match(/^[\d.]+/);
+    if (!match) return 0;
+    const accountCode = match[0];
+    return (accountCode.match(/\./g) || []).length;
+  };
+
 
   return (
     <div className="container mx-auto p-6 max-w-4xl">
@@ -475,56 +483,68 @@ export default function ConfigurationForm({ onBack }: Props) {
                   )}
 
                    <div className="space-y-1 max-h-96 overflow-y-auto">
-                     {variables.map((variable, index) => (
-                       <div
-                         key={variable.id_sim_cfg_var}
-                         className="flex items-center gap-2 p-2 border rounded-lg hover:bg-muted transition-colors"
-                       >
-                         <div className="flex flex-col gap-1">
+                     {variables.map((variable, index) => {
+                       const level = getHierarchyLevel(variable.name);
+                       const indentClass = `ml-${level * 6}`;
+                       
+                       return (
+                         <div
+                           key={variable.id_sim_cfg_var}
+                           className="flex items-center gap-2 p-2 border rounded-lg hover:bg-muted transition-colors"
+                           style={{ marginLeft: `${level * 1.5}rem` }}
+                         >
+                           <div className="flex flex-col gap-1">
+                             <Button
+                               variant="ghost"
+                               size="icon"
+                               className="h-6 w-6"
+                               onClick={() => handleMoveVariable(index, 'up')}
+                               disabled={index === 0}
+                             >
+                               <ArrowUp className="h-3 w-3" />
+                             </Button>
+                             <Button
+                               variant="ghost"
+                               size="icon"
+                               className="h-6 w-6"
+                               onClick={() => handleMoveVariable(index, 'down')}
+                               disabled={index === variables.length - 1}
+                             >
+                               <ArrowDown className="h-3 w-3" />
+                             </Button>
+                           </div>
+                           {level > 0 && (
+                             <span className="text-muted-foreground text-sm">└─</span>
+                           )}
+                           <span className="flex-1">{variable.name}</span>
+                           {variable.blocked && <span className="text-xs" title="Bloqueada">🔒</span>}
+                           <span className="text-xs" title={
+                             variable.calculation_type === 'FORMULA' ? 'Fórmula' : 
+                             variable.calculation_type === 'MANUAL' ? 'Manual' : 'Automático'
+                           }>
+                             {variable.calculation_type === 'FORMULA' ? '📊' : 
+                              variable.calculation_type === 'MANUAL' ? '✏️' : '🔢'}
+                           </span>
+                           
                            <Button
                              variant="ghost"
                              size="icon"
-                             className="h-6 w-6"
-                             onClick={() => handleMoveVariable(index, 'up')}
-                             disabled={index === 0}
+                             className="h-8 w-8"
+                             onClick={() => setEditingVar(variable)}
                            >
-                             <ArrowUp className="h-3 w-3" />
+                             <Edit3 className="h-4 w-4" />
                            </Button>
                            <Button
                              variant="ghost"
                              size="icon"
-                             className="h-6 w-6"
-                             onClick={() => handleMoveVariable(index, 'down')}
-                             disabled={index === variables.length - 1}
+                             className="h-8 w-8"
+                             onClick={() => handleDeleteVariable(variable.id_sim_cfg_var)}
                            >
-                             <ArrowDown className="h-3 w-3" />
+                             <Trash2 className="h-4 w-4" />
                            </Button>
                          </div>
-                         <span className="flex-1">{variable.name}</span>
-                         {variable.blocked && <span className="text-xs">🔒</span>}
-                         <span className="text-xs">
-                           {variable.calculation_type === 'FORMULA' ? '📊' : 
-                            variable.calculation_type === 'MANUAL' ? '✏️' : '🔢'}
-                         </span>
-                         
-                         <Button
-                           variant="ghost"
-                           size="icon"
-                           className="h-8 w-8"
-                           onClick={() => setEditingVar(variable)}
-                         >
-                           <Edit3 className="h-4 w-4" />
-                         </Button>
-                         <Button
-                           variant="ghost"
-                           size="icon"
-                           className="h-8 w-8"
-                           onClick={() => handleDeleteVariable(variable.id_sim_cfg_var)}
-                         >
-                           <Trash2 className="h-4 w-4" />
-                         </Button>
-                       </div>
-                     ))}
+                       );
+                     })}
                    </div>
                 </div>
               </>
