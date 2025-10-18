@@ -5,13 +5,14 @@ import { ArrowLeft } from 'lucide-react';
 import ProjectsManager from './ProjectsManager';
 import LanguagesManager from './LanguagesManager';
 import ProgramsManager from './ProgramsManager';
+import HierarchyManager from './HierarchyManager';
 
 interface Props {
   onBack: () => void;
 }
 
 const MasterDataManager = ({ onBack }: Props) => {
-  const [activeTab, setActiveTab] = useState('projects');
+  const [activeTab, setActiveTab] = useState('all');
 
   return (
     <div className="min-h-screen bg-background p-6">
@@ -24,11 +25,16 @@ const MasterDataManager = ({ onBack }: Props) => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="all">Todos</TabsTrigger>
             <TabsTrigger value="projects">Projects</TabsTrigger>
             <TabsTrigger value="languages">Languages</TabsTrigger>
             <TabsTrigger value="programs">Lob&apos;s</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="all" className="mt-6">
+            <HierarchyManager onBack={onBack} />
+          </TabsContent>
 
           <TabsContent value="projects" className="mt-6">
             <ProjectsManager onBack={onBack} />
