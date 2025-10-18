@@ -23,6 +23,7 @@ interface ConfigVariable {
   calculation_type: 'AUTO' | 'MANUAL' | 'FORMULA';
   formula: string | null;
   row_index: number;
+  id_lob: string | null;
 }
 
 interface Props {
@@ -32,6 +33,7 @@ interface Props {
 export default function ConfigurationForm({ onBack }: Props) {
   const [configs, setConfigs] = useState<SimulationConfig[]>([]);
   const [projects, setProjects] = useState<{ id_prj: string; desc_prj: string | null }[]>([]);
+  const [programs, setPrograms] = useState<{ id_lob: string; name: string }[]>([]);
   const [selectedConfig, setSelectedConfig] = useState<SimulationConfig | null>(null);
   const [configName, setConfigName] = useState('');
   const [selectedProjectId, setSelectedProjectId] = useState('');
@@ -43,6 +45,7 @@ export default function ConfigurationForm({ onBack }: Props) {
   useEffect(() => {
     loadConfigs();
     loadProjects();
+    loadPrograms();
   }, []);
 
   const loadProjects = async () => {
@@ -56,6 +59,19 @@ export default function ConfigurationForm({ onBack }: Props) {
       return;
     }
     setProjects(data || []);
+  };
+
+  const loadPrograms = async () => {
+    const { data, error } = await supabase
+      .from('lob')
+      .select('id_lob, name')
+      .order('name');
+    
+    if (error) {
+      toast({ title: 'Erro', description: 'Erro ao carregar programas', variant: 'destructive' });
+      return;
+    }
+    setPrograms(data || []);
   };
 
   const loadConfigs = async () => {
@@ -74,7 +90,8 @@ export default function ConfigurationForm({ onBack }: Props) {
       .order('row_index');
     setVariables((data || []).map(v => ({
       ...v,
-      calculation_type: (v.calculation_type || 'AUTO') as 'AUTO' | 'MANUAL' | 'FORMULA'
+      calculation_type: (v.calculation_type || 'AUTO') as 'AUTO' | 'MANUAL' | 'FORMULA',
+      id_lob: (v as any).id_lob || null
     })));
   };
 
@@ -167,7 +184,8 @@ export default function ConfigurationForm({ onBack }: Props) {
         .update({
           name: editingVar.name,
           calculation_type: editingVar.calculation_type || 'AUTO',
-          formula: editingVar.formula || null
+          formula: editingVar.formula || null,
+          id_lob: editingVar.id_lob || null
         })
         .eq('id_sim_cfg_var', editingVar.id_sim_cfg_var);
       
@@ -183,6 +201,7 @@ export default function ConfigurationForm({ onBack }: Props) {
           name: editingVar.name,
           calculation_type: editingVar.calculation_type || 'AUTO',
           formula: editingVar.formula || null,
+          id_lob: editingVar.id_lob || null,
           row_index: variables.length + 1
         }]);
       
@@ -316,7 +335,7 @@ export default function ConfigurationForm({ onBack }: Props) {
                     </Button>
                   </div>
 
-                  {editingVar && (
+                   {editingVar && (
                     <Card className="p-4 mb-4 bg-muted">
                       <div className="mb-3">
                         <Label>Nome</Label>
@@ -325,6 +344,25 @@ export default function ConfigurationForm({ onBack }: Props) {
                           onChange={(e) => setEditingVar({ ...editingVar, name: e.target.value })}
                           placeholder="Ex: Vendas PT"
                         />
+                      </div>
+                      <div className="mb-3">
+                        <Label>Programa (LOB)</Label>
+                        <Select
+                          value={editingVar.id_lob || ''}
+                          onValueChange={(value) => setEditingVar({ ...editingVar, id_lob: value || null })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione um programa" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background z-50">
+                            <SelectItem value="">Nenhum</SelectItem>
+                            {programs.map((program) => (
+                              <SelectItem key={program.id_lob} value={program.id_lob}>
+                                {program.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div className="mb-3">
                         <Label>Tipo de Cálculo</Label>
@@ -337,7 +375,7 @@ export default function ConfigurationForm({ onBack }: Props) {
                           <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="bg-background z-50">
                             <SelectItem value="AUTO">Automático (soma filhas)</SelectItem>
                             <SelectItem value="MANUAL">Manual</SelectItem>
                             <SelectItem value="FORMULA">Fórmula</SelectItem>
