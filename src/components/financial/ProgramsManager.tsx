@@ -94,28 +94,28 @@ export default function ProgramsManager({ onBack }: Props) {
     <div>
       <div className="max-w-6xl mx-auto">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-semibold">Programs</h2>
+          <h2 className="text-2xl font-semibold">Lobe</h2>
         <Button onClick={() => {
           setShowForm(true);
           setEditingProgram(null);
           setFormData({ id_lob: '', name: '' });
         }}>
           <Plus className="h-4 w-4 mr-2" />
-          Novo Programa
+          Novo Lobe
         </Button>
       </div>
 
       {showForm && (
         <Card className="p-6 mb-6">
-          <h3 className="font-bold mb-4">{editingProgram ? 'Editar Programa' : 'Novo Programa'}</h3>
+          <h3 className="font-bold mb-4">{editingProgram ? 'Editar Lobe' : 'Novo Lobe'}</h3>
           <div className="space-y-4">
             <div>
-              <Label>ID do Programa</Label>
+              <Label>ID do Lobe</Label>
               <Input
                 value={formData.id_lob}
                 onChange={(e) => setFormData({ ...formData, id_lob: e.target.value })}
                 disabled={!!editingProgram}
-                placeholder="Ex: PROG-2025"
+                placeholder="Ex: LOB-2025"
               />
             </div>
             <div>
@@ -123,7 +123,7 @@ export default function ProgramsManager({ onBack }: Props) {
               <Input
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Ex: Programa Financeiro 2025"
+                placeholder="Ex: Lobe Financeiro 2025"
               />
             </div>
             <div className="flex gap-2">
