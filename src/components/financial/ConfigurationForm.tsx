@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, Edit3, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Plus, Edit3, Trash2, ChevronDown, ChevronRight, ArrowUp, ArrowDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface SimulationConfig {
   id_sim_cfg: string;
@@ -24,6 +25,8 @@ interface ConfigVariable {
   formula: string | null;
   row_index: number;
   id_lob: string | null;
+  blocked?: boolean;
+  value_type?: string;
 }
 
 interface Props {
@@ -198,7 +201,9 @@ export default function ConfigurationForm({ onBack }: Props) {
           name: editingVar.name,
           calculation_type: editingVar.calculation_type || 'AUTO',
           formula: editingVar.formula || null,
-          id_lob: editingVar.id_lob || null
+          id_lob: editingVar.id_lob || null,
+          blocked: editingVar.blocked || false,
+          value_type: editingVar.value_type || 'number'
         })
         .eq('id_sim_cfg_var', editingVar.id_sim_cfg_var);
       
@@ -215,6 +220,8 @@ export default function ConfigurationForm({ onBack }: Props) {
           calculation_type: editingVar.calculation_type || 'AUTO',
           formula: editingVar.formula || null,
           id_lob: editingVar.id_lob || null,
+          blocked: editingVar.blocked || false,
+          value_type: editingVar.value_type || 'number',
           row_index: variables.length + 1
         }]);
       
@@ -242,6 +249,35 @@ export default function ConfigurationForm({ onBack }: Props) {
     }
     if (selectedConfig) loadVariables(selectedConfig.id_sim_cfg);
     toast({ title: 'Sucesso', description: 'Variável eliminada' });
+  };
+
+  const handleMoveVariable = async (index: number, direction: 'up' | 'down') => {
+    if (!selectedConfig) return;
+    
+    const newVariables = [...variables];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    
+    if (targetIndex < 0 || targetIndex >= newVariables.length) return;
+    
+    // Swap variables
+    [newVariables[index], newVariables[targetIndex]] = [newVariables[targetIndex], newVariables[index]];
+    
+    // Update row_index for both variables
+    const updates = newVariables.map((v, idx) => ({
+      id_sim_cfg_var: v.id_sim_cfg_var,
+      row_index: idx + 1
+    }));
+    
+    // Update in database
+    for (const update of updates) {
+      await supabase
+        .from('simulation_configs_variables')
+        .update({ row_index: update.row_index })
+        .eq('id_sim_cfg_var', update.id_sim_cfg_var);
+    }
+    
+    loadVariables(selectedConfig.id_sim_cfg);
+    toast({ title: 'Sucesso', description: 'Ordem atualizada' });
   };
 
 
@@ -377,6 +413,32 @@ export default function ConfigurationForm({ onBack }: Props) {
                         </Select>
                       </div>
                       <div className="mb-3">
+                        <Label>Tipo de Valor</Label>
+                        <Select
+                          value={editingVar.value_type || 'number'}
+                          onValueChange={(value) => setEditingVar({ ...editingVar, value_type: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background z-50">
+                            <SelectItem value="number">Número</SelectItem>
+                            <SelectItem value="text">Texto</SelectItem>
+                            <SelectItem value="percentage">Percentagem</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="mb-3 flex items-center space-x-2">
+                        <Checkbox
+                          id="blocked"
+                          checked={editingVar.blocked || false}
+                          onCheckedChange={(checked) => setEditingVar({ ...editingVar, blocked: checked as boolean })}
+                        />
+                        <Label htmlFor="blocked" className="cursor-pointer">
+                          Bloqueada (não editável)
+                        </Label>
+                      </div>
+                      <div className="mb-3">
                         <Label>Tipo de Cálculo</Label>
                         <Select
                           value={editingVar.calculation_type || 'AUTO'}
@@ -412,37 +474,58 @@ export default function ConfigurationForm({ onBack }: Props) {
                     </Card>
                   )}
 
-                  <div className="space-y-1 max-h-96 overflow-y-auto">
-                    {variables.map(variable => (
-                      <div
-                        key={variable.id_sim_cfg_var}
-                        className="flex items-center gap-2 p-2 border rounded-lg hover:bg-muted transition-colors"
-                      >
-                        <span className="flex-1">{variable.name}</span>
-                        <span className="text-xs">
-                          {variable.calculation_type === 'FORMULA' ? '📊' : 
-                           variable.calculation_type === 'MANUAL' ? '✏️' : '🔢'}
-                        </span>
-                        
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => setEditingVar(variable)}
-                        >
-                          <Edit3 className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => handleDeleteVariable(variable.id_sim_cfg_var)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
+                   <div className="space-y-1 max-h-96 overflow-y-auto">
+                     {variables.map((variable, index) => (
+                       <div
+                         key={variable.id_sim_cfg_var}
+                         className="flex items-center gap-2 p-2 border rounded-lg hover:bg-muted transition-colors"
+                       >
+                         <div className="flex flex-col gap-1">
+                           <Button
+                             variant="ghost"
+                             size="icon"
+                             className="h-6 w-6"
+                             onClick={() => handleMoveVariable(index, 'up')}
+                             disabled={index === 0}
+                           >
+                             <ArrowUp className="h-3 w-3" />
+                           </Button>
+                           <Button
+                             variant="ghost"
+                             size="icon"
+                             className="h-6 w-6"
+                             onClick={() => handleMoveVariable(index, 'down')}
+                             disabled={index === variables.length - 1}
+                           >
+                             <ArrowDown className="h-3 w-3" />
+                           </Button>
+                         </div>
+                         <span className="flex-1">{variable.name}</span>
+                         {variable.blocked && <span className="text-xs">🔒</span>}
+                         <span className="text-xs">
+                           {variable.calculation_type === 'FORMULA' ? '📊' : 
+                            variable.calculation_type === 'MANUAL' ? '✏️' : '🔢'}
+                         </span>
+                         
+                         <Button
+                           variant="ghost"
+                           size="icon"
+                           className="h-8 w-8"
+                           onClick={() => setEditingVar(variable)}
+                         >
+                           <Edit3 className="h-4 w-4" />
+                         </Button>
+                         <Button
+                           variant="ghost"
+                           size="icon"
+                           className="h-8 w-8"
+                           onClick={() => handleDeleteVariable(variable.id_sim_cfg_var)}
+                         >
+                           <Trash2 className="h-4 w-4" />
+                         </Button>
+                       </div>
+                     ))}
+                   </div>
                 </div>
               </>
             )}
