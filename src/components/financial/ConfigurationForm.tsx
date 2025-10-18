@@ -12,6 +12,7 @@ interface SimulationConfig {
   id_sim_cfg: string;
   name: string;
   description: string | null;
+  id_prj: string | null;
   created_at: string;
 }
 
@@ -30,8 +31,10 @@ interface Props {
 
 export default function ConfigurationForm({ onBack }: Props) {
   const [configs, setConfigs] = useState<SimulationConfig[]>([]);
+  const [projects, setProjects] = useState<{ id_prj: string; desc_prj: string | null }[]>([]);
   const [selectedConfig, setSelectedConfig] = useState<SimulationConfig | null>(null);
   const [configName, setConfigName] = useState('');
+  const [selectedProjectId, setSelectedProjectId] = useState('');
   const [variables, setVariables] = useState<ConfigVariable[]>([]);
   const [editingVar, setEditingVar] = useState<Partial<ConfigVariable> | null>(null);
   const [expandedVars, setExpandedVars] = useState(new Set<string>());
@@ -39,7 +42,21 @@ export default function ConfigurationForm({ onBack }: Props) {
 
   useEffect(() => {
     loadConfigs();
+    loadProjects();
   }, []);
+
+  const loadProjects = async () => {
+    const { data, error } = await supabase
+      .from('project')
+      .select('id_prj, desc_prj')
+      .order('id_prj');
+    
+    if (error) {
+      toast({ title: 'Erro', description: 'Erro ao carregar projetos', variant: 'destructive' });
+      return;
+    }
+    setProjects(data || []);
+  };
 
   const loadConfigs = async () => {
     const { data } = await supabase
@@ -67,10 +84,15 @@ export default function ConfigurationForm({ onBack }: Props) {
       return;
     }
 
+    if (!selectedProjectId) {
+      toast({ title: 'Atenção', description: 'Selecione um projeto' });
+      return;
+    }
+
     if (selectedConfig) {
       const { error } = await supabase
         .from('simulation_configs')
-        .update({ name: configName })
+        .update({ name: configName, id_prj: selectedProjectId })
         .eq('id_sim_cfg', selectedConfig.id_sim_cfg);
       
       if (error) {
@@ -80,7 +102,7 @@ export default function ConfigurationForm({ onBack }: Props) {
     } else {
       const { data, error } = await supabase
         .from('simulation_configs')
-        .insert([{ name: configName }])
+        .insert([{ name: configName, id_prj: selectedProjectId }])
         .select();
       
       if (error) {
@@ -98,12 +120,14 @@ export default function ConfigurationForm({ onBack }: Props) {
   const handleSelectConfig = (config: SimulationConfig) => {
     setSelectedConfig(config);
     setConfigName(config.name);
+    setSelectedProjectId(config.id_prj || '');
     loadVariables(config.id_sim_cfg);
   };
 
   const handleNewConfig = () => {
     setSelectedConfig(null);
     setConfigName('');
+    setSelectedProjectId('');
     setVariables([]);
   };
 
@@ -241,6 +265,25 @@ export default function ConfigurationForm({ onBack }: Props) {
           </h3>
           
           <div className="space-y-6">
+            <div>
+              <Label>Projeto</Label>
+              <Select
+                value={selectedProjectId}
+                onValueChange={(value) => setSelectedProjectId(value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um projeto" />
+                </SelectTrigger>
+                <SelectContent className="bg-background z-50">
+                  {projects.map((project) => (
+                    <SelectItem key={project.id_prj} value={project.id_prj}>
+                      {project.id_prj} {project.desc_prj && `- ${project.desc_prj}`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div>
               <Label>Nome da Configuração</Label>
               <div className="flex gap-2 mt-1">
