@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, Edit3, Trash2, ChevronDown, ChevronRight, ArrowUp, ArrowDown } from 'lucide-react';
+import { ArrowLeft, Plus, Edit3, Trash2, ChevronDown, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +27,7 @@ interface ConfigVariable {
   id_lob: string | null;
   blocked?: boolean;
   value_type?: string;
+  account_num: string;
 }
 
 interface Props {
@@ -102,7 +103,8 @@ export default function ConfigurationForm({ onBack }: Props) {
     setVariables((data || []).map(v => ({
       ...v,
       calculation_type: (v.calculation_type || 'AUTO') as 'AUTO' | 'MANUAL' | 'FORMULA',
-      id_lob: (v as any).id_lob || null
+      id_lob: (v as any).id_lob || null,
+      account_num: (v as any).account_num || ''
     })));
   };
 
@@ -184,6 +186,11 @@ export default function ConfigurationForm({ onBack }: Props) {
       return;
     }
 
+    if (!editingVar?.account_num) {
+      toast({ title: 'Atenção', description: 'Número da conta é obrigatório' });
+      return;
+    }
+
     if (!editingVar?.name) {
       toast({ title: 'Atenção', description: 'Nome é obrigatório' });
       return;
@@ -198,6 +205,7 @@ export default function ConfigurationForm({ onBack }: Props) {
       const { error } = await supabase
         .from('simulation_configs_variables')
         .update({
+          account_num: editingVar.account_num,
           name: editingVar.name,
           calculation_type: editingVar.calculation_type || 'AUTO',
           formula: editingVar.formula || null,
@@ -216,6 +224,7 @@ export default function ConfigurationForm({ onBack }: Props) {
         .from('simulation_configs_variables')
         .insert([{
           id_sim_cfg: selectedConfig.id_sim_cfg,
+          account_num: editingVar.account_num,
           name: editingVar.name,
           calculation_type: editingVar.calculation_type || 'AUTO',
           formula: editingVar.formula || null,
@@ -280,12 +289,40 @@ export default function ConfigurationForm({ onBack }: Props) {
     toast({ title: 'Sucesso', description: 'Ordem atualizada' });
   };
 
-  const getHierarchyLevel = (name: string): number => {
-    // Conta os pontos no nome para determinar o nível (ex: "1" = 0, "1.1" = 1, "1.1.1" = 2)
-    const match = name.match(/^[\d.]+/);
-    if (!match) return 0;
-    const accountCode = match[0];
-    return (accountCode.match(/\./g) || []).length;
+  const getHierarchyLevel = (accountNum: string): number => {
+    // Conta os pontos no account_num para determinar o nível (ex: "1" = 0, "1.1" = 1, "1.1.1" = 2)
+    if (!accountNum) return 0;
+    return (accountNum.match(/\./g) || []).length;
+  };
+
+  const handleSortByAccountNum = async () => {
+    if (!selectedConfig) return;
+    
+    // Função para ordenar hierarquicamente
+    const sortHierarchically = (a: ConfigVariable, b: ConfigVariable) => {
+      const aParts = a.account_num.split('.').map(Number);
+      const bParts = b.account_num.split('.').map(Number);
+      
+      for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
+        const aVal = aParts[i] || 0;
+        const bVal = bParts[i] || 0;
+        if (aVal !== bVal) return aVal - bVal;
+      }
+      return 0;
+    };
+
+    const sortedVariables = [...variables].sort(sortHierarchically);
+    
+    // Atualizar row_index na base de dados
+    for (let i = 0; i < sortedVariables.length; i++) {
+      await supabase
+        .from('simulation_configs_variables')
+        .update({ row_index: i + 1 })
+        .eq('id_sim_cfg_var', sortedVariables[i].id_sim_cfg_var);
+    }
+    
+    loadVariables(selectedConfig.id_sim_cfg);
+    toast({ title: 'Sucesso', description: 'Variáveis ordenadas por número de conta' });
   };
 
 
@@ -382,18 +419,36 @@ export default function ConfigurationForm({ onBack }: Props) {
                 <div className="border-t pt-6">
                   <div className="flex justify-between items-center mb-4">
                     <h4 className="font-bold">Variáveis</h4>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => setEditingVar({ id_sim_cfg_var: '', id_sim_cfg: '', name: '', calculation_type: 'AUTO', formula: null, row_index: 0 })}
-                    >
-                      <Plus className="h-4 w-4 mr-1" />
-                      Nova Variável
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleSortByAccountNum}
+                      >
+                        <ArrowUpDown className="h-4 w-4 mr-1" />
+                        Ordenar por Conta
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => setEditingVar({ id_sim_cfg_var: '', id_sim_cfg: '', name: '', calculation_type: 'AUTO', formula: null, row_index: 0, account_num: '' })}
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        Nova Variável
+                      </Button>
+                    </div>
                   </div>
 
                    {editingVar && (
                     <Card className="p-4 mb-4 bg-muted">
+                      <div className="mb-3">
+                        <Label>Número da Conta *</Label>
+                        <Input
+                          value={editingVar.account_num || ''}
+                          onChange={(e) => setEditingVar({ ...editingVar, account_num: e.target.value })}
+                          placeholder="Ex: 1, 1.1, 1.1.1"
+                        />
+                      </div>
                       <div className="mb-3">
                         <Label>Nome</Label>
                         <Input
@@ -484,8 +539,7 @@ export default function ConfigurationForm({ onBack }: Props) {
 
                    <div className="space-y-1 max-h-96 overflow-y-auto">
                      {variables.map((variable, index) => {
-                       const level = getHierarchyLevel(variable.name);
-                       const indentClass = `ml-${level * 6}`;
+                       const level = getHierarchyLevel(variable.account_num);
                        
                        return (
                          <div
@@ -516,6 +570,7 @@ export default function ConfigurationForm({ onBack }: Props) {
                            {level > 0 && (
                              <span className="text-muted-foreground text-sm">└─</span>
                            )}
+                           <span className="text-sm font-mono text-muted-foreground">{variable.account_num}</span>
                            <span className="flex-1">{variable.name}</span>
                            {variable.blocked && <span className="text-xs" title="Bloqueada">🔒</span>}
                            <span className="text-xs" title={
