@@ -27,7 +27,7 @@ const MasterDataManager = ({ onBack }: Props) => {
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="projects">Projects</TabsTrigger>
             <TabsTrigger value="languages">Languages</TabsTrigger>
-            <TabsTrigger value="programs">Lobe</TabsTrigger>
+            <TabsTrigger value="programs">Lob&apos;s</TabsTrigger>
           </TabsList>
 
           <TabsContent value="projects" className="mt-6">
