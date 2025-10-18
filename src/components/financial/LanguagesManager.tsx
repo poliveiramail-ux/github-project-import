@@ -10,9 +10,9 @@ import { toast } from '@/hooks/use-toast';
 import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
 
 interface Language {
-  id_lang: number;
-  id_prj: number | null;
-  description: string;
+  id_lang: string;
+  id_prj: string | null;
+  desc_lang: string | null;
   created_at?: string;
 }
 
@@ -22,12 +22,12 @@ interface Props {
 
 const LanguagesManager = ({ onBack }: Props) => {
   const [languages, setLanguages] = useState<Language[]>([]);
-  const [editing, setEditing] = useState<number | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState<Omit<Language, 'created_at'>>({
-    id_lang: 0,
+    id_lang: '',
     id_prj: null,
-    description: ''
+    desc_lang: ''
   });
 
   useEffect(() => {
@@ -52,10 +52,10 @@ const LanguagesManager = ({ onBack }: Props) => {
   };
 
   const handleSave = async () => {
-    if (!formData.id_lang || !formData.description) {
+    if (!formData.id_lang || !formData.id_prj) {
       toast({
         title: 'Validation Error',
-        description: 'Language ID and description are required',
+        description: 'Language ID and Project ID are required',
         variant: 'destructive'
       });
       return;
@@ -67,7 +67,7 @@ const LanguagesManager = ({ onBack }: Props) => {
           .from('lang')
           .update({
             id_prj: formData.id_prj,
-            description: formData.description
+            desc_lang: formData.desc_lang
           })
           .eq('id_lang', formData.id_lang);
 
@@ -83,7 +83,7 @@ const LanguagesManager = ({ onBack }: Props) => {
           .insert({
             id_lang: formData.id_lang,
             id_prj: formData.id_prj,
-            description: formData.description
+            desc_lang: formData.desc_lang
           });
 
         if (error) throw error;
@@ -96,7 +96,7 @@ const LanguagesManager = ({ onBack }: Props) => {
 
       setShowForm(false);
       setEditing(null);
-      setFormData({ id_lang: 0, id_prj: null, description: '' });
+      setFormData({ id_lang: '', id_prj: null, desc_lang: '' });
       loadLanguages();
     } catch (error: any) {
       toast({
@@ -107,7 +107,7 @@ const LanguagesManager = ({ onBack }: Props) => {
     }
   };
 
-  const handleDelete = async (id_lang: number) => {
+  const handleDelete = async (id_lang: string) => {
     if (!confirm('Are you sure you want to delete this language?')) return;
 
     const { error } = await (supabase as any)
@@ -138,7 +138,7 @@ const LanguagesManager = ({ onBack }: Props) => {
             onClick={() => {
               setShowForm(true);
               setEditing(null);
-              setFormData({ id_lang: 0, id_prj: null, description: '' });
+              setFormData({ id_lang: '', id_prj: null, desc_lang: '' });
             }}
           >
             New Language
@@ -156,27 +156,29 @@ const LanguagesManager = ({ onBack }: Props) => {
                   <Label htmlFor="id_lang">Language ID</Label>
                   <Input
                     id="id_lang"
-                    type="number"
+                    type="text"
                     value={formData.id_lang}
-                    onChange={(e) => setFormData({ ...formData, id_lang: parseInt(e.target.value) || 0 })}
+                    onChange={(e) => setFormData({ ...formData, id_lang: e.target.value })}
                     disabled={editing !== null}
+                    placeholder="Ex: PT"
                   />
                 </div>
                 <div>
                   <Label htmlFor="id_prj">Project ID</Label>
                   <Input
                     id="id_prj"
-                    type="number"
+                    type="text"
                     value={formData.id_prj || ''}
-                    onChange={(e) => setFormData({ ...formData, id_prj: e.target.value ? parseInt(e.target.value) : null })}
+                    onChange={(e) => setFormData({ ...formData, id_prj: e.target.value || null })}
+                    placeholder="Ex: PRJ-2025"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="description">Description</Label>
+                  <Label htmlFor="desc_lang">Description</Label>
                   <Textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    id="desc_lang"
+                    value={formData.desc_lang || ''}
+                    onChange={(e) => setFormData({ ...formData, desc_lang: e.target.value })}
                   />
                 </div>
                 <div className="flex gap-2">
@@ -207,7 +209,7 @@ const LanguagesManager = ({ onBack }: Props) => {
                   <TableRow key={language.id_lang}>
                     <TableCell>{language.id_lang}</TableCell>
                     <TableCell>{language.id_prj || '-'}</TableCell>
-                    <TableCell>{language.description}</TableCell>
+                    <TableCell>{language.desc_lang || '-'}</TableCell>
                     <TableCell>{language.created_at ? new Date(language.created_at).toLocaleDateString() : '-'}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
@@ -219,7 +221,7 @@ const LanguagesManager = ({ onBack }: Props) => {
                             setFormData({
                               id_lang: language.id_lang,
                               id_prj: language.id_prj,
-                              description: language.description
+                              desc_lang: language.desc_lang
                             });
                             setShowForm(true);
                           }}

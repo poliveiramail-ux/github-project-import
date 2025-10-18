@@ -10,8 +10,8 @@ import { toast } from '@/hooks/use-toast';
 import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
 
 interface Project {
-  id_prj: number;
-  desc: string | null;
+  id_prj: string;
+  desc_prj: string | null;
   created_at?: string;
 }
 
@@ -21,11 +21,11 @@ interface Props {
 
 const ProjectsManager = ({ onBack }: Props) => {
   const [projects, setProjects] = useState<Project[]>([]);
-  const [editing, setEditing] = useState<number | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState<Omit<Project, 'created_at'>>({
-    id_prj: 0,
-    desc: ''
+    id_prj: '',
+    desc_prj: ''
   });
 
   useEffect(() => {
@@ -64,7 +64,7 @@ const ProjectsManager = ({ onBack }: Props) => {
         const { error } = await (supabase as any)
           .from('project')
           .update({
-            desc: formData.desc
+            desc_prj: formData.desc_prj
           })
           .eq('id_prj', formData.id_prj);
 
@@ -79,7 +79,7 @@ const ProjectsManager = ({ onBack }: Props) => {
           .from('project')
           .insert({
             id_prj: formData.id_prj,
-            desc: formData.desc
+            desc_prj: formData.desc_prj
           });
 
         if (error) throw error;
@@ -92,7 +92,7 @@ const ProjectsManager = ({ onBack }: Props) => {
 
       setShowForm(false);
       setEditing(null);
-      setFormData({ id_prj: 0, desc: '' });
+      setFormData({ id_prj: '', desc_prj: '' });
       loadProjects();
     } catch (error: any) {
       toast({
@@ -103,7 +103,7 @@ const ProjectsManager = ({ onBack }: Props) => {
     }
   };
 
-  const handleDelete = async (id_prj: number) => {
+  const handleDelete = async (id_prj: string) => {
     if (!confirm('Are you sure you want to delete this project?')) return;
 
     const { error } = await (supabase as any)
@@ -134,7 +134,7 @@ const ProjectsManager = ({ onBack }: Props) => {
             onClick={() => {
               setShowForm(true);
               setEditing(null);
-              setFormData({ id_prj: 0, desc: '' });
+              setFormData({ id_prj: '', desc_prj: '' });
             }}
           >
             New Project
@@ -152,18 +152,19 @@ const ProjectsManager = ({ onBack }: Props) => {
                   <Label htmlFor="id_prj">Project ID</Label>
                   <Input
                     id="id_prj"
-                    type="number"
+                    type="text"
                     value={formData.id_prj}
-                    onChange={(e) => setFormData({ ...formData, id_prj: parseInt(e.target.value) || 0 })}
+                    onChange={(e) => setFormData({ ...formData, id_prj: e.target.value })}
                     disabled={editing !== null}
+                    placeholder="Ex: PRJ-2025"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="desc">Description</Label>
+                  <Label htmlFor="desc_prj">Description</Label>
                   <Textarea
-                    id="desc"
-                    value={formData.desc || ''}
-                    onChange={(e) => setFormData({ ...formData, desc: e.target.value })}
+                    id="desc_prj"
+                    value={formData.desc_prj || ''}
+                    onChange={(e) => setFormData({ ...formData, desc_prj: e.target.value })}
                   />
                 </div>
                 <div className="flex gap-2">
@@ -192,7 +193,7 @@ const ProjectsManager = ({ onBack }: Props) => {
                 {projects.map((project) => (
                   <TableRow key={project.id_prj}>
                     <TableCell>{project.id_prj}</TableCell>
-                    <TableCell>{project.desc || '-'}</TableCell>
+                    <TableCell>{project.desc_prj || '-'}</TableCell>
                     <TableCell>{project.created_at ? new Date(project.created_at).toLocaleDateString() : '-'}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
@@ -203,7 +204,7 @@ const ProjectsManager = ({ onBack }: Props) => {
                             setEditing(project.id_prj);
                             setFormData({
                               id_prj: project.id_prj,
-                              desc: project.desc
+                              desc_prj: project.desc_prj
                             });
                             setShowForm(true);
                           }}
