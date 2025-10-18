@@ -9,18 +9,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 
 interface SimulationConfig {
-  id: string;
+  id_sim_cfg: string;
   name: string;
+  description: string | null;
   created_at: string;
 }
 
 interface ConfigVariable {
-  id: string;
-  config_id: string;
-  account_code: string;
+  id_sim_cfg_var: string;
+  id_sim_cfg: string;
   name: string;
   calculation_type: 'AUTO' | 'MANUAL' | 'FORMULA';
   formula: string | null;
+  row_index: number;
 }
 
 interface Props {
@@ -52,8 +53,8 @@ export default function ConfigurationForm({ onBack }: Props) {
     const { data } = await supabase
       .from('simulation_configs_variables')
       .select('*')
-      .eq('config_id', configId)
-      .order('account_code');
+      .eq('id_sim_cfg', configId)
+      .order('row_index');
     setVariables((data || []).map(v => ({
       ...v,
       calculation_type: (v.calculation_type || 'AUTO') as 'AUTO' | 'MANUAL' | 'FORMULA'
@@ -70,7 +71,7 @@ export default function ConfigurationForm({ onBack }: Props) {
       const { error } = await supabase
         .from('simulation_configs')
         .update({ name: configName })
-        .eq('id', selectedConfig.id);
+        .eq('id_sim_cfg', selectedConfig.id_sim_cfg);
       
       if (error) {
         toast({ title: 'Erro', description: 'Erro ao atualizar configuração', variant: 'destructive' });
@@ -97,7 +98,7 @@ export default function ConfigurationForm({ onBack }: Props) {
   const handleSelectConfig = (config: SimulationConfig) => {
     setSelectedConfig(config);
     setConfigName(config.name);
-    loadVariables(config.id);
+    loadVariables(config.id_sim_cfg);
   };
 
   const handleNewConfig = () => {
@@ -112,13 +113,13 @@ export default function ConfigurationForm({ onBack }: Props) {
     const { error } = await supabase
       .from('simulation_configs')
       .delete()
-      .eq('id', id);
+      .eq('id_sim_cfg', id);
     
     if (error) {
       toast({ title: 'Erro', description: 'Erro ao eliminar configuração', variant: 'destructive' });
       return;
     }
-    if (selectedConfig?.id === id) {
+    if (selectedConfig?.id_sim_cfg === id) {
       handleNewConfig();
     }
     loadConfigs();
@@ -131,21 +132,20 @@ export default function ConfigurationForm({ onBack }: Props) {
       return;
     }
 
-    if (!editingVar?.account_code || !editingVar?.name) {
-      toast({ title: 'Atenção', description: 'Código e Nome são obrigatórios' });
+    if (!editingVar?.name) {
+      toast({ title: 'Atenção', description: 'Nome é obrigatório' });
       return;
     }
 
-    if (editingVar.id) {
+    if (editingVar.id_sim_cfg_var) {
       const { error } = await supabase
         .from('simulation_configs_variables')
         .update({
-          account_code: editingVar.account_code,
           name: editingVar.name,
           calculation_type: editingVar.calculation_type || 'AUTO',
           formula: editingVar.formula || null
         })
-        .eq('id', editingVar.id);
+        .eq('id_sim_cfg_var', editingVar.id_sim_cfg_var);
       
       if (error) {
         toast({ title: 'Erro', description: 'Erro ao atualizar variável', variant: 'destructive' });
@@ -155,11 +155,11 @@ export default function ConfigurationForm({ onBack }: Props) {
       const { error } = await supabase
         .from('simulation_configs_variables')
         .insert([{
-          config_id: selectedConfig.id,
-          account_code: editingVar.account_code,
+          id_sim_cfg: selectedConfig.id_sim_cfg,
           name: editingVar.name,
           calculation_type: editingVar.calculation_type || 'AUTO',
-          formula: editingVar.formula || null
+          formula: editingVar.formula || null,
+          row_index: variables.length + 1
         }]);
       
       if (error) {
@@ -167,8 +167,8 @@ export default function ConfigurationForm({ onBack }: Props) {
         return;
       }
     }
-    setEditingVar(null);
-    loadVariables(selectedConfig.id);
+      setEditingVar(null);
+    loadVariables(selectedConfig.id_sim_cfg);
     toast({ title: 'Sucesso', description: 'Variável guardada' });
   };
 
@@ -178,46 +178,16 @@ export default function ConfigurationForm({ onBack }: Props) {
     const { error } = await supabase
       .from('simulation_configs_variables')
       .delete()
-      .eq('id', id);
+      .eq('id_sim_cfg_var', id);
     
     if (error) {
       toast({ title: 'Erro', description: 'Erro ao eliminar variável', variant: 'destructive' });
       return;
     }
-    if (selectedConfig) loadVariables(selectedConfig.id);
+    if (selectedConfig) loadVariables(selectedConfig.id_sim_cfg);
     toast({ title: 'Sucesso', description: 'Variável eliminada' });
   };
 
-  const getIndentLevel = (accountCode: string) => {
-    return accountCode.split('.').length - 1;
-  };
-
-  const hasChildren = (accountCode: string) => {
-    return variables.some(v => 
-      v.account_code.startsWith(accountCode + '.') && 
-      v.account_code.split('.').length === accountCode.split('.').length + 1
-    );
-  };
-
-  const toggleExpanded = (accountCode: string) => {
-    setExpandedVars(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(accountCode)) {
-        newSet.delete(accountCode);
-      } else {
-        newSet.add(accountCode);
-      }
-      return newSet;
-    });
-  };
-
-  const isVisible = (variable: ConfigVariable) => {
-    const level = getIndentLevel(variable.account_code);
-    if (level === 0) return true;
-    
-    const parentCode = variable.account_code.substring(0, variable.account_code.lastIndexOf('.'));
-    return expandedVars.has(parentCode);
-  };
 
   return (
     <div className="container mx-auto p-6 max-w-7xl">
@@ -241,9 +211,9 @@ export default function ConfigurationForm({ onBack }: Props) {
           <div className="space-y-2">
             {configs.map(config => (
               <div
-                key={config.id}
+                key={config.id_sim_cfg}
                 className={`p-3 border rounded-lg cursor-pointer flex justify-between items-center transition-colors ${
-                  selectedConfig?.id === config.id ? 'bg-primary/10 border-primary' : 'hover:bg-muted'
+                  selectedConfig?.id_sim_cfg === config.id_sim_cfg ? 'bg-primary/10 border-primary' : 'hover:bg-muted'
                 }`}
               >
                 <span onClick={() => handleSelectConfig(config)} className="flex-1">
@@ -254,7 +224,7 @@ export default function ConfigurationForm({ onBack }: Props) {
                   size="icon"
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleDeleteConfig(config.id);
+                    handleDeleteConfig(config.id_sim_cfg);
                   }}
                 >
                   <Trash2 className="h-4 w-4" />
@@ -291,7 +261,7 @@ export default function ConfigurationForm({ onBack }: Props) {
                     <Button
                       size="sm"
                       variant="secondary"
-                      onClick={() => setEditingVar({ account_code: '', name: '', calculation_type: 'AUTO' })}
+                      onClick={() => setEditingVar({ id_sim_cfg_var: '', id_sim_cfg: '', name: '', calculation_type: 'AUTO', formula: null, row_index: 0 })}
                     >
                       <Plus className="h-4 w-4 mr-1" />
                       Nova Variável
@@ -300,23 +270,13 @@ export default function ConfigurationForm({ onBack }: Props) {
 
                   {editingVar && (
                     <Card className="p-4 mb-4 bg-muted">
-                      <div className="grid grid-cols-2 gap-3 mb-3">
-                        <div>
-                          <Label>Código</Label>
-                          <Input
-                            value={editingVar.account_code || ''}
-                            onChange={(e) => setEditingVar({ ...editingVar, account_code: e.target.value })}
-                            placeholder="Ex: 1.1.1"
-                          />
-                        </div>
-                        <div>
-                          <Label>Nome</Label>
-                          <Input
-                            value={editingVar.name || ''}
-                            onChange={(e) => setEditingVar({ ...editingVar, name: e.target.value })}
-                            placeholder="Ex: Vendas PT"
-                          />
-                        </div>
+                      <div className="mb-3">
+                        <Label>Nome</Label>
+                        <Input
+                          value={editingVar.name || ''}
+                          onChange={(e) => setEditingVar({ ...editingVar, name: e.target.value })}
+                          placeholder="Ex: Vendas PT"
+                        />
                       </div>
                       <div className="mb-3">
                         <Label>Tipo de Cálculo</Label>
@@ -355,56 +315,35 @@ export default function ConfigurationForm({ onBack }: Props) {
                   )}
 
                   <div className="space-y-1 max-h-96 overflow-y-auto">
-                    {variables.filter(isVisible).map(variable => {
-                      const level = getIndentLevel(variable.account_code);
-                      const children = hasChildren(variable.account_code);
-                      const isExpanded = expandedVars.has(variable.account_code);
-                      
-                      return (
-                        <div
-                          key={variable.id}
-                          className="flex items-center gap-2 p-2 border rounded-lg hover:bg-muted transition-colors"
-                          style={{ paddingLeft: `${level * 20 + 8}px` }}
+                    {variables.map(variable => (
+                      <div
+                        key={variable.id_sim_cfg_var}
+                        className="flex items-center gap-2 p-2 border rounded-lg hover:bg-muted transition-colors"
+                      >
+                        <span className="flex-1">{variable.name}</span>
+                        <span className="text-xs">
+                          {variable.calculation_type === 'FORMULA' ? '📊' : 
+                           variable.calculation_type === 'MANUAL' ? '✏️' : '🔢'}
+                        </span>
+                        
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => setEditingVar(variable)}
                         >
-                          {children ? (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => toggleExpanded(variable.account_code)}
-                            >
-                              {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                            </Button>
-                          ) : (
-                            <div className="w-6" />
-                          )}
-                          
-                          <span className="font-mono text-sm text-muted-foreground">{variable.account_code}</span>
-                          <span className="flex-1">{variable.name}</span>
-                          <span className="text-xs">
-                            {variable.calculation_type === 'FORMULA' ? '📊' : 
-                             variable.calculation_type === 'MANUAL' ? '✏️' : '🔢'}
-                          </span>
-                          
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => setEditingVar(variable)}
-                          >
-                            <Edit3 className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => handleDeleteVariable(variable.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      );
-                    })}
+                          <Edit3 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => handleDeleteVariable(variable.id_sim_cfg_var)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </>

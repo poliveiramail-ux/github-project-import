@@ -15,15 +15,15 @@ interface Program {
 }
 
 interface SimulationConfig {
-  id: string;
+  id_sim_cfg: string;
   name: string;
 }
 
 interface SimulationVersion {
-  id: string;
+  id_sim_ver: string;
   name: string;
-  program_id: string;
-  config_id: string;
+  id_lob: string;
+  id_sim_cfg: string;
   created_at: string;
 }
 
@@ -76,13 +76,13 @@ export default function DynamicSimulator({ onMenuClick }: Props) {
   }, []);
 
   const loadPrograms = async () => {
-    const { data } = await supabase.from('programs').select('*').order('id');
-    setPrograms(data || []);
+    const { data } = await supabase.from('lob').select('id_lob, name').order('id_lob');
+    setPrograms((data || []).map(d => ({ id: d.id_lob, name: d.name })));
   };
 
   const loadConfigs = async () => {
-    const { data } = await supabase.from('simulation_configs').select('*').order('created_at', { ascending: false });
-    setConfigs(data || []);
+    const { data } = await supabase.from('simulation_configs').select('id_sim_cfg, name').order('created_at', { ascending: false });
+    setConfigs((data || []).map(d => ({ id_sim_cfg: d.id_sim_cfg, name: d.name })));
     setLoading(false);
   };
 
@@ -90,14 +90,14 @@ export default function DynamicSimulator({ onMenuClick }: Props) {
     const { data } = await supabase
       .from('simulation_versions')
       .select('*')
-      .eq('program_id', programId)
-      .eq('config_id', configId)
+      .eq('id_lob', programId)
+      .eq('id_sim_cfg', configId)
       .order('created_at', { ascending: false });
     
     setVersions(data || []);
     
     if (data && data.length > 0) {
-      loadVersion(data[0].id);
+      loadVersion(data[0].id_sim_ver);
     } else {
       setVariables([]);
       setCurrentVersionId(null);
@@ -149,8 +149,8 @@ export default function DynamicSimulator({ onMenuClick }: Props) {
         .from('simulation_versions')
         .insert([{
           name: newVersionName,
-          program_id: selectedProgram,
-          config_id: selectedConfig
+          id_lob: selectedProgram,
+          id_sim_cfg: selectedConfig
         }])
         .select();
 
@@ -158,13 +158,13 @@ export default function DynamicSimulator({ onMenuClick }: Props) {
         throw new Error('Erro ao criar versão');
       }
 
-      const versionId = newVersion[0].id;
+      const versionId = newVersion[0].id_sim_ver;
 
       const { data: baseVars } = await supabase
         .from('simulation_configs_variables')
         .select('*')
-        .eq('config_id', selectedConfig)
-        .order('account_code');
+        .eq('id_sim_cfg', selectedConfig)
+        .order('row_index');
 
       if (!baseVars || baseVars.length === 0) {
         toast({ 
@@ -179,9 +179,8 @@ export default function DynamicSimulator({ onMenuClick }: Props) {
 
       const variablesToInsert = baseVars.map((baseVar, index) => ({
         version_id: versionId,
-        config_id: selectedConfig,
+        id_sim_cfg: selectedConfig,
         row_index: index + 1,
-        account_code: baseVar.account_code,
         name: baseVar.name,
         calculation_type: baseVar.calculation_type || 'AUTO',
         formula: baseVar.formula || null,
@@ -468,7 +467,7 @@ export default function DynamicSimulator({ onMenuClick }: Props) {
                 </SelectTrigger>
                 <SelectContent>
                   {configs.map(c => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    <SelectItem key={c.id_sim_cfg} value={c.id_sim_cfg}>{c.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -482,7 +481,7 @@ export default function DynamicSimulator({ onMenuClick }: Props) {
                 </SelectTrigger>
                 <SelectContent>
                   {versions.map(v => (
-                    <SelectItem key={v.id} value={v.id}>
+                    <SelectItem key={v.id_sim_ver} value={v.id_sim_ver}>
                       {v.name} ({new Date(v.created_at).toLocaleDateString()})
                     </SelectItem>
                   ))}
