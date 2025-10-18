@@ -214,58 +214,63 @@ export default function ConfigurationForm({ onBack }: Props) {
 
 
   return (
-    <div className="container mx-auto p-6 max-w-7xl">
+    <div className="container mx-auto p-6 max-w-4xl">
       <div className="flex items-center gap-4 mb-6">
         <Button variant="ghost" size="icon" onClick={onBack}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h2 className="text-3xl font-bold">Gestão de Configurações</h2>
+        <h2 className="text-3xl font-bold">Simulation Templates</h2>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Lista de Configurações */}
-        <Card className="p-4 h-fit">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="font-bold text-lg">Configurações</h3>
-            <Button size="sm" onClick={handleNewConfig}>
-              <Plus className="h-4 w-4 mr-1" />
-              Nova
-            </Button>
-          </div>
-          <div className="space-y-2">
-            {configs.map(config => (
-              <div
-                key={config.id_sim_cfg}
-                className={`p-3 border rounded-lg cursor-pointer flex justify-between items-center transition-colors ${
-                  selectedConfig?.id_sim_cfg === config.id_sim_cfg ? 'bg-primary/10 border-primary' : 'hover:bg-muted'
-                }`}
+      <Card className="p-6">
+        <div className="space-y-6">
+          {/* Dropdown de Seleção de Configuração */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <Label>Selecionar Template</Label>
+              <Button size="sm" variant="outline" onClick={handleNewConfig}>
+                <Plus className="h-4 w-4 mr-1" />
+                Novo Template
+              </Button>
+            </div>
+            <div className="flex gap-2">
+              <Select
+                value={selectedConfig?.id_sim_cfg || ''}
+                onValueChange={(value) => {
+                  const config = configs.find(c => c.id_sim_cfg === value);
+                  if (config) handleSelectConfig(config);
+                }}
               >
-                <span onClick={() => handleSelectConfig(config)} className="flex-1">
-                  {config.name}
-                </span>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um template existente" />
+                </SelectTrigger>
+                <SelectContent className="bg-background z-50">
+                  {configs.map((config) => (
+                    <SelectItem key={config.id_sim_cfg} value={config.id_sim_cfg}>
+                      {config.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedConfig && (
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteConfig(config.id_sim_cfg);
-                  }}
+                  onClick={() => handleDeleteConfig(selectedConfig.id_sim_cfg)}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
-              </div>
-            ))}
+              )}
+            </div>
           </div>
-        </Card>
 
-        {/* Detalhes da Configuração */}
-        <Card className="lg:col-span-2 p-6">
-          <h3 className="font-bold text-lg mb-4">
-            {selectedConfig ? 'Editar Configuração' : 'Nova Configuração'}
-          </h3>
-          
-          <div className="space-y-6">
-            <div>
+          <div className="border-t pt-6">
+            <h3 className="font-bold text-lg mb-4">
+              {selectedConfig ? 'Editar Template' : 'Novo Template'}
+            </h3>
+            
+            <div className="space-y-6">
+              <div>
               <Label>Projeto</Label>
               <Select
                 value={selectedProjectId}
@@ -391,9 +396,10 @@ export default function ConfigurationForm({ onBack }: Props) {
                 </div>
               </>
             )}
+            </div>
           </div>
-        </Card>
-      </div>
+        </div>
+      </Card>
     </div>
   );
 }
