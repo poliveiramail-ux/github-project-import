@@ -186,6 +186,11 @@ export default function ConfigurationForm({ onBack }: Props) {
       return;
     }
 
+    if (!editingVar?.id_lob) {
+      toast({ title: 'Atenção', description: 'Programa (LOB) é obrigatório' });
+      return;
+    }
+
     if (editingVar.id_sim_cfg_var) {
       const { error } = await supabase
         .from('simulation_configs_variables')
@@ -354,13 +359,13 @@ export default function ConfigurationForm({ onBack }: Props) {
                         />
                       </div>
                       <div className="mb-3">
-                        <Label>Programa (LOB) - Opcional</Label>
+                        <Label>Programa (LOB) *</Label>
                         <Select
                           value={editingVar.id_lob || undefined}
                           onValueChange={(value) => setEditingVar({ ...editingVar, id_lob: value })}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Selecione um programa (opcional)" />
+                            <SelectValue placeholder="Selecione um programa" />
                           </SelectTrigger>
                           <SelectContent className="bg-background z-50">
                             {programs.map((program) => (
