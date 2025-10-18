@@ -131,15 +131,10 @@ const LanguagesManager = ({ onBack }: Props) => {
   };
 
   return (
-    <div className="min-h-screen bg-background p-6">
+    <div>
       <div className="max-w-6xl mx-auto">
         <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <Button variant="outline" size="icon" onClick={onBack}>
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <h1 className="text-3xl font-bold">Languages Manager</h1>
-          </div>
+          <h2 className="text-2xl font-semibold">Languages</h2>
           <Button
             onClick={() => {
               setShowForm(true);

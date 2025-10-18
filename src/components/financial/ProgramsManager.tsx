@@ -91,14 +91,10 @@ export default function ProgramsManager({ onBack }: Props) {
   };
 
   return (
-    <div className="container mx-auto p-6 max-w-6xl">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={onBack}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <h2 className="text-3xl font-bold">Gestão de Programas</h2>
-        </div>
+    <div>
+      <div className="max-w-6xl mx-auto">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-semibold">Programs</h2>
         <Button onClick={() => {
           setShowForm(true);
           setEditingProgram(null);
@@ -185,6 +181,7 @@ export default function ProgramsManager({ onBack }: Props) {
           </table>
         </div>
       </Card>
+      </div>
     </div>
   );
 }
