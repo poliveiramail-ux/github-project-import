@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
@@ -22,6 +23,7 @@ interface Props {
 
 const LanguagesManager = ({ onBack }: Props) => {
   const [languages, setLanguages] = useState<Language[]>([]);
+  const [projects, setProjects] = useState<{ id_prj: string; desc_prj: string | null }[]>([]);
   const [editing, setEditing] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState<Omit<Language, 'created_at'>>({
@@ -32,6 +34,7 @@ const LanguagesManager = ({ onBack }: Props) => {
 
   useEffect(() => {
     loadLanguages();
+    loadProjects();
   }, []);
 
   const loadLanguages = async () => {
@@ -48,6 +51,23 @@ const LanguagesManager = ({ onBack }: Props) => {
       });
     } else {
       setLanguages(data || []);
+    }
+  };
+
+  const loadProjects = async () => {
+    const { data, error } = await (supabase as any)
+      .from('project')
+      .select('id_prj, desc_prj')
+      .order('id_prj');
+
+    if (error) {
+      toast({
+        title: 'Error loading projects',
+        description: error.message,
+        variant: 'destructive'
+      });
+    } else {
+      setProjects(data || []);
     }
   };
 
@@ -165,13 +185,21 @@ const LanguagesManager = ({ onBack }: Props) => {
                 </div>
                 <div>
                   <Label htmlFor="id_prj">Project ID</Label>
-                  <Input
-                    id="id_prj"
-                    type="text"
+                  <Select
                     value={formData.id_prj || ''}
-                    onChange={(e) => setFormData({ ...formData, id_prj: e.target.value || null })}
-                    placeholder="Ex: PRJ-2025"
-                  />
+                    onValueChange={(value) => setFormData({ ...formData, id_prj: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um projeto" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background z-50">
+                      {projects.map((project) => (
+                        <SelectItem key={project.id_prj} value={project.id_prj}>
+                          {project.id_prj} {project.desc_prj && `- ${project.desc_prj}`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <Label htmlFor="desc_lang">Description</Label>
