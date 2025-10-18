@@ -39,45 +39,149 @@ export type Database = {
           name?: string
           variable_id?: string
         }
+        Relationships: []
+      }
+      lang: {
+        Row: {
+          created_at: string
+          desc_lang: string | null
+          id_lang: string
+          id_prj: string
+        }
+        Insert: {
+          created_at?: string
+          desc_lang?: string | null
+          id_lang: string
+          id_prj: string
+        }
+        Update: {
+          created_at?: string
+          desc_lang?: string | null
+          id_lang?: string
+          id_prj?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "detail_indicators_variable_id_fkey"
-            columns: ["variable_id"]
+            foreignKeyName: "lang_id_prj_fkey"
+            columns: ["id_prj"]
             isOneToOne: false
-            referencedRelation: "variables"
-            referencedColumns: ["id"]
+            referencedRelation: "project"
+            referencedColumns: ["id_prj"]
           },
         ]
       }
-      programs: {
+      lob: {
         Row: {
           created_at: string | null
-          description: string | null
-          id: string
+          desc_lob: string | null
+          id_lang: string
+          id_lob: string
           name: string
           updated_at: string | null
         }
         Insert: {
           created_at?: string | null
-          description?: string | null
-          id: string
+          desc_lob?: string | null
+          id_lang: string
+          id_lob: string
           name: string
           updated_at?: string | null
         }
         Update: {
           created_at?: string | null
-          description?: string | null
-          id?: string
+          desc_lob?: string | null
+          id_lang?: string
+          id_lob?: string
           name?: string
           updated_at?: string | null
         }
+        Relationships: [
+          {
+            foreignKeyName: "lob_id_lang_fkey"
+            columns: ["id_lang"]
+            isOneToOne: false
+            referencedRelation: "lang"
+            referencedColumns: ["id_lang"]
+          },
+        ]
+      }
+      project: {
+        Row: {
+          created_at: string
+          desc_prj: string | null
+          id_prj: string
+        }
+        Insert: {
+          created_at?: string
+          desc_prj?: string | null
+          id_prj: string
+        }
+        Update: {
+          created_at?: string
+          desc_prj?: string | null
+          id_prj?: string
+        }
         Relationships: []
+      }
+      simulation: {
+        Row: {
+          calculation_type: string | null
+          created_at: string | null
+          formula: string | null
+          id_lob: string | null
+          id_sim: string
+          month: number | null
+          name: string
+          row_index: number
+          value: number | null
+          value_type: string | null
+          version_id: string | null
+          year: number | null
+        }
+        Insert: {
+          calculation_type?: string | null
+          created_at?: string | null
+          formula?: string | null
+          id_lob?: string | null
+          id_sim?: string
+          month?: number | null
+          name: string
+          row_index: number
+          value?: number | null
+          value_type?: string | null
+          version_id?: string | null
+          year?: number | null
+        }
+        Update: {
+          calculation_type?: string | null
+          created_at?: string | null
+          formula?: string | null
+          id_lob?: string | null
+          id_sim?: string
+          month?: number | null
+          name?: string
+          row_index?: number
+          value?: number | null
+          value_type?: string | null
+          version_id?: string | null
+          year?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "simulation_id_lob_fkey"
+            columns: ["id_lob"]
+            isOneToOne: false
+            referencedRelation: "lob"
+            referencedColumns: ["id_lob"]
+          },
+        ]
       }
       simulation_configs: {
         Row: {
           created_at: string | null
           description: string | null
-          id: string
+          id_prj: string | null
+          id_sim_cfg: string
           is_active: boolean | null
           name: string
           updated_at: string | null
@@ -86,7 +190,8 @@ export type Database = {
         Insert: {
           created_at?: string | null
           description?: string | null
-          id?: string
+          id_prj?: string | null
+          id_sim_cfg?: string
           is_active?: boolean | null
           name: string
           updated_at?: string | null
@@ -95,244 +200,138 @@ export type Database = {
         Update: {
           created_at?: string | null
           description?: string | null
-          id?: string
+          id_prj?: string | null
+          id_sim_cfg?: string
           is_active?: boolean | null
           name?: string
           updated_at?: string | null
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "simulation_configs_id_prj_fkey"
+            columns: ["id_prj"]
+            isOneToOne: false
+            referencedRelation: "project"
+            referencedColumns: ["id_prj"]
+          },
+        ]
       }
       simulation_configs_variables: {
         Row: {
-          account_code: string
           calculation_type: string | null
-          config_id: string
           created_at: string | null
           formula: string | null
-          id: string
+          id_sim_cfg: string | null
+          id_sim_cfg_var: string
           name: string
           row_index: number
           value_type: string | null
         }
         Insert: {
-          account_code: string
           calculation_type?: string | null
-          config_id: string
           created_at?: string | null
           formula?: string | null
-          id?: string
+          id_sim_cfg?: string | null
+          id_sim_cfg_var?: string
           name: string
           row_index?: number
           value_type?: string | null
         }
         Update: {
-          account_code?: string
           calculation_type?: string | null
-          config_id?: string
           created_at?: string | null
           formula?: string | null
-          id?: string
+          id_sim_cfg?: string | null
+          id_sim_cfg_var?: string
           name?: string
           row_index?: number
           value_type?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "simulation_configs_variables_config_id_fkey"
-            columns: ["config_id"]
+            foreignKeyName: "simulation_configs_variables_id_sim_cfg_fkey"
+            columns: ["id_sim_cfg"]
             isOneToOne: false
             referencedRelation: "simulation_configs"
-            referencedColumns: ["id"]
+            referencedColumns: ["id_sim_cfg"]
+          },
+        ]
+      }
+      simulation_intake: {
+        Row: {
+          created_at: string | null
+          id_intake: string
+          id_lob: string | null
+          month: number | null
+          name: string
+          row_index: number
+          value: number | null
+          year: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id_intake?: string
+          id_lob?: string | null
+          month?: number | null
+          name: string
+          row_index: number
+          value?: number | null
+          year?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id_intake?: string
+          id_lob?: string | null
+          month?: number | null
+          name?: string
+          row_index?: number
+          value?: number | null
+          year?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "simulation_intake_id_lob_fkey"
+            columns: ["id_lob"]
+            isOneToOne: false
+            referencedRelation: "lob"
+            referencedColumns: ["id_lob"]
           },
         ]
       }
       simulation_versions: {
         Row: {
-          config_id: string | null
           created_at: string | null
           data: Json | null
-          id: string
+          id_sim_ver: string
           is_base: boolean | null
           name: string
           notes: string | null
           order_index: number | null
-          program_id: string | null
           updated_at: string | null
           user_id: string | null
         }
         Insert: {
-          config_id?: string | null
           created_at?: string | null
           data?: Json | null
-          id?: string
+          id_sim_ver?: string
           is_base?: boolean | null
           name: string
           notes?: string | null
           order_index?: number | null
-          program_id?: string | null
           updated_at?: string | null
           user_id?: string | null
         }
         Update: {
-          config_id?: string | null
           created_at?: string | null
           data?: Json | null
-          id?: string
+          id_sim_ver?: string
           is_base?: boolean | null
           name?: string
           notes?: string | null
           order_index?: number | null
-          program_id?: string | null
           updated_at?: string | null
           user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "fk_simulation_versions_program"
-            columns: ["program_id"]
-            isOneToOne: false
-            referencedRelation: "programs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "simulation_versions_config_id_fkey"
-            columns: ["config_id"]
-            isOneToOne: false
-            referencedRelation: "simulation_configs"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      variables: {
-        Row: {
-          account_code: string
-          apr: number | null
-          aug: number | null
-          calculation_type: string | null
-          config_id: string
-          created_at: string | null
-          dec: number | null
-          feb: number | null
-          formula: string | null
-          id: string
-          jan: number | null
-          jul: number | null
-          jun: number | null
-          mar: number | null
-          may: number | null
-          month_values: Json | null
-          name: string
-          nov: number | null
-          oct: number | null
-          row_index: number
-          sep: number | null
-          value_type: string | null
-          version_id: string | null
-        }
-        Insert: {
-          account_code: string
-          apr?: number | null
-          aug?: number | null
-          calculation_type?: string | null
-          config_id: string
-          created_at?: string | null
-          dec?: number | null
-          feb?: number | null
-          formula?: string | null
-          id?: string
-          jan?: number | null
-          jul?: number | null
-          jun?: number | null
-          mar?: number | null
-          may?: number | null
-          month_values?: Json | null
-          name: string
-          nov?: number | null
-          oct?: number | null
-          row_index: number
-          sep?: number | null
-          value_type?: string | null
-          version_id?: string | null
-        }
-        Update: {
-          account_code?: string
-          apr?: number | null
-          aug?: number | null
-          calculation_type?: string | null
-          config_id?: string
-          created_at?: string | null
-          dec?: number | null
-          feb?: number | null
-          formula?: string | null
-          id?: string
-          jan?: number | null
-          jul?: number | null
-          jun?: number | null
-          mar?: number | null
-          may?: number | null
-          month_values?: Json | null
-          name?: string
-          nov?: number | null
-          oct?: number | null
-          row_index?: number
-          sep?: number | null
-          value_type?: string | null
-          version_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "variables_config_id_fkey"
-            columns: ["config_id"]
-            isOneToOne: false
-            referencedRelation: "simulation_configs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "variables_version_id_fkey"
-            columns: ["version_id"]
-            isOneToOne: false
-            referencedRelation: "simulation_versions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      variables_backup: {
-        Row: {
-          color_theme: string | null
-          config_id: string | null
-          created_at: string | null
-          formula: string | null
-          formula_description: string | null
-          formula_display: string | null
-          id: string | null
-          is_editable: boolean | null
-          name: string | null
-          row_index: number | null
-        }
-        Insert: {
-          color_theme?: string | null
-          config_id?: string | null
-          created_at?: string | null
-          formula?: string | null
-          formula_description?: string | null
-          formula_display?: string | null
-          id?: string | null
-          is_editable?: boolean | null
-          name?: string | null
-          row_index?: number | null
-        }
-        Update: {
-          color_theme?: string | null
-          config_id?: string | null
-          created_at?: string | null
-          formula?: string | null
-          formula_description?: string | null
-          formula_display?: string | null
-          id?: string | null
-          is_editable?: boolean | null
-          name?: string | null
-          row_index?: number | null
         }
         Relationships: []
       }
@@ -341,10 +340,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      user_owns_config: {
-        Args: { config_id: string; user_id_check: string }
-        Returns: boolean
-      }
       user_owns_version: {
         Args: { user_id_check: string; version_id: string }
         Returns: boolean
