@@ -346,16 +346,15 @@ export default function ConfigurationForm({ onBack }: Props) {
                         />
                       </div>
                       <div className="mb-3">
-                        <Label>Programa (LOB)</Label>
+                        <Label>Programa (LOB) - Opcional</Label>
                         <Select
-                          value={editingVar.id_lob || ''}
-                          onValueChange={(value) => setEditingVar({ ...editingVar, id_lob: value || null })}
+                          value={editingVar.id_lob || undefined}
+                          onValueChange={(value) => setEditingVar({ ...editingVar, id_lob: value })}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Selecione um programa" />
+                            <SelectValue placeholder="Selecione um programa (opcional)" />
                           </SelectTrigger>
                           <SelectContent className="bg-background z-50">
-                            <SelectItem value="">Nenhum</SelectItem>
                             {programs.map((program) => (
                               <SelectItem key={program.id_lob} value={program.id_lob}>
                                 {program.name}
