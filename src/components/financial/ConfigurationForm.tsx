@@ -45,8 +45,15 @@ export default function ConfigurationForm({ onBack }: Props) {
   useEffect(() => {
     loadConfigs();
     loadProjects();
-    loadPrograms();
   }, []);
+
+  useEffect(() => {
+    if (selectedProjectId) {
+      loadPrograms(selectedProjectId);
+    } else {
+      setPrograms([]);
+    }
+  }, [selectedProjectId]);
 
   const loadProjects = async () => {
     const { data, error } = await supabase
@@ -61,10 +68,11 @@ export default function ConfigurationForm({ onBack }: Props) {
     setProjects(data || []);
   };
 
-  const loadPrograms = async () => {
+  const loadPrograms = async (projectId: string) => {
     const { data, error } = await supabase
       .from('lob')
-      .select('id_lob, name')
+      .select('id_lob, name, lang!inner(id_prj)')
+      .eq('lang.id_prj', projectId)
       .order('name');
     
     if (error) {
