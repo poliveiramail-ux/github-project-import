@@ -9,21 +9,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 
-interface Program {
-  id: string;
-  name: string;
+interface Project {
+  id_prj: string;
+  desc_prj: string | null;
 }
 
-interface SimulationConfig {
-  id: string;
-  name: string;
+interface Language {
+  id_lang: string;
+  desc_lang: string | null;
 }
 
 interface SimulationVersion {
   id: string;
   name: string;
-  program_id: string;
-  config_id: string;
+  id_prj: string;
+  id_lang: string;
   created_at: string;
 }
 
@@ -59,10 +59,10 @@ interface MonthYear {
 const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
 export default function SimulationForm({ onMenuClick }: Props) {
-  const [programs, setPrograms] = useState<Program[]>([]);
-  const [configs, setConfigs] = useState<SimulationConfig[]>([]);
-  const [selectedProgram, setSelectedProgram] = useState('');
-  const [selectedConfig, setSelectedConfig] = useState('');
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [languages, setLanguages] = useState<Language[]>([]);
+  const [selectedProject, setSelectedProject] = useState('');
+  const [selectedLanguage, setSelectedLanguage] = useState('');
   const [variables, setVariables] = useState<Variable[]>([]);
   const [variableValues, setVariableValues] = useState<Map<string, number>>(new Map());
   const [versions, setVersions] = useState<SimulationVersion[]>([]);
@@ -76,34 +76,46 @@ export default function SimulationForm({ onMenuClick }: Props) {
   const { toast } = useToast();
 
   useEffect(() => {
-    loadPrograms();
-    loadConfigs();
+    loadProjects();
   }, []);
 
-  const loadPrograms = async () => {
-    const { data } = await supabase.from('lob').select('id_lob, name').order('id_lob');
-    setPrograms((data || []).map(p => ({ id: p.id_lob, name: p.name })));
-  };
+  useEffect(() => {
+    if (selectedProject) {
+      loadLanguages(selectedProject);
+    } else {
+      setLanguages([]);
+      setSelectedLanguage('');
+    }
+  }, [selectedProject]);
 
-  const loadConfigs = async () => {
-    const { data } = await supabase.from('simulation_configs').select('*').order('created_at', { ascending: false });
-    setConfigs((data || []).map(c => ({ id: c.id_sim_cfg, name: c.name })));
+  const loadProjects = async () => {
+    const { data } = await supabase.from('project').select('id_prj, desc_prj').order('id_prj');
+    setProjects((data || []).map(p => ({ id_prj: p.id_prj, desc_prj: p.desc_prj })));
     setLoading(false);
   };
 
-  const loadVersions = async (programId: string, configId: string) => {
+  const loadLanguages = async (projectId: string) => {
+    const { data } = await supabase
+      .from('lang')
+      .select('id_lang, desc_lang')
+      .eq('id_prj', projectId)
+      .order('id_lang');
+    setLanguages((data || []).map(l => ({ id_lang: l.id_lang, desc_lang: l.desc_lang })));
+  };
+
+  const loadVersions = async (projectId: string, languageId: string) => {
     const { data } = await (supabase as any)
       .from('simulation_versions')
       .select('*')
-      .eq('program_id', programId)
-      .eq('config_id', configId)
+      .eq('id_prj', projectId)
+      .eq('id_lang', languageId)
       .order('created_at', { ascending: false });
     
     const mappedData = (data || []).map((v: any) => ({
       id: v.id_sim_ver,
       name: v.name,
-      program_id: programId,
-      config_id: configId,
+      id_prj: projectId,
+      id_lang: languageId,
       created_at: v.created_at
     }));
     setVersions(mappedData);
@@ -172,17 +184,17 @@ export default function SimulationForm({ onMenuClick }: Props) {
     setExpandedRows(new Set());
   };
 
-  const handleProgramChange = (programId: string) => {
-    setSelectedProgram(programId);
-    if (programId && selectedConfig) {
-      loadVersions(programId, selectedConfig);
-    }
+  const handleProjectChange = (projectId: string) => {
+    setSelectedProject(projectId);
+    setSelectedLanguage('');
+    setVersions([]);
+    setCurrentVersionId(null);
   };
 
-  const handleConfigChange = (configId: string) => {
-    setSelectedConfig(configId);
-    if (selectedProgram && configId) {
-      loadVersions(selectedProgram, configId);
+  const handleLanguageChange = (languageId: string) => {
+    setSelectedLanguage(languageId);
+    if (selectedProject && languageId) {
+      loadVersions(selectedProject, languageId);
     }
   };
 
@@ -192,18 +204,36 @@ export default function SimulationForm({ onMenuClick }: Props) {
       return;
     }
 
-    if (!selectedProgram || !selectedConfig) {
-      toast({ title: 'Atenção', description: 'Selecione programa e configuração' });
+    if (!selectedProject || !selectedLanguage) {
+      toast({ title: 'Atenção', description: 'Selecione projeto e linguagem' });
       return;
     }
 
     try {
+      // Find config for this project and language
+      const { data: configs } = await (supabase as any)
+        .from('simulation_configs')
+        .select('id_sim_cfg')
+        .eq('id_prj', selectedProject)
+        .eq('id_lang', selectedLanguage)
+        .limit(1);
+
+      if (!configs || configs.length === 0) {
+        toast({ 
+          title: 'Aviso', 
+          description: 'Nenhuma configuração encontrada para este projeto e linguagem.' 
+        });
+        return;
+      }
+
+      const configId = configs[0].id_sim_cfg;
+
       const { data: newVersion, error: versionError } = await supabase
         .from('simulation_versions')
         .insert([{
           name: newVersionName,
-          program_id: selectedProgram,
-          config_id: selectedConfig
+          id_prj: selectedProject,
+          id_lang: selectedLanguage
         }])
         .select();
 
@@ -216,7 +246,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
       const { data: baseVars } = await supabase
         .from('simulation_configs_variables')
         .select('*')
-        .eq('id_sim_cfg', selectedConfig)
+        .eq('id_sim_cfg', configId)
         .order('account_num');
 
       if (!baseVars || baseVars.length === 0) {
@@ -226,7 +256,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
         });
         setShowNewVersionModal(false);
         setNewVersionName('');
-        loadVersions(selectedProgram, selectedConfig);
+        loadVersions(selectedProject, selectedLanguage);
         return;
       }
 
@@ -238,14 +268,15 @@ export default function SimulationForm({ onMenuClick }: Props) {
         baseVars.forEach((baseVar: any, index) => {
           variablesToInsert.push({
             version_id: versionId,
-            config_id: selectedConfig,
             row_index: index + 1,
             account_num: baseVar.account_num,
             name: baseVar.name,
             calculation_type: baseVar.calculation_type || 'AUTO',
             formula: baseVar.formula || null,
             month: month,
-            year: currentYear
+            year: currentYear,
+            id_prj: selectedProject,
+            id_lang: selectedLanguage
           });
         });
       }
@@ -258,7 +289,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
 
       setShowNewVersionModal(false);
       setNewVersionName('');
-      loadVersions(selectedProgram, selectedConfig);
+      loadVersions(selectedProject, selectedLanguage);
       toast({ title: 'Sucesso', description: 'Versão criada com sucesso' });
     } catch (error) {
       console.error('Error creating version:', error);
@@ -461,7 +492,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
               <Button
                 variant="secondary"
                 onClick={() => setShowNewVersionModal(true)}
-                disabled={!selectedProgram || !selectedConfig}
+                disabled={!selectedProject || !selectedLanguage}
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Nova Versão
@@ -501,28 +532,32 @@ export default function SimulationForm({ onMenuClick }: Props) {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <Label>Programa</Label>
-              <Select value={selectedProgram} onValueChange={handleProgramChange}>
+              <Label>Projeto</Label>
+              <Select value={selectedProject} onValueChange={handleProjectChange}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione um programa" />
+                  <SelectValue placeholder="Selecione um projeto" />
                 </SelectTrigger>
                 <SelectContent>
-                  {programs.map(p => (
-                    <SelectItem key={p.id} value={p.id}>{p.id} - {p.name}</SelectItem>
+                  {projects.map(p => (
+                    <SelectItem key={p.id_prj} value={p.id_prj}>
+                      {p.id_prj}{p.desc_prj ? ` - ${p.desc_prj}` : ''}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
             <div>
-              <Label>Configuração</Label>
-              <Select value={selectedConfig} onValueChange={handleConfigChange}>
+              <Label>Linguagem</Label>
+              <Select value={selectedLanguage} onValueChange={handleLanguageChange} disabled={!selectedProject}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma configuração" />
+                  <SelectValue placeholder="Selecione uma linguagem" />
                 </SelectTrigger>
                 <SelectContent>
-                  {configs.map(c => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  {languages.map(l => (
+                    <SelectItem key={l.id_lang} value={l.id_lang}>
+                      {l.id_lang}{l.desc_lang ? ` - ${l.desc_lang}` : ''}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -530,7 +565,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
 
             <div>
               <Label>Versão</Label>
-              <Select value={currentVersionId || ''} onValueChange={loadVersion}>
+              <Select value={currentVersionId || ''} onValueChange={loadVersion} disabled={!selectedLanguage}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione uma versão" />
                 </SelectTrigger>
@@ -642,7 +677,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
           </Card>
         ) : (
           <Card className="p-12 text-center text-muted-foreground">
-            Selecione um programa e uma configuração para começar
+            Selecione um projeto e uma linguagem para começar
           </Card>
         )}
       </div>
