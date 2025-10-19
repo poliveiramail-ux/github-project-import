@@ -327,12 +327,13 @@ export default function SimulationForm({ onMenuClick }: Props) {
         const monthsToCreate = [1, 2, 3]; // Jan, Feb, Mar
         const yearToUse = new Date().getFullYear();
 
-        configVars.forEach((configVar: any, index) => {
+        let rowCounter = 1;
+        configVars.forEach((configVar: any) => {
           lobs.forEach((lob: any) => {
             monthsToCreate.forEach((month) => {
               variablesToInsert.push({
                 version_id: versionId,
-                row_index: index + 1,
+                row_index: rowCounter++,
                 account_num: configVar.account_num,
                 name: configVar.name,
                 calculation_type: configVar.calculation_type || 'AUTO',
