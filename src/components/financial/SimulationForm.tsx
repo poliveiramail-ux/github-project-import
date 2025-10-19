@@ -247,11 +247,14 @@ export default function SimulationForm({ onMenuClick }: Props) {
 
       const versionId = newVersion[0].id_sim_ver;
 
-      // Create variables for each month of the current year
-      const currentYear = new Date().getFullYear();
+      // Determine which months to create based on whether versions exist
+      const isFirstVersion = versions.length === 0;
+      const monthsToCreate = isFirstVersion ? [1, 2, 3] : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+      const yearToUse = isFirstVersion ? 2025 : new Date().getFullYear();
+      
       const variablesToInsert = [];
       
-      for (let month = 1; month <= 12; month++) {
+      for (const month of monthsToCreate) {
         baseVars.forEach((baseVar: any, index) => {
           variablesToInsert.push({
             version_id: versionId,
@@ -261,7 +264,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
             calculation_type: baseVar.calculation_type || 'AUTO',
             formula: baseVar.formula || null,
             month: month,
-            year: currentYear,
+            year: yearToUse,
             id_lob: baseVar.id_lob,
             id_proj: selectedProject,
             id_lang: selectedLanguage
