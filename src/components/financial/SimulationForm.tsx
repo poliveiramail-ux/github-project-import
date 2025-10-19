@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 
 interface Project {
@@ -73,6 +74,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
   const [newVersionName, setNewVersionName] = useState('');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [periods, setPeriods] = useState<MonthYear[]>([]);
+  const [selectedMonths, setSelectedMonths] = useState<number[]>([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -247,11 +249,13 @@ export default function SimulationForm({ onMenuClick }: Props) {
 
       const versionId = newVersion[0].id_sim_ver;
 
-      // Create variables for each month of the current year
+      // Create variables for selected months of the current year
       const currentYear = new Date().getFullYear();
       const variablesToInsert = [];
       
-      for (let month = 1; month <= 12; month++) {
+      const monthsToCreate = versions.length === 0 ? selectedMonths : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+      
+      for (const month of monthsToCreate) {
         baseVars.forEach((baseVar: any, index) => {
           variablesToInsert.push({
             version_id: versionId,
@@ -277,6 +281,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
 
       setShowNewVersionModal(false);
       setNewVersionName('');
+      setSelectedMonths([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
       loadVersions(selectedProject, selectedLanguage);
       toast({ title: 'Sucesso', description: 'Versão criada com sucesso' });
     } catch (error) {
@@ -686,11 +691,44 @@ export default function SimulationForm({ onMenuClick }: Props) {
                 autoFocus
               />
             </div>
+            
+            {versions.length === 0 && (
+              <div>
+                <Label className="mb-3 block">Meses a Considerar</Label>
+                <div className="grid grid-cols-3 gap-3 max-h-[200px] overflow-y-auto bg-muted/30 p-3 rounded-md">
+                  {monthNames.map((monthName, index) => {
+                    const monthNumber = index + 1;
+                    return (
+                      <div key={monthNumber} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`month-${monthNumber}`}
+                          checked={selectedMonths.includes(monthNumber)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedMonths([...selectedMonths, monthNumber].sort((a, b) => a - b));
+                            } else {
+                              setSelectedMonths(selectedMonths.filter(m => m !== monthNumber));
+                            }
+                          }}
+                        />
+                        <label
+                          htmlFor={`month-${monthNumber}`}
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                        >
+                          {monthName}
+                        </label>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => {
               setShowNewVersionModal(false);
               setNewVersionName('');
+              setSelectedMonths([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
             }}>
               Cancelar
             </Button>
