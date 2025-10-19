@@ -14,6 +14,7 @@ interface SimulationConfig {
   name: string;
   description: string | null;
   id_prj: string | null;
+  id_lang?: string | null;
   created_at: string;
 }
 
@@ -43,6 +44,7 @@ export default function ConfigurationForm({ onBack }: Props) {
   const [selectedConfig, setSelectedConfig] = useState<SimulationConfig | null>(null);
   const [configName, setConfigName] = useState('');
   const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [selectedLanguageId, setSelectedLanguageId] = useState('');
   const [variables, setVariables] = useState<ConfigVariable[]>([]);
   const [editingVar, setEditingVar] = useState<Partial<ConfigVariable> | null>(null);
   const [expandedVars, setExpandedVars] = useState(new Set<string>());
@@ -138,10 +140,15 @@ export default function ConfigurationForm({ onBack }: Props) {
       return;
     }
 
+    if (!selectedLanguageId) {
+      toast({ title: 'Atenção', description: 'Selecione uma linguagem' });
+      return;
+    }
+
     if (selectedConfig) {
       const { error } = await supabase
         .from('simulation_configs')
-        .update({ name: configName, id_prj: selectedProjectId })
+        .update({ name: configName, id_prj: selectedProjectId, id_lang: selectedLanguageId })
         .eq('id_sim_cfg', selectedConfig.id_sim_cfg);
       
       if (error) {
@@ -151,7 +158,7 @@ export default function ConfigurationForm({ onBack }: Props) {
     } else {
       const { data, error } = await supabase
         .from('simulation_configs')
-        .insert([{ name: configName, id_prj: selectedProjectId }])
+        .insert([{ name: configName, id_prj: selectedProjectId, id_lang: selectedLanguageId }])
         .select();
       
       if (error) {
@@ -170,6 +177,7 @@ export default function ConfigurationForm({ onBack }: Props) {
     setSelectedConfig(config);
     setConfigName(config.name);
     setSelectedProjectId(config.id_prj || '');
+    setSelectedLanguageId(config.id_lang || '');
     loadVariables(config.id_sim_cfg);
   };
 
@@ -177,6 +185,7 @@ export default function ConfigurationForm({ onBack }: Props) {
     setSelectedConfig(null);
     setConfigName('');
     setSelectedProjectId('');
+    setSelectedLanguageId('');
     setVariables([]);
   };
 
@@ -376,8 +385,8 @@ export default function ConfigurationForm({ onBack }: Props) {
             </h3>
             
             <div className="space-y-6">
-              <div>
-              <Label>Projeto</Label>
+            <div>
+              <Label>Projeto *</Label>
               <Select
                 value={selectedProjectId}
                 onValueChange={(value) => setSelectedProjectId(value)}
@@ -396,7 +405,27 @@ export default function ConfigurationForm({ onBack }: Props) {
             </div>
 
             <div>
-              <Label>Nome da Configuração</Label>
+              <Label>Linguagem *</Label>
+              <Select
+                value={selectedLanguageId}
+                onValueChange={(value) => setSelectedLanguageId(value)}
+                disabled={!selectedProjectId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione uma linguagem" />
+                </SelectTrigger>
+                <SelectContent className="bg-background z-50">
+                  {languages.map((language) => (
+                    <SelectItem key={language.id_lang} value={language.id_lang}>
+                      {language.id_lang} {language.desc_lang && `- ${language.desc_lang}`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Nome da Configuração *</Label>
               <div className="flex gap-2 mt-1">
                 <Input
                   value={configName}
@@ -424,7 +453,17 @@ export default function ConfigurationForm({ onBack }: Props) {
                       <Button
                         size="sm"
                         variant="secondary"
-                        onClick={() => setEditingVar({ id_sim_cfg_var: '', id_sim_cfg: '', name: '', calculation_type: 'AUTO', formula: null, row_index: 0, account_num: '' })}
+                        onClick={() => setEditingVar({ 
+                          id_sim_cfg_var: '', 
+                          id_sim_cfg: selectedConfig.id_sim_cfg, 
+                          name: '', 
+                          calculation_type: 'AUTO', 
+                          formula: null, 
+                          row_index: 0, 
+                          account_num: '',
+                          id_lob: null,
+                          id_lang: selectedLanguageId || null
+                        })}
                       >
                         <Plus className="h-4 w-4 mr-1" />
                         Nova Variável
@@ -473,9 +512,10 @@ export default function ConfigurationForm({ onBack }: Props) {
                         <Select
                           value={editingVar.id_lang || undefined}
                           onValueChange={(value) => setEditingVar({ ...editingVar, id_lang: value })}
+                          disabled
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Selecione uma linguagem" />
+                            <SelectValue placeholder={editingVar.id_lang || "Automático do template"} />
                           </SelectTrigger>
                           <SelectContent className="bg-background z-50">
                             {languages.map((language) => (
