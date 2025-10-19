@@ -216,7 +216,21 @@ export default function SimulationForm({ onMenuClick }: Props) {
     }
 
     try {
-      // Get variables directly from simulation_configs_variables with matching id_proj and id_lang
+      // Get all LOBs for this project and language
+      const { data: lobs } = await (supabase as any)
+        .from('lob')
+        .select('id_lob')
+        .eq('id_lang', selectedLanguage);
+
+      if (!lobs || lobs.length === 0) {
+        toast({ 
+          title: 'Aviso', 
+          description: 'Nenhum LOB encontrado para esta linguagem.' 
+        });
+        return;
+      }
+
+      // Get variables template from simulation_configs_variables
       const { data: baseVars } = await (supabase as any)
         .from('simulation_configs_variables')
         .select('*')
@@ -255,22 +269,25 @@ export default function SimulationForm({ onMenuClick }: Props) {
       
       const variablesToInsert = [];
       
-      for (const month of monthsToCreate) {
-        baseVars.forEach((baseVar: any, index) => {
-          variablesToInsert.push({
-            version_id: versionId,
-            row_index: index + 1,
-            account_num: baseVar.account_num,
-            name: baseVar.name,
-            calculation_type: baseVar.calculation_type || 'AUTO',
-            formula: baseVar.formula || null,
-            month: month,
-            year: yearToUse,
-            id_lob: baseVar.id_lob,
-            id_proj: selectedProject,
-            id_lang: selectedLanguage
+      // Create records for ALL LOBs
+      for (const lob of lobs) {
+        for (const month of monthsToCreate) {
+          baseVars.forEach((baseVar: any, index) => {
+            variablesToInsert.push({
+              version_id: versionId,
+              row_index: index + 1,
+              account_num: baseVar.account_num,
+              name: baseVar.name,
+              calculation_type: baseVar.calculation_type || 'AUTO',
+              formula: baseVar.formula || null,
+              month: month,
+              year: yearToUse,
+              id_lob: lob.id_lob,
+              id_proj: selectedProject,
+              id_lang: selectedLanguage
+            });
           });
-        });
+        }
       }
 
       const { error: varsError } = await (supabase as any)
