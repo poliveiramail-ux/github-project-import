@@ -216,23 +216,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
     }
 
     try {
-      // Get all configured variables for this project and language (includes all LOBs)
-      const { data: baseVars } = await (supabase as any)
-        .from('simulation_configs_variables')
-        .select('*')
-        .eq('id_proj', selectedProject)
-        .eq('id_lang', selectedLanguage)
-        .order('account_num');
-
-      if (!baseVars || baseVars.length === 0) {
-        toast({ 
-          title: 'Aviso', 
-          description: 'Nenhuma variável encontrada para este projeto e linguagem.' 
-        });
-        return;
-      }
-
-      // Create new version
+      // Create new version first
       const { data: newVersion, error: versionError } = await (supabase as any)
         .from('simulation_versions')
         .insert([{
@@ -248,37 +232,145 @@ export default function SimulationForm({ onMenuClick }: Props) {
 
       const versionId = newVersion[0].id_sim_ver;
 
-      // Determine which months to create based on whether versions exist
-      const isFirstVersion = versions.length === 0;
-      const monthsToCreate = isFirstVersion ? [1, 2, 3] : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-      const yearToUse = isFirstVersion ? 2025 : new Date().getFullYear();
-      
-      const variablesToInsert = [];
-      
-      // Copy all variables (with their LOBs) for each month
-      for (const month of monthsToCreate) {
-        baseVars.forEach((baseVar: any, index) => {
-          variablesToInsert.push({
-            version_id: versionId,
-            row_index: index + 1,
-            account_num: baseVar.account_num,
-            name: baseVar.name,
-            calculation_type: baseVar.calculation_type || 'AUTO',
-            formula: baseVar.formula || null,
-            month: month,
-            year: yearToUse,
-            id_lob: baseVar.id_lob,
-            id_proj: selectedProject,
-            id_lang: selectedLanguage
+      // Check if there are existing simulations for this project and language
+      const { data: existingSimulations } = await (supabase as any)
+        .from('simulation')
+        .select('*')
+        .eq('id_proj', selectedProject)
+        .eq('id_lang', selectedLanguage)
+        .limit(1);
+
+      const hasExistingSimulations = existingSimulations && existingSimulations.length > 0;
+
+      let variablesToInsert = [];
+
+      if (hasExistingSimulations) {
+        // Copy from the last simulation
+        const { data: lastVersionData } = await (supabase as any)
+          .from('simulation_versions')
+          .select('id_sim_ver')
+          .eq('id_prj', selectedProject)
+          .eq('id_lang', selectedLanguage)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (lastVersionData && lastVersionData.length > 0) {
+          const lastVersionId = lastVersionData[0].id_sim_ver;
+
+          // Get all records from the last simulation
+          const { data: lastSimData } = await (supabase as any)
+            .from('simulation')
+            .select('*')
+            .eq('version_id', lastVersionId)
+            .order('account_num');
+
+          if (lastSimData && lastSimData.length > 0) {
+            variablesToInsert = lastSimData.map((record: any) => ({
+              version_id: versionId,
+              row_index: record.row_index,
+              account_num: record.account_num,
+              name: record.name,
+              calculation_type: record.calculation_type || 'AUTO',
+              formula: record.formula || null,
+              value: record.value || 0,
+              value_orig: record.value_orig || 0,
+              month: record.month,
+              year: record.year,
+              id_lob: record.id_lob,
+              id_proj: selectedProject,
+              id_lang: selectedLanguage,
+              value_type: record.value_type || 'number'
+            }));
+          }
+        }
+      } else {
+        // No existing simulations - copy from simulation_configs_variables
+        const { data: configVars } = await (supabase as any)
+          .from('simulation_configs_variables')
+          .select('*')
+          .eq('id_proj', selectedProject)
+          .eq('id_lang', selectedLanguage)
+          .order('account_num');
+
+        if (!configVars || configVars.length === 0) {
+          toast({ 
+            title: 'Aviso', 
+            description: 'Nenhuma configuração encontrada para este projeto e linguagem.' 
+          });
+          // Delete the created version since we have no data
+          await (supabase as any)
+            .from('simulation_versions')
+            .delete()
+            .eq('id_sim_ver', versionId);
+          return;
+        }
+
+        // Get all LOBs for this project and language
+        const { data: lobs } = await (supabase as any)
+          .from('lob')
+          .select('id_lob, lang!inner(id_prj)')
+          .eq('lang.id_prj', selectedProject);
+
+        if (!lobs || lobs.length === 0) {
+          toast({ 
+            title: 'Aviso', 
+            description: 'Nenhum LOB encontrado para este projeto.' 
+          });
+          await (supabase as any)
+            .from('simulation_versions')
+            .delete()
+            .eq('id_sim_ver', versionId);
+          return;
+        }
+
+        // Create records for Jan, Feb, Mar for all LOBs
+        const monthsToCreate = [1, 2, 3]; // Jan, Feb, Mar
+        const yearToUse = new Date().getFullYear();
+
+        configVars.forEach((configVar: any, index) => {
+          lobs.forEach((lob: any) => {
+            monthsToCreate.forEach((month) => {
+              variablesToInsert.push({
+                version_id: versionId,
+                row_index: index + 1,
+                account_num: configVar.account_num,
+                name: configVar.name,
+                calculation_type: configVar.calculation_type || 'AUTO',
+                formula: configVar.formula || null,
+                value: 0,
+                value_orig: 0,
+                month: month,
+                year: yearToUse,
+                id_lob: lob.id_lob,
+                id_proj: selectedProject,
+                id_lang: selectedLanguage,
+                value_type: configVar.value_type || 'number'
+              });
+            });
           });
         });
+      }
+
+      if (variablesToInsert.length === 0) {
+        toast({ 
+          title: 'Aviso', 
+          description: 'Não há dados para copiar.' 
+        });
+        await (supabase as any)
+          .from('simulation_versions')
+          .delete()
+          .eq('id_sim_ver', versionId);
+        return;
       }
 
       const { error: varsError } = await (supabase as any)
         .from('simulation')
         .insert(variablesToInsert);
 
-      if (varsError) throw varsError;
+      if (varsError) {
+        console.error('Error inserting variables:', varsError);
+        throw varsError;
+      }
 
       setShowNewVersionModal(false);
       setNewVersionName('');
