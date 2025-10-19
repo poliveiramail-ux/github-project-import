@@ -65,6 +65,29 @@ export default function ConfigurationForm({ onBack }: Props) {
     }
   }, [selectedProjectId]);
 
+  useEffect(() => {
+    if (selectedProjectId && selectedLanguageId) {
+      loadConfigByProjectAndLanguage();
+    }
+  }, [selectedProjectId, selectedLanguageId]);
+
+  const loadConfigByProjectAndLanguage = async () => {
+    const { data } = await supabase
+      .from('simulation_configs')
+      .select('*')
+      .eq('id_prj', selectedProjectId)
+      .eq('id_lang', selectedLanguageId)
+      .order('created_at', { ascending: false })
+      .limit(1);
+    
+    if (data && data.length > 0) {
+      handleSelectConfig(data[0]);
+    } else {
+      setVariables([]);
+      setSelectedConfig(null);
+    }
+  };
+
   const loadProjects = async () => {
     const { data, error } = await supabase
       .from('project')
