@@ -308,8 +308,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
         // Get all LOBs for this project and language
         const { data: lobs } = await (supabase as any)
           .from('lob')
-          .select('id_lob, lang!inner(id_prj)')
-          .eq('lang.id_prj', selectedProject);
+          .select('id_lob')
+          .eq('id_lang', selectedLanguage);
 
         if (!lobs || lobs.length === 0) {
           toast({ 
