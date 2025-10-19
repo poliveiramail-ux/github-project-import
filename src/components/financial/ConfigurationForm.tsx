@@ -39,7 +39,6 @@ interface Props {
 export default function ConfigurationForm({ onBack }: Props) {
   const [configs, setConfigs] = useState<SimulationConfig[]>([]);
   const [projects, setProjects] = useState<{ id_prj: string; desc_prj: string | null }[]>([]);
-  const [programs, setPrograms] = useState<{ id_lob: string; name: string }[]>([]);
   const [languages, setLanguages] = useState<{ id_lang: string; desc_lang: string | null }[]>([]);
   const [selectedConfig, setSelectedConfig] = useState<SimulationConfig | null>(null);
   const [configName, setConfigName] = useState('');
@@ -57,10 +56,8 @@ export default function ConfigurationForm({ onBack }: Props) {
 
   useEffect(() => {
     if (selectedProjectId) {
-      loadPrograms(selectedProjectId);
       loadLanguages(selectedProjectId);
     } else {
-      setPrograms([]);
       setLanguages([]);
     }
   }, [selectedProjectId]);
@@ -99,20 +96,6 @@ export default function ConfigurationForm({ onBack }: Props) {
       return;
     }
     setProjects(data || []);
-  };
-
-  const loadPrograms = async (projectId: string) => {
-    const { data, error } = await supabase
-      .from('lob')
-      .select('id_lob, name, lang!inner(id_prj)')
-      .eq('lang.id_prj', projectId)
-      .order('name');
-    
-    if (error) {
-      toast({ title: 'Erro', description: 'Erro ao carregar programas', variant: 'destructive' });
-      return;
-    }
-    setPrograms(data || []);
   };
 
   const loadLanguages = async (projectId: string) => {
@@ -244,11 +227,6 @@ export default function ConfigurationForm({ onBack }: Props) {
 
     if (!editingVar?.name) {
       toast({ title: 'Atenção', description: 'Nome é obrigatório' });
-      return;
-    }
-
-    if (!editingVar?.id_lob) {
-      toast({ title: 'Atenção', description: 'Programa (LOB) é obrigatório' });
       return;
     }
 
@@ -511,24 +489,6 @@ export default function ConfigurationForm({ onBack }: Props) {
                           onChange={(e) => setEditingVar({ ...editingVar, name: e.target.value })}
                           placeholder="Ex: Vendas PT"
                         />
-                      </div>
-                      <div className="mb-3">
-                        <Label>Programa (LOB) *</Label>
-                        <Select
-                          value={editingVar.id_lob || undefined}
-                          onValueChange={(value) => setEditingVar({ ...editingVar, id_lob: value })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione um programa" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-background z-50">
-                            {programs.map((program) => (
-                              <SelectItem key={program.id_lob} value={program.id_lob}>
-                                {program.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
                       </div>
                       <div className="mb-3">
                         <Label>Linguagem</Label>
