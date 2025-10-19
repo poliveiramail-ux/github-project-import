@@ -104,11 +104,14 @@ export default function SimulationForm({ onMenuClick }: Props) {
   };
 
   const loadVersions = async (projectId: string, languageId: string) => {
+    if (!projectId || !languageId) {
+      setVersions([]);
+      return;
+    }
+
     const { data } = await (supabase as any)
       .from('simulation_versions')
       .select('*')
-      .eq('id_prj', projectId)
-      .eq('id_lang', languageId)
       .order('created_at', { ascending: false });
     
     const mappedData = (data || []).map((v: any) => ({
@@ -230,9 +233,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
       const { data: newVersion, error: versionError } = await (supabase as any)
         .from('simulation_versions')
         .insert([{
-          name: newVersionName,
-          id_prj: selectedProject,
-          id_lang: selectedLanguage
+          name: newVersionName
         }])
         .select();
 
@@ -258,6 +259,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
             month: month,
             year: currentYear,
             id_lob: baseVar.id_lob,
+            id_proj: selectedProject,
             id_lang: selectedLanguage
           });
         });
