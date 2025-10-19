@@ -9,21 +9,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 
-interface Program {
-  id: string;
-  name: string;
-}
-
-interface SimulationConfig {
-  id_sim_cfg: string;
-  name: string;
+interface Project {
+  id_prj: string;
+  desc_prj: string | null;
 }
 
 interface SimulationVersion {
   id_sim_ver: string;
   name: string;
-  id_lob: string;
-  id_sim_cfg: string;
+  id_prj: string;
   created_at: string;
 }
 
@@ -56,10 +50,8 @@ const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', '
 const monthKeys = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'] as const;
 
 export default function DynamicSimulator({ onMenuClick }: Props) {
-  const [programs, setPrograms] = useState<Program[]>([]);
-  const [configs, setConfigs] = useState<SimulationConfig[]>([]);
-  const [selectedProgram, setSelectedProgram] = useState('');
-  const [selectedConfig, setSelectedConfig] = useState('');
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [selectedProject, setSelectedProject] = useState('');
   const [variables, setVariables] = useState<Variable[]>([]);
   const [versions, setVersions] = useState<SimulationVersion[]>([]);
   const [currentVersionId, setCurrentVersionId] = useState<string | null>(null);
@@ -71,30 +63,28 @@ export default function DynamicSimulator({ onMenuClick }: Props) {
   const { toast } = useToast();
 
   useEffect(() => {
-    loadPrograms();
-    loadConfigs();
+    loadProjects();
   }, []);
 
-  const loadPrograms = async () => {
-    const { data } = await supabase.from('lob').select('id_lob, name').order('id_lob');
-    setPrograms((data || []).map(d => ({ id: d.id_lob, name: d.name })));
-  };
-
-  const loadConfigs = async () => {
-    const { data } = await supabase.from('simulation_configs').select('id_sim_cfg, name').order('created_at', { ascending: false });
-    setConfigs((data || []).map(d => ({ id_sim_cfg: d.id_sim_cfg, name: d.name })));
+  const loadProjects = async () => {
+    const { data } = await supabase.from('project').select('id_prj, desc_prj').order('id_prj');
+    setProjects((data || []).map(d => ({ id_prj: d.id_prj, desc_prj: d.desc_prj })));
     setLoading(false);
   };
 
-  const loadVersions = async (programId: string, configId: string) => {
-    const { data } = await supabase
+  const loadVersions = async (projectId: string) => {
+    const { data } = await (supabase as any)
       .from('simulation_versions')
       .select('*')
-      .eq('id_lob', programId)
-      .eq('id_sim_cfg', configId)
+      .eq('id_prj', projectId)
       .order('created_at', { ascending: false });
     
-    setVersions(data || []);
+    setVersions((data || []).map((d: any) => ({
+      id_sim_ver: d.id_sim_ver,
+      name: d.name,
+      id_prj: d.id_prj || projectId,
+      created_at: d.created_at
+    })));
     
     if (data && data.length > 0) {
       loadVersion(data[0].id_sim_ver);
@@ -119,17 +109,10 @@ export default function DynamicSimulator({ onMenuClick }: Props) {
     setExpandedRows(new Set());
   };
 
-  const handleProgramChange = (programId: string) => {
-    setSelectedProgram(programId);
-    if (programId && selectedConfig) {
-      loadVersions(programId, selectedConfig);
-    }
-  };
-
-  const handleConfigChange = (configId: string) => {
-    setSelectedConfig(configId);
-    if (selectedProgram && configId) {
-      loadVersions(selectedProgram, configId);
+  const handleProjectChange = (projectId: string) => {
+    setSelectedProject(projectId);
+    if (projectId) {
+      loadVersions(projectId);
     }
   };
 
@@ -139,8 +122,8 @@ export default function DynamicSimulator({ onMenuClick }: Props) {
       return;
     }
 
-    if (!selectedProgram || !selectedConfig) {
-      toast({ title: 'Atenção', description: 'Selecione programa e configuração' });
+    if (!selectedProject) {
+      toast({ title: 'Atenção', description: 'Selecione um projeto' });
       return;
     }
 
@@ -149,8 +132,7 @@ export default function DynamicSimulator({ onMenuClick }: Props) {
         .from('simulation_versions')
         .insert([{
           name: newVersionName,
-          id_lob: selectedProgram,
-          id_sim_cfg: selectedConfig
+          id_prj: selectedProject
         }])
         .select();
 
@@ -158,55 +140,9 @@ export default function DynamicSimulator({ onMenuClick }: Props) {
         throw new Error('Erro ao criar versão');
       }
 
-      const versionId = newVersion[0].id_sim_ver;
-
-      const { data: baseVars } = await supabase
-        .from('simulation_configs_variables')
-        .select('*')
-        .eq('id_sim_cfg', selectedConfig)
-        .order('row_index');
-
-      if (!baseVars || baseVars.length === 0) {
-        toast({ 
-          title: 'Aviso', 
-          description: 'Nenhuma variável encontrada para esta configuração. Crie variáveis primeiro.' 
-        });
-        setShowNewVersionModal(false);
-        setNewVersionName('');
-        loadVersions(selectedProgram, selectedConfig);
-        return;
-      }
-
-      const variablesToInsert = baseVars.map((baseVar, index) => ({
-        version_id: versionId,
-        id_sim_cfg: selectedConfig,
-        row_index: index + 1,
-        name: baseVar.name,
-        calculation_type: baseVar.calculation_type || 'AUTO',
-        formula: baseVar.formula || null,
-        jan: 0,
-        feb: 0,
-        mar: 0,
-        apr: 0,
-        may: 0,
-        jun: 0,
-        jul: 0,
-        aug: 0,
-        sep: 0,
-        oct: 0,
-        nov: 0,
-        dec: 0
-      }));
-
-      const { error: varsError } = await (supabase as any)
-        .from('simulation')
-        .insert(variablesToInsert);
-
-      if (varsError) throw varsError;
-
       setShowNewVersionModal(false);
       setNewVersionName('');
-      loadVersions(selectedProgram, selectedConfig);
+      loadVersions(selectedProject);
       toast({ title: 'Sucesso', description: 'Versão criada com sucesso' });
     } catch (error) {
       console.error('Error creating version:', error);
@@ -406,7 +342,7 @@ export default function DynamicSimulator({ onMenuClick }: Props) {
               <Button
                 variant="secondary"
                 onClick={() => setShowNewVersionModal(true)}
-                disabled={!selectedProgram || !selectedConfig}
+                disabled={!selectedProject}
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Nova Versão
@@ -444,30 +380,18 @@ export default function DynamicSimulator({ onMenuClick }: Props) {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label>Programa</Label>
-              <Select value={selectedProgram} onValueChange={handleProgramChange}>
+              <Label>Projeto</Label>
+              <Select value={selectedProject} onValueChange={handleProjectChange}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione um programa" />
+                  <SelectValue placeholder="Selecione um projeto" />
                 </SelectTrigger>
                 <SelectContent>
-                  {programs.map(p => (
-                    <SelectItem key={p.id} value={p.id}>{p.id} - {p.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label>Configuração</Label>
-              <Select value={selectedConfig} onValueChange={handleConfigChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma configuração" />
-                </SelectTrigger>
-                <SelectContent>
-                  {configs.map(c => (
-                    <SelectItem key={c.id_sim_cfg} value={c.id_sim_cfg}>{c.name}</SelectItem>
+                  {projects.map(p => (
+                    <SelectItem key={p.id_prj} value={p.id_prj}>
+                      {p.id_prj}{p.desc_prj ? ` - ${p.desc_prj}` : ''}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
