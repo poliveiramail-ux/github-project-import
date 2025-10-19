@@ -140,13 +140,14 @@ export default function SimulationForm({ onMenuClick }: Props) {
       .from('simulation')
       .select('*')
       .eq('version_id', versionId)
-      .order('account_code');
+      .order('account_num');
     
     if (data) {
       const monthColumns = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
       
       const vars = data.map((v: any) => ({
         ...v,
+        account_code: v.account_num,
         calculation_type: (v.calculation_type || 'AUTO') as 'AUTO' | 'MANUAL' | 'FORMULA',
         month: v.month || 1,
         year: v.year || new Date().getFullYear()
