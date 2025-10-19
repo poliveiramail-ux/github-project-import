@@ -125,43 +125,55 @@ export type Database = {
       }
       simulation: {
         Row: {
+          account_num: string | null
           calculation_type: string | null
           created_at: string | null
           formula: string | null
+          id_lang: string
           id_lob: string | null
+          id_proj: string
           id_sim: string
           month: number | null
           name: string
           row_index: number
           value: number | null
+          value_orig: number | null
           value_type: string | null
           version_id: string | null
           year: number | null
         }
         Insert: {
+          account_num?: string | null
           calculation_type?: string | null
           created_at?: string | null
           formula?: string | null
+          id_lang: string
           id_lob?: string | null
+          id_proj: string
           id_sim?: string
           month?: number | null
           name: string
           row_index: number
           value?: number | null
+          value_orig?: number | null
           value_type?: string | null
           version_id?: string | null
           year?: number | null
         }
         Update: {
+          account_num?: string | null
           calculation_type?: string | null
           created_at?: string | null
           formula?: string | null
+          id_lang?: string
           id_lob?: string | null
+          id_proj?: string
           id_sim?: string
           month?: number | null
           name?: string
           row_index?: number
           value?: number | null
+          value_orig?: number | null
           value_type?: string | null
           version_id?: string | null
           year?: number | null
@@ -180,7 +192,8 @@ export type Database = {
         Row: {
           created_at: string | null
           description: string | null
-          id_prj: string | null
+          id_lang: string
+          id_prj: string
           id_sim_cfg: string
           is_active: boolean | null
           name: string
@@ -190,7 +203,8 @@ export type Database = {
         Insert: {
           created_at?: string | null
           description?: string | null
-          id_prj?: string | null
+          id_lang: string
+          id_prj: string
           id_sim_cfg?: string
           is_active?: boolean | null
           name: string
@@ -200,7 +214,8 @@ export type Database = {
         Update: {
           created_at?: string | null
           description?: string | null
-          id_prj?: string | null
+          id_lang?: string
+          id_prj?: string
           id_sim_cfg?: string
           is_active?: boolean | null
           name?: string
@@ -208,6 +223,13 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "simulation_configs_id_lang_fkey"
+            columns: ["id_lang"]
+            isOneToOne: false
+            referencedRelation: "lang"
+            referencedColumns: ["id_lang"]
+          },
           {
             foreignKeyName: "simulation_configs_id_prj_fkey"
             columns: ["id_prj"]
@@ -219,9 +241,14 @@ export type Database = {
       }
       simulation_configs_variables: {
         Row: {
+          account_num: string
+          blocked: boolean | null
           calculation_type: string | null
           created_at: string | null
           formula: string | null
+          id_lang: string
+          id_lob: string | null
+          id_proj: string | null
           id_sim_cfg: string | null
           id_sim_cfg_var: string
           name: string
@@ -229,9 +256,14 @@ export type Database = {
           value_type: string | null
         }
         Insert: {
+          account_num: string
+          blocked?: boolean | null
           calculation_type?: string | null
           created_at?: string | null
           formula?: string | null
+          id_lang: string
+          id_lob?: string | null
+          id_proj?: string | null
           id_sim_cfg?: string | null
           id_sim_cfg_var?: string
           name: string
@@ -239,9 +271,14 @@ export type Database = {
           value_type?: string | null
         }
         Update: {
+          account_num?: string
+          blocked?: boolean | null
           calculation_type?: string | null
           created_at?: string | null
           formula?: string | null
+          id_lang?: string
+          id_lob?: string | null
+          id_proj?: string | null
           id_sim_cfg?: string | null
           id_sim_cfg_var?: string
           name?: string
@@ -249,6 +286,13 @@ export type Database = {
           value_type?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "simulation_configs_variables_id_lob_fkey"
+            columns: ["id_lob"]
+            isOneToOne: false
+            referencedRelation: "lob"
+            referencedColumns: ["id_lob"]
+          },
           {
             foreignKeyName: "simulation_configs_variables_id_sim_cfg_fkey"
             columns: ["id_sim_cfg"]
@@ -303,6 +347,8 @@ export type Database = {
         Row: {
           created_at: string | null
           data: Json | null
+          id_lang: string | null
+          id_prj: string | null
           id_sim_ver: string
           is_base: boolean | null
           name: string
@@ -314,6 +360,8 @@ export type Database = {
         Insert: {
           created_at?: string | null
           data?: Json | null
+          id_lang?: string | null
+          id_prj?: string | null
           id_sim_ver?: string
           is_base?: boolean | null
           name: string
@@ -325,6 +373,8 @@ export type Database = {
         Update: {
           created_at?: string | null
           data?: Json | null
+          id_lang?: string | null
+          id_prj?: string | null
           id_sim_ver?: string
           is_base?: boolean | null
           name?: string

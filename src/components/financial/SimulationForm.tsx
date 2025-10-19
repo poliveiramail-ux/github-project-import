@@ -112,13 +112,15 @@ export default function SimulationForm({ onMenuClick }: Props) {
     const { data } = await (supabase as any)
       .from('simulation_versions')
       .select('*')
+      .eq('id_prj', projectId)
+      .eq('id_lang', languageId)
       .order('created_at', { ascending: false });
     
     const mappedData = (data || []).map((v: any) => ({
       id: v.id_sim_ver,
       name: v.name,
-      id_prj: projectId,
-      id_lang: languageId,
+      id_prj: v.id_prj,
+      id_lang: v.id_lang,
       created_at: v.created_at
     }));
     setVersions(mappedData);
@@ -233,7 +235,9 @@ export default function SimulationForm({ onMenuClick }: Props) {
       const { data: newVersion, error: versionError } = await (supabase as any)
         .from('simulation_versions')
         .insert([{
-          name: newVersionName
+          name: newVersionName,
+          id_prj: selectedProject,
+          id_lang: selectedLanguage
         }])
         .select();
 
