@@ -210,25 +210,24 @@ export default function SimulationForm({ onMenuClick }: Props) {
     }
 
     try {
-      // Find config for this project and language
-      const { data: configs } = await (supabase as any)
-        .from('simulation_configs')
-        .select('id_sim_cfg')
-        .eq('id_prj', selectedProject)
+      // Get variables directly from simulation_configs_variables with matching id_proj and id_lang
+      const { data: baseVars } = await (supabase as any)
+        .from('simulation_configs_variables')
+        .select('*')
+        .eq('id_proj', selectedProject)
         .eq('id_lang', selectedLanguage)
-        .limit(1);
+        .order('account_num');
 
-      if (!configs || configs.length === 0) {
+      if (!baseVars || baseVars.length === 0) {
         toast({ 
           title: 'Aviso', 
-          description: 'Nenhuma configuração encontrada para este projeto e linguagem.' 
+          description: 'Nenhuma variável encontrada para este projeto e linguagem.' 
         });
         return;
       }
 
-      const configId = configs[0].id_sim_cfg;
-
-      const { data: newVersion, error: versionError } = await supabase
+      // Create new version
+      const { data: newVersion, error: versionError } = await (supabase as any)
         .from('simulation_versions')
         .insert([{
           name: newVersionName,
@@ -242,23 +241,6 @@ export default function SimulationForm({ onMenuClick }: Props) {
       }
 
       const versionId = newVersion[0].id_sim_ver;
-
-      const { data: baseVars } = await supabase
-        .from('simulation_configs_variables')
-        .select('*')
-        .eq('id_sim_cfg', configId)
-        .order('account_num');
-
-      if (!baseVars || baseVars.length === 0) {
-        toast({ 
-          title: 'Aviso', 
-          description: 'Nenhuma variável encontrada para esta configuração.' 
-        });
-        setShowNewVersionModal(false);
-        setNewVersionName('');
-        loadVersions(selectedProject, selectedLanguage);
-        return;
-      }
 
       // Create variables for each month of the current year
       const currentYear = new Date().getFullYear();
@@ -275,7 +257,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
             formula: baseVar.formula || null,
             month: month,
             year: currentYear,
-            id_prj: selectedProject,
+            id_lob: baseVar.id_lob,
             id_lang: selectedLanguage
           });
         });
