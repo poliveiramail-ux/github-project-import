@@ -25,6 +25,7 @@ interface ConfigVariable {
   formula: string | null;
   row_index: number;
   id_lob: string | null;
+  id_lang?: string | null;
   blocked?: boolean;
   value_type?: string;
   account_num: string;
@@ -38,6 +39,7 @@ export default function ConfigurationForm({ onBack }: Props) {
   const [configs, setConfigs] = useState<SimulationConfig[]>([]);
   const [projects, setProjects] = useState<{ id_prj: string; desc_prj: string | null }[]>([]);
   const [programs, setPrograms] = useState<{ id_lob: string; name: string }[]>([]);
+  const [languages, setLanguages] = useState<{ id_lang: string; desc_lang: string | null }[]>([]);
   const [selectedConfig, setSelectedConfig] = useState<SimulationConfig | null>(null);
   const [configName, setConfigName] = useState('');
   const [selectedProjectId, setSelectedProjectId] = useState('');
@@ -54,8 +56,10 @@ export default function ConfigurationForm({ onBack }: Props) {
   useEffect(() => {
     if (selectedProjectId) {
       loadPrograms(selectedProjectId);
+      loadLanguages(selectedProjectId);
     } else {
       setPrograms([]);
+      setLanguages([]);
     }
   }, [selectedProjectId]);
 
@@ -86,6 +90,20 @@ export default function ConfigurationForm({ onBack }: Props) {
     setPrograms(data || []);
   };
 
+  const loadLanguages = async (projectId: string) => {
+    const { data, error } = await supabase
+      .from('lang')
+      .select('id_lang, desc_lang')
+      .eq('id_prj', projectId)
+      .order('id_lang');
+    
+    if (error) {
+      toast({ title: 'Erro', description: 'Erro ao carregar linguagens', variant: 'destructive' });
+      return;
+    }
+    setLanguages(data || []);
+  };
+
   const loadConfigs = async () => {
     const { data } = await supabase
       .from('simulation_configs')
@@ -104,6 +122,7 @@ export default function ConfigurationForm({ onBack }: Props) {
       ...v,
       calculation_type: (v.calculation_type || 'AUTO') as 'AUTO' | 'MANUAL' | 'FORMULA',
       id_lob: (v as any).id_lob || null,
+      id_lang: (v as any).id_lang || null,
       account_num: (v as any).account_num || ''
     })));
   };
@@ -210,6 +229,7 @@ export default function ConfigurationForm({ onBack }: Props) {
           calculation_type: editingVar.calculation_type || 'AUTO',
           formula: editingVar.formula || null,
           id_lob: editingVar.id_lob || null,
+          id_lang: editingVar.id_lang || null,
           blocked: editingVar.blocked || false,
           value_type: editingVar.value_type || 'number'
         })
@@ -229,6 +249,7 @@ export default function ConfigurationForm({ onBack }: Props) {
           calculation_type: editingVar.calculation_type || 'AUTO',
           formula: editingVar.formula || null,
           id_lob: editingVar.id_lob || null,
+          id_lang: editingVar.id_lang || null,
           blocked: editingVar.blocked || false,
           value_type: editingVar.value_type || 'number',
           row_index: variables.length + 1
@@ -442,6 +463,24 @@ export default function ConfigurationForm({ onBack }: Props) {
                             {programs.map((program) => (
                               <SelectItem key={program.id_lob} value={program.id_lob}>
                                 {program.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="mb-3">
+                        <Label>Linguagem</Label>
+                        <Select
+                          value={editingVar.id_lang || undefined}
+                          onValueChange={(value) => setEditingVar({ ...editingVar, id_lang: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione uma linguagem" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background z-50">
+                            {languages.map((language) => (
+                              <SelectItem key={language.id_lang} value={language.id_lang}>
+                                {language.id_lang} {language.desc_lang && `- ${language.desc_lang}`}
                               </SelectItem>
                             ))}
                           </SelectContent>
