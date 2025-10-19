@@ -36,6 +36,7 @@ interface Variable {
   formula: string | null;
   month: number;
   year: number;
+  lob: string;
 }
 
 interface VariableValue {
@@ -61,8 +62,10 @@ const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set
 export default function SimulationForm({ onMenuClick }: Props) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [languages, setLanguages] = useState<Language[]>([]);
+  const [lobs, setLobs] = useState<Array<{ id_lob: string; name: string }>>([]);
   const [selectedProject, setSelectedProject] = useState('');
   const [selectedLanguage, setSelectedLanguage] = useState('');
+  const [selectedLob, setSelectedLob] = useState('');
   const [variables, setVariables] = useState<Variable[]>([]);
   const [variableValues, setVariableValues] = useState<Map<string, number>>(new Map());
   const [versions, setVersions] = useState<SimulationVersion[]>([]);
@@ -88,6 +91,15 @@ export default function SimulationForm({ onMenuClick }: Props) {
     }
   }, [selectedProject]);
 
+  useEffect(() => {
+    if (selectedProject && selectedLanguage) {
+      loadLobs(selectedProject, selectedLanguage);
+    } else {
+      setLobs([]);
+      setSelectedLob('');
+    }
+  }, [selectedProject, selectedLanguage]);
+
   const loadProjects = async () => {
     const { data } = await supabase.from('project').select('id_prj, desc_prj').order('id_prj');
     setProjects((data || []).map(p => ({ id_prj: p.id_prj, desc_prj: p.desc_prj })));
@@ -101,6 +113,21 @@ export default function SimulationForm({ onMenuClick }: Props) {
       .eq('id_prj', projectId)
       .order('id_lang');
     setLanguages((data || []).map(l => ({ id_lang: l.id_lang, desc_lang: l.desc_lang })));
+  };
+
+  const loadLobs = async (projectId: string, languageId: string) => {
+    const { data } = await (supabase as any)
+      .from('lob')
+      .select('id_lob, name')
+      .eq('id_lang', languageId)
+      .order('id_lob');
+    
+    setLobs((data || []).map((l: any) => ({ id_lob: l.id_lob, name: l.name })));
+    
+    // Auto-select first LOB if available
+    if (data && data.length > 0 && !selectedLob) {
+      setSelectedLob(data[0].id_lob);
+    }
   };
 
   const loadVersions = async (projectId: string, languageId: string) => {
@@ -150,7 +177,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
         account_code: v.account_num,
         calculation_type: (v.calculation_type || 'AUTO') as 'AUTO' | 'MANUAL' | 'FORMULA',
         month: v.month || 1,
-        year: v.year || new Date().getFullYear()
+        year: v.year || new Date().getFullYear(),
+        lob: v.id_lob
       })) as Variable[];
       
       setVariables(vars);
@@ -175,13 +203,11 @@ export default function SimulationForm({ onMenuClick }: Props) {
       
       setPeriods(sortedPeriods);
       
-      // Build value map from the actual month column values
+      // Build value map from the actual value column
       const valueMap = new Map<string, number>();
       data.forEach((v: any) => {
-        const monthIndex = (v.month || 1) - 1;
-        const monthColumn = monthColumns[monthIndex];
-        const key = `${v.account_code}-${v.year || new Date().getFullYear()}-${v.month || 1}`;
-        valueMap.set(key, v[monthColumn] || 0);
+        const key = `${v.account_num}-${v.year || new Date().getFullYear()}-${v.month || 1}-${v.id_lob}`;
+        valueMap.set(key, v.value || 0);
       });
       setVariableValues(valueMap);
     }
@@ -422,14 +448,16 @@ export default function SimulationForm({ onMenuClick }: Props) {
   };
 
   const isLeafAccount = (accountCode: string, allVars: Variable[]) => {
-    return !allVars.some(v => 
+    const lobVars = selectedLob ? allVars.filter(v => v.lob === selectedLob) : allVars;
+    return !lobVars.some(v => 
       v.account_code.startsWith(accountCode + '.') && 
       v.account_code.split('.').length === accountCode.split('.').length + 1
     );
   };
 
   const getChildAccounts = (accountCode: string, allVars: Variable[]) => {
-    return allVars.filter(v => 
+    const lobVars = selectedLob ? allVars.filter(v => v.lob === selectedLob) : allVars;
+    return lobVars.filter(v => 
       v.account_code.startsWith(accountCode + '.') && 
       v.account_code.split('.').length === accountCode.split('.').length + 1
     );
@@ -476,7 +504,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
 
   const getValue = (variable: Variable, year: number, month: number): number => {
     const calcType = variable.calculation_type || 'AUTO';
-    const key = `${variable.account_code}-${year}-${month}`;
+    const key = `${variable.account_code}-${year}-${month}-${variable.lob}`;
     
     if (calcType === 'MANUAL') {
       return variableValues.get(key) || 0;
@@ -494,7 +522,9 @@ export default function SimulationForm({ onMenuClick }: Props) {
   };
 
   const updateValue = (accountCode: string, year: number, month: number, value: string) => {
-    const key = `${accountCode}-${year}-${month}`;
+    if (!selectedLob) return;
+    
+    const key = `${accountCode}-${year}-${month}-${selectedLob}`;
     setVariableValues(prev => {
       const newMap = new Map(prev);
       newMap.set(key, parseFloat(value) || 0);
@@ -521,9 +551,14 @@ export default function SimulationForm({ onMenuClick }: Props) {
   };
 
   const getVisibleVariables = () => {
+    // Filter variables by selected LOB first
+    const lobFilteredVars = selectedLob 
+      ? variables.filter(v => v.lob === selectedLob)
+      : variables;
+    
     // Get unique variables by account_code
     const uniqueVarsMap = new Map<string, Variable>();
-    variables.forEach(v => {
+    lobFilteredVars.forEach(v => {
       if (!uniqueVarsMap.has(v.account_code)) {
         uniqueVarsMap.set(v.account_code, v);
       }
@@ -617,7 +652,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <Label>Projeto</Label>
               <Select value={selectedProject} onValueChange={handleProjectChange}>
@@ -644,6 +679,22 @@ export default function SimulationForm({ onMenuClick }: Props) {
                   {languages.map(l => (
                     <SelectItem key={l.id_lang} value={l.id_lang}>
                       {l.id_lang}{l.desc_lang ? ` - ${l.desc_lang}` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>LOB</Label>
+              <Select value={selectedLob} onValueChange={setSelectedLob} disabled={!selectedLanguage}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um LOB" />
+                </SelectTrigger>
+                <SelectContent>
+                  {lobs.map(l => (
+                    <SelectItem key={l.id_lob} value={l.id_lob}>
+                      {l.name || l.id_lob}
                     </SelectItem>
                   ))}
                 </SelectContent>
