@@ -59,19 +59,26 @@ export default function VersionsManager({ onBack }: Props) {
 
   const loadConfigs = async () => {
     const { data } = await supabase.from('simulation_configs').select('*').order('created_at', { ascending: false });
-    setConfigs(data || []);
+    setConfigs((data || []).map(c => ({ id: c.id_sim_cfg, name: c.name, created_at: c.created_at })));
   };
 
   const loadVersions = async () => {
     setLoading(true);
-    const { data } = await supabase
+    const { data } = await (supabase as any)
       .from('simulation_versions')
       .select('*')
       .eq('program_id', selectedProgram)
       .eq('config_id', selectedConfig)
       .order('created_at', { ascending: false });
     
-    setVersions(data || []);
+    const mappedData = (data || []).map((v: any) => ({
+      id: v.id_sim_ver,
+      name: v.name,
+      program_id: selectedProgram,
+      config_id: selectedConfig,
+      created_at: v.created_at
+    }));
+    setVersions(mappedData);
     setLoading(false);
   };
 
@@ -80,10 +87,10 @@ export default function VersionsManager({ onBack }: Props) {
       return;
     }
 
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from('simulation_versions')
       .delete()
-      .eq('id', versionId);
+      .eq('id_sim_ver', versionId);
 
     if (error) {
       toast({ title: 'Erro', description: 'Erro ao eliminar versão', variant: 'destructive' });

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, Edit3, Trash2, ChevronDown, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
+import { ArrowLeft, Plus, Edit3, Trash2, ArrowUpDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -260,34 +260,6 @@ export default function ConfigurationForm({ onBack }: Props) {
     toast({ title: 'Sucesso', description: 'Variável eliminada' });
   };
 
-  const handleMoveVariable = async (index: number, direction: 'up' | 'down') => {
-    if (!selectedConfig) return;
-    
-    const newVariables = [...variables];
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    
-    if (targetIndex < 0 || targetIndex >= newVariables.length) return;
-    
-    // Swap variables
-    [newVariables[index], newVariables[targetIndex]] = [newVariables[targetIndex], newVariables[index]];
-    
-    // Update row_index for both variables
-    const updates = newVariables.map((v, idx) => ({
-      id_sim_cfg_var: v.id_sim_cfg_var,
-      row_index: idx + 1
-    }));
-    
-    // Update in database
-    for (const update of updates) {
-      await supabase
-        .from('simulation_configs_variables')
-        .update({ row_index: update.row_index })
-        .eq('id_sim_cfg_var', update.id_sim_cfg_var);
-    }
-    
-    loadVariables(selectedConfig.id_sim_cfg);
-    toast({ title: 'Sucesso', description: 'Ordem atualizada' });
-  };
 
   const getHierarchyLevel = (accountNum: string): number => {
     // Conta os pontos no account_num para determinar o nível (ex: "1" = 0, "1.1" = 1, "1.1.1" = 2)
@@ -542,35 +514,15 @@ export default function ConfigurationForm({ onBack }: Props) {
                        const level = getHierarchyLevel(variable.account_num);
                        
                        return (
-                         <div
-                           key={variable.id_sim_cfg_var}
-                           className="flex items-center gap-2 p-2 border rounded-lg hover:bg-muted transition-colors"
-                           style={{ marginLeft: `${level * 1.5}rem` }}
-                         >
-                           <div className="flex flex-col gap-1">
-                             <Button
-                               variant="ghost"
-                               size="icon"
-                               className="h-6 w-6"
-                               onClick={() => handleMoveVariable(index, 'up')}
-                               disabled={index === 0}
-                             >
-                               <ArrowUp className="h-3 w-3" />
-                             </Button>
-                             <Button
-                               variant="ghost"
-                               size="icon"
-                               className="h-6 w-6"
-                               onClick={() => handleMoveVariable(index, 'down')}
-                               disabled={index === variables.length - 1}
-                             >
-                               <ArrowDown className="h-3 w-3" />
-                             </Button>
-                           </div>
-                           {level > 0 && (
-                             <span className="text-muted-foreground text-sm">└─</span>
-                           )}
-                           <span className="text-sm font-mono text-muted-foreground">{variable.account_num}</span>
+                          <div
+                            key={variable.id_sim_cfg_var}
+                            className="flex items-center gap-2 p-2 border rounded-lg hover:bg-muted transition-colors"
+                            style={{ marginLeft: `${level * 1.5}rem` }}
+                          >
+                            {level > 0 && (
+                              <span className="text-muted-foreground text-sm">└─</span>
+                            )}
+                            <span className="text-sm font-mono text-muted-foreground">{variable.account_num}</span>
                            <span className="flex-1">{variable.name}</span>
                            {variable.blocked && <span className="text-xs" title="Bloqueada">🔒</span>}
                            <span className="text-xs" title={

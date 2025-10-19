@@ -81,28 +81,35 @@ export default function SimulationForm({ onMenuClick }: Props) {
   }, []);
 
   const loadPrograms = async () => {
-    const { data } = await supabase.from('programs').select('*').order('id');
-    setPrograms(data || []);
+    const { data } = await supabase.from('lob').select('id_lob, name').order('id_lob');
+    setPrograms((data || []).map(p => ({ id: p.id_lob, name: p.name })));
   };
 
   const loadConfigs = async () => {
     const { data } = await supabase.from('simulation_configs').select('*').order('created_at', { ascending: false });
-    setConfigs(data || []);
+    setConfigs((data || []).map(c => ({ id: c.id_sim_cfg, name: c.name })));
     setLoading(false);
   };
 
   const loadVersions = async (programId: string, configId: string) => {
-    const { data } = await supabase
+    const { data } = await (supabase as any)
       .from('simulation_versions')
       .select('*')
       .eq('program_id', programId)
       .eq('config_id', configId)
       .order('created_at', { ascending: false });
     
-    setVersions(data || []);
+    const mappedData = (data || []).map((v: any) => ({
+      id: v.id_sim_ver,
+      name: v.name,
+      program_id: programId,
+      config_id: configId,
+      created_at: v.created_at
+    }));
+    setVersions(mappedData);
     
-    if (data && data.length > 0) {
-      loadVersion(data[0].id);
+    if (mappedData && mappedData.length > 0) {
+      loadVersion(mappedData[0].id);
     } else {
       setVariables([]);
       setVariableValues(new Map());
@@ -204,13 +211,13 @@ export default function SimulationForm({ onMenuClick }: Props) {
         throw new Error('Erro ao criar versão');
       }
 
-      const versionId = newVersion[0].id;
+      const versionId = newVersion[0].id_sim_ver;
 
       const { data: baseVars } = await supabase
         .from('simulation_configs_variables')
         .select('*')
-        .eq('config_id', selectedConfig)
-        .order('account_code');
+        .eq('id_sim_cfg', selectedConfig)
+        .order('account_num');
 
       if (!baseVars || baseVars.length === 0) {
         toast({ 
@@ -228,12 +235,12 @@ export default function SimulationForm({ onMenuClick }: Props) {
       const variablesToInsert = [];
       
       for (let month = 1; month <= 12; month++) {
-        baseVars.forEach((baseVar, index) => {
+        baseVars.forEach((baseVar: any, index) => {
           variablesToInsert.push({
             version_id: versionId,
             config_id: selectedConfig,
             row_index: index + 1,
-            account_code: baseVar.account_code,
+            account_num: baseVar.account_num,
             name: baseVar.name,
             calculation_type: baseVar.calculation_type || 'AUTO',
             formula: baseVar.formula || null,
