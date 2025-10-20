@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import DynamicSimulator from '@/components/financial/DynamicSimulator';
-import SimulationForm from '@/components/financial/SimulationForm';
 import VersionsManager from '@/components/financial/VersionsManager';
 import ConfigurationForm from '@/components/financial/ConfigurationForm';
 import MasterDataManager from '@/components/financial/MasterDataManager';
@@ -20,10 +19,6 @@ const Index = () => {
       
       {currentView === 'simulator' && (
         <DynamicSimulator onMenuClick={() => setMenuOpen(true)} />
-      )}
-      
-      {currentView === 'simulation' && (
-        <SimulationForm onMenuClick={() => setMenuOpen(true)} />
       )}
       
       {currentView === 'versions' && (
