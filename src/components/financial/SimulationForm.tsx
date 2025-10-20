@@ -123,11 +123,6 @@ export default function SimulationForm({ onMenuClick }: Props) {
       .order('id_lob');
     
     setLobs((data || []).map((l: any) => ({ id_lob: l.id_lob, name: l.name })));
-    
-    // Auto-select first LOB if available
-    if (data && data.length > 0 && !selectedLob) {
-      setSelectedLob(data[0].id_lob);
-    }
   };
 
   const loadVersions = async (projectId: string, languageId: string) => {
@@ -713,7 +708,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
             </div>
 
             <div>
-              <Label>LOB (Opcional)</Label>
+              <Label>LOB</Label>
               <Select value={selectedLob} onValueChange={(value) => {
                 setSelectedLob(value);
                 if (currentVersionId) {
