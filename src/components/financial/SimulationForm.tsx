@@ -170,8 +170,6 @@ export default function SimulationForm({ onMenuClick }: Props) {
       .order('account_num');
     
     if (data) {
-      const monthColumns = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
-      
       const vars = data.map((v: any) => ({
         ...v,
         account_code: v.account_num,
