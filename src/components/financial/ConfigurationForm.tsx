@@ -25,7 +25,6 @@ interface ConfigVariable {
   calculation_type: 'AUTO' | 'MANUAL' | 'FORMULA';
   formula: string | null;
   row_index: number;
-  id_lob: string | null;
   id_lang?: string | null;
   blocked?: boolean;
   value_type?: string;
@@ -129,7 +128,6 @@ export default function ConfigurationForm({ onBack }: Props) {
     setVariables((data || []).map(v => ({
       ...v,
       calculation_type: (v.calculation_type || 'AUTO') as 'AUTO' | 'MANUAL' | 'FORMULA',
-      id_lob: (v as any).id_lob || null,
       id_lang: (v as any).id_lang || null,
       account_num: (v as any).account_num || ''
     })));
@@ -238,7 +236,6 @@ export default function ConfigurationForm({ onBack }: Props) {
           name: editingVar.name,
           calculation_type: editingVar.calculation_type || 'AUTO',
           formula: editingVar.formula || null,
-          id_lob: editingVar.id_lob || null,
           id_lang: editingVar.id_lang || null,
           blocked: editingVar.blocked || false,
           value_type: editingVar.value_type || 'number'
@@ -258,7 +255,6 @@ export default function ConfigurationForm({ onBack }: Props) {
           name: editingVar.name,
           calculation_type: editingVar.calculation_type || 'AUTO',
           formula: editingVar.formula || null,
-          id_lob: editingVar.id_lob || null,
           id_lang: editingVar.id_lang || null,
           blocked: editingVar.blocked || false,
           value_type: editingVar.value_type || 'number',
@@ -462,7 +458,6 @@ export default function ConfigurationForm({ onBack }: Props) {
                           formula: null, 
                           row_index: 0, 
                           account_num: '',
-                          id_lob: null,
                           id_lang: selectedLanguageId || null
                         })}
                       >
