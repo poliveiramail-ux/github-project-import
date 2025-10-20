@@ -18,7 +18,7 @@ export default function SideMenu({ isOpen, onClose, onNavigate }: Props) {
     { id: 'simulation', label: 'Simulação', icon: <Clock className="h-5 w-5" /> },
     { id: 'versions', label: 'Gestão de Simulações', icon: <Clock className="h-5 w-5" /> },
     { id: 'configurations', label: 'Templates de Simulação', icon: <Settings className="h-5 w-5" /> },
-    { id: 'masterdata', label: 'Dados Mestre', icon: <FileText className="h-5 w-5" /> }
+    { id: 'masterdata', label: 'Gestão de Dados Mestre', icon: <FileText className="h-5 w-5" /> }
   ];
 
   if (!isOpen) return null;
