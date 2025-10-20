@@ -331,7 +331,7 @@ export default function ConfigurationForm({ onBack }: Props) {
         <Button variant="ghost" size="icon" onClick={onBack}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h2 className="text-3xl font-bold">Simulation Templates</h2>
+        <h2 className="text-3xl font-bold">Templates de Simulação</h2>
       </div>
 
       <Card className="p-6">
