@@ -1,0 +1,95 @@
+%% Diagrama de Entidade-Relacionamento - Simulador Financeiro
+%% Este arquivo pode ser importado em ferramentas que suportam Mermaid
+
+erDiagram
+    project ||--o{ lang : "possui"
+    lang ||--o{ lob : "possui"
+    project ||--o{ simulation_configs : "associado_a"
+    lang ||--o{ simulation_configs : "associado_a"
+    simulation_configs ||--o{ simulation_configs_variables : "contém"
+    project ||--o{ simulation_versions : "possui"
+    lang ||--o{ simulation_versions : "possui"
+    simulation_versions ||--o{ simulation : "contém"
+    lob ||--o{ simulation : "referenciado_em"
+    
+    project {
+        text id_prj PK
+        text desc_prj
+        timestamp created_at
+    }
+    
+    lang {
+        text id_lang PK
+        text id_prj FK
+        text desc_lang
+        timestamp created_at
+    }
+    
+    lob {
+        text id_lob PK
+        text id_lang FK
+        text name
+        text desc_lob
+        timestamp created_at
+        timestamp updated_at
+    }
+    
+    simulation_configs {
+        uuid id_sim_cfg PK
+        text name
+        text description
+        text id_prj FK
+        text id_lang FK
+        text user_id
+        boolean is_active
+        timestamp created_at
+        timestamp updated_at
+    }
+    
+    simulation_configs_variables {
+        uuid id_sim_cfg_var PK
+        uuid id_sim_cfg FK
+        text account_num
+        text name
+        varchar calculation_type
+        text formula
+        text value_type
+        boolean blocked
+        integer row_index
+        text id_proj
+        text id_lang
+        timestamp created_at
+    }
+    
+    simulation_versions {
+        uuid id_sim_ver PK
+        text name
+        text id_prj FK
+        text id_lang FK
+        text user_id
+        text notes
+        boolean is_base
+        integer order_index
+        jsonb data
+        timestamp created_at
+        timestamp updated_at
+    }
+    
+    simulation {
+        uuid id_sim PK
+        uuid version_id FK
+        text account_num
+        text name
+        text id_proj
+        text id_lang
+        text id_lob FK
+        varchar calculation_type
+        text formula
+        text value_type
+        smallint month
+        integer year
+        double value
+        double value_orig
+        integer row_index
+        timestamp created_at
+    }
