@@ -92,7 +92,7 @@ export default function VersionsManager({ onBack }: Props) {
         <Button variant="ghost" size="icon" onClick={onBack}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h2 className="text-3xl font-bold">Gestão de Simulações</h2>
+        <h2 className="text-3xl font-bold">VersionsManager</h2>
       </div>
 
       <Card className="p-6 mb-6">

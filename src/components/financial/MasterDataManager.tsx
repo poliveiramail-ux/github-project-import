@@ -21,7 +21,7 @@ const MasterDataManager = ({ onBack }: Props) => {
           <Button variant="outline" size="icon" onClick={onBack}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="text-3xl font-bold">Gestão de Dados Mestre</h1>
+          <h1 className="text-3xl font-bold">MasterDataManager</h1>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

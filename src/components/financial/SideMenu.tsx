@@ -15,10 +15,10 @@ interface Props {
 
 export default function SideMenu({ isOpen, onClose, onNavigate }: Props) {
   const menuItems: MenuItem[] = [
-    { id: 'simulation', label: 'Simulação', icon: <Clock className="h-5 w-5" /> },
-    { id: 'versions', label: 'Gestão de Simulações', icon: <Clock className="h-5 w-5" /> },
-    { id: 'configurations', label: 'Templates de Simulação', icon: <Settings className="h-5 w-5" /> },
-    { id: 'masterdata', label: 'Gestão de Dados Mestre', icon: <FileText className="h-5 w-5" /> }
+    { id: 'simulation', label: 'SimulationForm', icon: <Clock className="h-5 w-5" /> },
+    { id: 'versions', label: 'VersionsManager', icon: <Clock className="h-5 w-5" /> },
+    { id: 'configurations', label: 'ConfigurationForm', icon: <Settings className="h-5 w-5" /> },
+    { id: 'masterdata', label: 'MasterDataManager', icon: <FileText className="h-5 w-5" /> }
   ];
 
   if (!isOpen) return null;
