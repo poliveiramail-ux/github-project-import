@@ -133,6 +133,7 @@ export type Database = {
           id_lob: string | null
           id_proj: string
           id_sim: string
+          id_sim_ver: string | null
           month: number | null
           name: string
           row_index: number
@@ -151,6 +152,7 @@ export type Database = {
           id_lob?: string | null
           id_proj: string
           id_sim?: string
+          id_sim_ver?: string | null
           month?: number | null
           name: string
           row_index: number
@@ -169,6 +171,7 @@ export type Database = {
           id_lob?: string | null
           id_proj?: string
           id_sim?: string
+          id_sim_ver?: string | null
           month?: number | null
           name?: string
           row_index?: number
@@ -185,6 +188,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "lob"
             referencedColumns: ["id_lob"]
+          },
+          {
+            foreignKeyName: "simulation_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "simulation_versions"
+            referencedColumns: ["id_sim_ver"]
           },
         ]
       }
@@ -247,7 +257,6 @@ export type Database = {
           created_at: string | null
           formula: string | null
           id_lang: string
-          id_lob: string | null
           id_proj: string | null
           id_sim_cfg: string | null
           id_sim_cfg_var: string
@@ -262,7 +271,6 @@ export type Database = {
           created_at?: string | null
           formula?: string | null
           id_lang: string
-          id_lob?: string | null
           id_proj?: string | null
           id_sim_cfg?: string | null
           id_sim_cfg_var?: string
@@ -277,7 +285,6 @@ export type Database = {
           created_at?: string | null
           formula?: string | null
           id_lang?: string
-          id_lob?: string | null
           id_proj?: string | null
           id_sim_cfg?: string | null
           id_sim_cfg_var?: string
@@ -286,13 +293,6 @@ export type Database = {
           value_type?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "simulation_configs_variables_id_lob_fkey"
-            columns: ["id_lob"]
-            isOneToOne: false
-            referencedRelation: "lob"
-            referencedColumns: ["id_lob"]
-          },
           {
             foreignKeyName: "simulation_configs_variables_id_sim_cfg_fkey"
             columns: ["id_sim_cfg"]
