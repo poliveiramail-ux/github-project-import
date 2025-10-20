@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Menu, Plus, Save, CheckCircle, XCircle, Lock, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
+import { Menu, Plus, Save, CheckCircle, XCircle, Lock, ChevronDown, ChevronRight, Loader2, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -163,11 +163,25 @@ export default function SimulationForm({ onMenuClick }: Props) {
   };
 
   const loadVersion = async (versionId: string) => {
-    const { data } = await (supabase as any)
+    let query = (supabase as any)
       .from('simulation')
       .select('*')
-      .eq('version_id', versionId)
-      .order('account_num');
+      .eq('version_id', versionId);
+    
+    // Apply progressive filters based on selections
+    if (selectedProject) {
+      query = query.eq('id_proj', selectedProject);
+    }
+    
+    if (selectedLanguage) {
+      query = query.eq('id_lang', selectedLanguage);
+    }
+    
+    if (selectedLob) {
+      query = query.eq('id_lob', selectedLob);
+    }
+    
+    const { data } = await query.order('account_num');
     
     if (data) {
       const vars = data.map((v: any) => ({
@@ -226,6 +240,17 @@ export default function SimulationForm({ onMenuClick }: Props) {
     if (selectedProject && languageId) {
       loadVersions(selectedProject, languageId);
     }
+  };
+
+  const handleClearSelections = () => {
+    setSelectedProject('');
+    setSelectedLanguage('');
+    setSelectedLob('');
+    setVersions([]);
+    setCurrentVersionId(null);
+    setVariables([]);
+    setVariableValues(new Map());
+    setPeriods([]);
   };
 
   const handleCreateVersion = async () => {
@@ -606,6 +631,14 @@ export default function SimulationForm({ onMenuClick }: Props) {
             
             <div className="flex gap-2">
               <Button
+                variant="outline"
+                onClick={handleClearSelections}
+                disabled={!selectedProject}
+              >
+                <X className="h-4 w-4 mr-2" />
+                Limpar
+              </Button>
+              <Button
                 variant="secondary"
                 onClick={() => setShowNewVersionModal(true)}
                 disabled={!selectedProject || !selectedLanguage}
@@ -680,10 +713,15 @@ export default function SimulationForm({ onMenuClick }: Props) {
             </div>
 
             <div>
-              <Label>LOB</Label>
-              <Select value={selectedLob} onValueChange={setSelectedLob} disabled={!selectedLanguage}>
+              <Label>LOB (Opcional)</Label>
+              <Select value={selectedLob} onValueChange={(value) => {
+                setSelectedLob(value);
+                if (currentVersionId) {
+                  loadVersion(currentVersionId);
+                }
+              }} disabled={!selectedLanguage}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione um LOB" />
+                  <SelectValue placeholder="Todos os LOBs" />
                 </SelectTrigger>
                 <SelectContent>
                   {lobs.map(l => (
@@ -809,7 +847,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
           </Card>
         ) : (
           <Card className="p-12 text-center text-muted-foreground">
-            Selecione um projeto e uma linguagem para começar
+            Selecione um projeto, linguagem e versão para começar
           </Card>
         )}
       </div>
