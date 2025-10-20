@@ -7,22 +7,16 @@ import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 
-interface Program {
-  id_lob: string;
-  name: string;
-}
-
-interface SimulationConfig {
-  id: string;
-  name: string;
-  created_at: string;
+interface Project {
+  id_prj: string;
+  desc_prj: string | null;
 }
 
 interface SimulationVersion {
   id: string;
   name: string;
-  program_id: string;
-  config_id: string;
+  id_prj: string;
+  id_lang: string | null;
   created_at: string;
 }
 
@@ -31,51 +25,42 @@ interface Props {
 }
 
 export default function VersionsManager({ onBack }: Props) {
-  const [programs, setPrograms] = useState<Program[]>([]);
-  const [configs, setConfigs] = useState<SimulationConfig[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [versions, setVersions] = useState<SimulationVersion[]>([]);
-  const [selectedProgram, setSelectedProgram] = useState('');
-  const [selectedConfig, setSelectedConfig] = useState('');
+  const [selectedProject, setSelectedProject] = useState('');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
-    loadPrograms();
-    loadConfigs();
+    loadProjects();
   }, []);
 
   useEffect(() => {
-    if (selectedProgram && selectedConfig) {
+    if (selectedProject) {
       loadVersions();
     } else {
       setVersions([]);
     }
-  }, [selectedProgram, selectedConfig]);
+  }, [selectedProject]);
 
-  const loadPrograms = async () => {
-    const { data } = await (supabase as any).from('lob').select('*').order('id_lob');
-    setPrograms(data || []);
-  };
-
-  const loadConfigs = async () => {
-    const { data } = await supabase.from('simulation_configs').select('*').order('created_at', { ascending: false });
-    setConfigs((data || []).map(c => ({ id: c.id_sim_cfg, name: c.name, created_at: c.created_at })));
+  const loadProjects = async () => {
+    const { data } = await supabase.from('project').select('*').order('id_prj');
+    setProjects(data || []);
   };
 
   const loadVersions = async () => {
     setLoading(true);
-    const { data } = await (supabase as any)
+    const { data } = await supabase
       .from('simulation_versions')
       .select('*')
-      .eq('program_id', selectedProgram)
-      .eq('config_id', selectedConfig)
+      .eq('id_prj', selectedProject)
       .order('created_at', { ascending: false });
     
     const mappedData = (data || []).map((v: any) => ({
       id: v.id_sim_ver,
       name: v.name,
-      program_id: selectedProgram,
-      config_id: selectedConfig,
+      id_prj: v.id_prj,
+      id_lang: v.id_lang,
       created_at: v.created_at
     }));
     setVersions(mappedData);
@@ -111,34 +96,20 @@ export default function VersionsManager({ onBack }: Props) {
       </div>
 
       <Card className="p-6 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <Label>Programa</Label>
-            <Select value={selectedProgram} onValueChange={setSelectedProgram}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione um programa" />
-              </SelectTrigger>
-              <SelectContent>
-                {programs.map(p => (
-                  <SelectItem key={p.id_lob} value={p.id_lob}>{p.id_lob} - {p.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <Label>Configuração</Label>
-            <Select value={selectedConfig} onValueChange={setSelectedConfig}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione uma configuração" />
-              </SelectTrigger>
-              <SelectContent>
-                {configs.map(c => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <div>
+          <Label>Projeto</Label>
+          <Select value={selectedProject} onValueChange={setSelectedProject}>
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione um projeto" />
+            </SelectTrigger>
+            <SelectContent>
+              {projects.map(p => (
+                <SelectItem key={p.id_prj} value={p.id_prj}>
+                  {p.id_prj} {p.desc_prj ? `- ${p.desc_prj}` : ''}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </Card>
 
@@ -147,7 +118,7 @@ export default function VersionsManager({ onBack }: Props) {
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
           <p className="text-muted-foreground">A carregar versões...</p>
         </div>
-      ) : selectedProgram && selectedConfig ? (
+      ) : selectedProject ? (
         <Card>
           {versions.length > 0 ? (
             <div className="overflow-x-auto">
@@ -156,15 +127,14 @@ export default function VersionsManager({ onBack }: Props) {
                   <tr>
                     <th className="px-4 py-3 text-left font-semibold">Nome da Versão</th>
                     <th className="px-4 py-3 text-left font-semibold">Data de Criação</th>
-                    <th className="px-4 py-3 text-left font-semibold">Programa</th>
-                    <th className="px-4 py-3 text-left font-semibold">Configuração</th>
+                    <th className="px-4 py-3 text-left font-semibold">Projeto</th>
+                    <th className="px-4 py-3 text-left font-semibold">Idioma</th>
                     <th className="px-4 py-3 text-right font-semibold">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
                   {versions.map(version => {
-                    const program = programs.find(p => p.id_lob === version.program_id);
-                    const config = configs.find(c => c.id === version.config_id);
+                    const project = projects.find(p => p.id_prj === version.id_prj);
                     
                     return (
                       <tr key={version.id} className="border-t hover:bg-muted/50 transition-colors">
@@ -172,8 +142,8 @@ export default function VersionsManager({ onBack }: Props) {
                         <td className="px-4 py-3">
                           {new Date(version.created_at).toLocaleString('pt-PT')}
                         </td>
-                        <td className="px-4 py-3 font-mono text-sm">{program?.id_lob}</td>
-                        <td className="px-4 py-3">{config?.name}</td>
+                        <td className="px-4 py-3 font-mono text-sm">{project?.id_prj}</td>
+                        <td className="px-4 py-3">{version.id_lang || '-'}</td>
                         <td className="px-4 py-3 text-right">
                           <Button
                             variant="ghost"
@@ -191,13 +161,13 @@ export default function VersionsManager({ onBack }: Props) {
             </div>
           ) : (
             <div className="p-12 text-center text-muted-foreground">
-              Nenhuma versão encontrada para este programa e configuração.
+              Nenhuma versão encontrada para este projeto.
             </div>
           )}
         </Card>
       ) : (
         <Card className="p-12 text-center text-muted-foreground">
-          Selecione um programa e uma configuração para ver as versões.
+          Selecione um projeto para ver as versões.
         </Card>
       )}
     </div>
