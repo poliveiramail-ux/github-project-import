@@ -419,19 +419,15 @@ export default function SimulationForm({ onMenuClick }: Props) {
     setSaveStatus('saving');
 
     try {
-      const monthColumns = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
-      
-      // Group variables by account_code, month, and year to update each record
+      // Update each record with the value from variableValues
       for (const variable of variables) {
         if (isLeafAccount(variable.account_code, variables)) {
-          const monthIndex = variable.month - 1;
-          const monthColumn = monthColumns[monthIndex];
-          const key = `${variable.account_code}-${variable.year}-${variable.month}`;
+          const key = `${variable.account_code}-${variable.year}-${variable.month}-${variable.lob}`;
           const value = variableValues.get(key) || 0;
           
           await (supabase as any)
             .from('simulation')
-            .update({ [monthColumn]: value })
+            .update({ value: value })
             .eq('id_sim', variable.id_sim);
         }
       }
