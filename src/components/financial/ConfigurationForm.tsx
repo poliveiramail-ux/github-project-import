@@ -491,13 +491,14 @@ export default function ConfigurationForm({ onBack }: Props) {
                         <Label>Linguagem</Label>
                         <Select
                           value={editingVar.id_lang || undefined}
-                          onValueChange={(value) => setEditingVar({ ...editingVar, id_lang: value, id_lob: null })}
+                          onValueChange={(value) => setEditingVar({ ...editingVar, id_lang: value === 'none' ? null : value, id_lob: null })}
                           disabled={!selectedProjectId}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Selecione uma linguagem" />
                           </SelectTrigger>
                           <SelectContent className="bg-background z-50">
+                            <SelectItem value="none">-- Limpar seleção --</SelectItem>
                             {languages.map((language) => (
                               <SelectItem key={language.id_lang} value={language.id_lang}>
                                 {language.id_lang} {language.desc_lang && `- ${language.desc_lang}`}
@@ -510,13 +511,14 @@ export default function ConfigurationForm({ onBack }: Props) {
                         <Label>LOB</Label>
                         <Select
                           value={editingVar.id_lob || undefined}
-                          onValueChange={(value) => setEditingVar({ ...editingVar, id_lob: value })}
+                          onValueChange={(value) => setEditingVar({ ...editingVar, id_lob: value === 'none' ? null : value })}
                           disabled={!editingVar.id_lang}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Selecione um LOB" />
                           </SelectTrigger>
                           <SelectContent className="bg-background z-50">
+                            <SelectItem value="none">-- Limpar seleção --</SelectItem>
                             {lobs
                               .filter((lob: any) => !editingVar.id_lang || lob.id_lang === editingVar.id_lang)
                               .map((lob) => (
