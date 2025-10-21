@@ -14,7 +14,6 @@ interface SimulationConfig {
   name: string;
   description: string | null;
   id_prj: string | null;
-  id_lang?: string | null;
   created_at: string;
 }
 
@@ -170,13 +169,6 @@ export default function ConfigurationForm({ onBack }: Props) {
       return;
     }
 
-    // Use first language from project if not already set
-    const langToUse = selectedLanguageId || languages[0]?.id_lang;
-    if (!langToUse) {
-      toast({ title: 'Atenção', description: 'Nenhuma linguagem disponível para este projeto' });
-      return;
-    }
-
     if (selectedConfig) {
       const { error } = await supabase
         .from('simulation_configs')
@@ -209,7 +201,6 @@ export default function ConfigurationForm({ onBack }: Props) {
     setSelectedConfig(config);
     setConfigName(config.name);
     setSelectedProjectId(config.id_prj || '');
-    setSelectedLanguageId(config.id_lang || '');
     loadVariables(config.id_sim_cfg);
   };
 
