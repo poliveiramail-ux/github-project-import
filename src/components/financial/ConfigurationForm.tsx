@@ -488,6 +488,25 @@ export default function ConfigurationForm({ onBack }: Props) {
                         />
                       </div>
                       <div className="mb-3">
+                        <Label>Linguagem *</Label>
+                        <Select
+                          value={editingVar.id_lang || undefined}
+                          onValueChange={(value) => setEditingVar({ ...editingVar, id_lang: value })}
+                          disabled={!selectedProjectId}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione uma linguagem" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background z-50">
+                            {languages.map((language) => (
+                              <SelectItem key={language.id_lang} value={language.id_lang}>
+                                {language.id_lang} {language.desc_lang && `- ${language.desc_lang}`}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="mb-3">
                         <Label>LOB</Label>
                         <Select
                           value={editingVar.id_lob || undefined}
