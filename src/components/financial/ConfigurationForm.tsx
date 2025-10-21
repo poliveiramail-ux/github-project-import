@@ -488,7 +488,7 @@ export default function ConfigurationForm({ onBack }: Props) {
                         />
                       </div>
                       <div className="mb-3">
-                        <Label>Linguagem *</Label>
+                        <Label>Linguagem</Label>
                         <Select
                           value={editingVar.id_lang || undefined}
                           onValueChange={(value) => setEditingVar({ ...editingVar, id_lang: value })}
