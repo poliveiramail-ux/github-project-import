@@ -355,12 +355,6 @@ export default function SimulationForm({ onMenuClick }: Props) {
           .select('id_lob')
           .eq('id_lang', selectedLanguage);
 
-        // Get all languages for this project
-        const { data: allLanguages } = await (supabase as any)
-          .from('lang')
-          .select('id_lang')
-          .eq('id_prj', selectedProject);
-
         if (!allLobs || allLobs.length === 0) {
           toast({ 
             title: 'Aviso', 
@@ -379,61 +373,9 @@ export default function SimulationForm({ onMenuClick }: Props) {
 
         let rowCounter = 1;
         
-        // Process each config variable based on its level
+        // Create for all LOBs
         configVars.forEach((configVar: any) => {
-          const varLevel = configVar.level;
-          
-          if (varLevel === 'Lob') {
-            // Level Lob: Create for all LOBs in the selected project and language
-            allLobs.forEach((lob: any) => {
-              monthsToCreate.forEach((month) => {
-                variablesToInsert.push({
-                  version_id: versionId,
-                  row_index: rowCounter++,
-                  account_num: configVar.account_num,
-                  name: configVar.name,
-                  calculation_type: configVar.calculation_type || 'AUTO',
-                  formula: configVar.formula || null,
-                  value: 0,
-                  value_orig: 0,
-                  month: month,
-                  year: yearToUse,
-                  id_lob: lob.id_lob,
-                  id_proj: selectedProject,
-                  id_lang: selectedLanguage,
-                  level: varLevel,
-                  value_type: configVar.value_type || 'number'
-                });
-              });
-            });
-          } else if (varLevel === 'Lang') {
-            // Level Lang: Create for all languages in the selected project
-            allLanguages.forEach((lang: any) => {
-              // For each language, create one record per LOB (or first LOB if available)
-              const lobToUse = allLobs[0]?.id_lob || '';
-              monthsToCreate.forEach((month) => {
-                variablesToInsert.push({
-                  version_id: versionId,
-                  row_index: rowCounter++,
-                  account_num: configVar.account_num,
-                  name: configVar.name,
-                  calculation_type: configVar.calculation_type || 'AUTO',
-                  formula: configVar.formula || null,
-                  value: 0,
-                  value_orig: 0,
-                  month: month,
-                  year: yearToUse,
-                  id_lob: lobToUse,
-                  id_proj: selectedProject,
-                  id_lang: lang.id_lang,
-                  level: varLevel,
-                  value_type: configVar.value_type || 'number'
-                });
-              });
-            });
-          } else if (varLevel === 'Proj') {
-            // Level Proj: Create once at project level
-            const lobToUse = allLobs[0]?.id_lob || '';
+          allLobs.forEach((lob: any) => {
             monthsToCreate.forEach((month) => {
               variablesToInsert.push({
                 version_id: versionId,
@@ -446,37 +388,13 @@ export default function SimulationForm({ onMenuClick }: Props) {
                 value_orig: 0,
                 month: month,
                 year: yearToUse,
-                id_lob: lobToUse,
+                id_lob: lob.id_lob,
                 id_proj: selectedProject,
                 id_lang: selectedLanguage,
-                level: varLevel,
                 value_type: configVar.value_type || 'number'
               });
             });
-          } else {
-            // No level defined: create for all LOBs (backward compatibility)
-            allLobs.forEach((lob: any) => {
-              monthsToCreate.forEach((month) => {
-                variablesToInsert.push({
-                  version_id: versionId,
-                  row_index: rowCounter++,
-                  account_num: configVar.account_num,
-                  name: configVar.name,
-                  calculation_type: configVar.calculation_type || 'AUTO',
-                  formula: configVar.formula || null,
-                  value: 0,
-                  value_orig: 0,
-                  month: month,
-                  year: yearToUse,
-                  id_lob: lob.id_lob,
-                  id_proj: selectedProject,
-                  id_lang: selectedLanguage,
-                  level: varLevel,
-                  value_type: configVar.value_type || 'number'
-                });
-              });
-            });
-          }
+          });
         });
       }
 
