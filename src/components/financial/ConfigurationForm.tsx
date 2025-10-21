@@ -146,20 +146,53 @@ export default function ConfigurationForm({ onBack }: Props) {
     setConfigs(data || []);
   };
 
+  // Função para ordenar variáveis hierarquicamente
+  const sortVariablesHierarchically = (vars: ConfigVariable[]): ConfigVariable[] => {
+    const result: ConfigVariable[] = [];
+    const processedIds = new Set<string>();
+
+    const addWithChildren = (variable: ConfigVariable) => {
+      if (processedIds.has(variable.id_sim_cfg_var)) return;
+      
+      result.push(variable);
+      processedIds.add(variable.id_sim_cfg_var);
+
+      // Adicionar filhas imediatamente após o pai
+      const children = vars
+        .filter(v => v.parent_account_id === variable.id_sim_cfg_var)
+        .sort((a, b) => a.account_num.localeCompare(b.account_num));
+      
+      children.forEach(child => addWithChildren(child));
+    };
+
+    // Começar com as contas raiz (sem pai)
+    const rootVars = vars
+      .filter(v => !v.parent_account_id)
+      .sort((a, b) => a.account_num.localeCompare(b.account_num));
+    
+    rootVars.forEach(rootVar => addWithChildren(rootVar));
+
+    return result;
+  };
+
   const loadVariables = async (configId: string) => {
     const { data } = await supabase
       .from('simulation_configs_variables')
       .select('*')
       .eq('id_sim_cfg', configId)
       .order('row_index');
-    setVariables((data || []).map(v => ({
+    
+    const mappedVars = (data || []).map(v => ({
       ...v,
       calculation_type: (v.calculation_type || 'AUTO') as 'AUTO' | 'MANUAL' | 'FORMULA',
       id_lang: (v as any).id_lang || null,
       account_num: (v as any).account_num || '',
       parent_account_id: (v as any).parent_account_id || null,
       level: (v as any).level || 0
-    })));
+    }));
+
+    // Ordenar hierarquicamente antes de definir o estado
+    setVariables(sortVariablesHierarchically(mappedVars));
   };
 
   const handleSaveConfig = async () => {
