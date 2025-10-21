@@ -26,6 +26,7 @@ interface ConfigVariable {
   formula: string | null;
   row_index: number;
   id_lang?: string | null;
+  id_lob?: string | null;
   blocked?: boolean;
   value_type?: string;
   account_num: string;
@@ -39,6 +40,7 @@ export default function ConfigurationForm({ onBack }: Props) {
   const [configs, setConfigs] = useState<SimulationConfig[]>([]);
   const [projects, setProjects] = useState<{ id_prj: string; desc_prj: string | null }[]>([]);
   const [languages, setLanguages] = useState<{ id_lang: string; desc_lang: string | null }[]>([]);
+  const [lobs, setLobs] = useState<{ id_lob: string; name: string }[]>([]);
   const [selectedConfig, setSelectedConfig] = useState<SimulationConfig | null>(null);
   const [configName, setConfigName] = useState('');
   const [selectedProjectId, setSelectedProjectId] = useState('');
@@ -60,6 +62,14 @@ export default function ConfigurationForm({ onBack }: Props) {
       setLanguages([]);
     }
   }, [selectedProjectId]);
+
+  useEffect(() => {
+    if (selectedLanguageId) {
+      loadLobs(selectedLanguageId);
+    } else {
+      setLobs([]);
+    }
+  }, [selectedLanguageId]);
 
   useEffect(() => {
     if (selectedProjectId && selectedLanguageId) {
@@ -109,6 +119,20 @@ export default function ConfigurationForm({ onBack }: Props) {
       return;
     }
     setLanguages(data || []);
+  };
+
+  const loadLobs = async (languageId: string) => {
+    const { data, error } = await supabase
+      .from('lob')
+      .select('id_lob, name')
+      .eq('id_lang', languageId)
+      .order('id_lob');
+    
+    if (error) {
+      toast({ title: 'Erro', description: 'Erro ao carregar LOBs', variant: 'destructive' });
+      return;
+    }
+    setLobs(data || []);
   };
 
   const loadConfigs = async () => {
@@ -237,6 +261,7 @@ export default function ConfigurationForm({ onBack }: Props) {
           calculation_type: editingVar.calculation_type || 'AUTO',
           formula: editingVar.formula || null,
           id_lang: editingVar.id_lang || null,
+          id_lob: editingVar.id_lob || null,
           blocked: editingVar.blocked || false,
           value_type: editingVar.value_type || 'number'
         })
@@ -256,6 +281,7 @@ export default function ConfigurationForm({ onBack }: Props) {
           calculation_type: editingVar.calculation_type || 'AUTO',
           formula: editingVar.formula || null,
           id_lang: editingVar.id_lang || null,
+          id_lob: editingVar.id_lob || null,
           blocked: editingVar.blocked || false,
           value_type: editingVar.value_type || 'number',
           row_index: variables.length + 1
@@ -447,7 +473,7 @@ export default function ConfigurationForm({ onBack }: Props) {
                         <ArrowUpDown className="h-4 w-4 mr-1" />
                         Ordenar por Conta
                       </Button>
-                      <Button
+                       <Button
                         size="sm"
                         variant="secondary"
                         onClick={() => setEditingVar({ 
@@ -458,7 +484,8 @@ export default function ConfigurationForm({ onBack }: Props) {
                           formula: null, 
                           row_index: 0, 
                           account_num: '',
-                          id_lang: selectedLanguageId || null
+                          id_lang: selectedLanguageId || null,
+                          id_lob: null
                         })}
                       >
                         <Plus className="h-4 w-4 mr-1" />
@@ -499,6 +526,24 @@ export default function ConfigurationForm({ onBack }: Props) {
                             {languages.map((language) => (
                               <SelectItem key={language.id_lang} value={language.id_lang}>
                                 {language.id_lang} {language.desc_lang && `- ${language.desc_lang}`}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="mb-3">
+                        <Label>LOB</Label>
+                        <Select
+                          value={editingVar.id_lob || undefined}
+                          onValueChange={(value) => setEditingVar({ ...editingVar, id_lob: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione um LOB" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background z-50">
+                            {lobs.map((lob) => (
+                              <SelectItem key={lob.id_lob} value={lob.id_lob}>
+                                {lob.name || lob.id_lob}
                               </SelectItem>
                             ))}
                           </SelectContent>
