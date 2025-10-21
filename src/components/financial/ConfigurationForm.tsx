@@ -29,7 +29,6 @@ interface ConfigVariable {
   blocked?: boolean;
   value_type?: string;
   account_num: string;
-  Level?: string | null;
 }
 
 interface Props {
@@ -130,8 +129,7 @@ export default function ConfigurationForm({ onBack }: Props) {
       ...v,
       calculation_type: (v.calculation_type || 'AUTO') as 'AUTO' | 'MANUAL' | 'FORMULA',
       id_lang: (v as any).id_lang || null,
-      account_num: (v as any).account_num || '',
-      Level: (v as any).Level || null
+      account_num: (v as any).account_num || ''
     })));
   };
 
@@ -240,8 +238,7 @@ export default function ConfigurationForm({ onBack }: Props) {
           formula: editingVar.formula || null,
           id_lang: editingVar.id_lang || null,
           blocked: editingVar.blocked || false,
-          value_type: editingVar.value_type || 'number',
-          Level: editingVar.Level || null
+          value_type: editingVar.value_type || 'number'
         })
         .eq('id_sim_cfg_var', editingVar.id_sim_cfg_var);
       
@@ -261,8 +258,7 @@ export default function ConfigurationForm({ onBack }: Props) {
           id_lang: editingVar.id_lang || null,
           blocked: editingVar.blocked || false,
           value_type: editingVar.value_type || 'number',
-          row_index: variables.length + 1,
-          Level: editingVar.Level || null
+          row_index: variables.length + 1
         }]);
       
       if (error) {
@@ -521,22 +517,6 @@ export default function ConfigurationForm({ onBack }: Props) {
                             <SelectItem value="number">Número</SelectItem>
                             <SelectItem value="text">Texto</SelectItem>
                             <SelectItem value="percentage">Percentagem</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="mb-3">
-                        <Label>Level</Label>
-                        <Select
-                          value={editingVar.Level || undefined}
-                          onValueChange={(value) => setEditingVar({ ...editingVar, Level: value })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione um nível" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-background z-50">
-                            <SelectItem value="Proj">Proj</SelectItem>
-                            <SelectItem value="Lang">Lang</SelectItem>
-                            <SelectItem value="Lob">Lob</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
