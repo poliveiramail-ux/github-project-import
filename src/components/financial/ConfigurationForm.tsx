@@ -263,7 +263,8 @@ export default function ConfigurationForm({ onBack }: Props) {
         .eq('id_sim_cfg_var', editingVar.id_sim_cfg_var);
       
       if (error) {
-        toast({ title: 'Erro', description: 'Erro ao atualizar variável', variant: 'destructive' });
+        console.error('Erro ao atualizar variável:', error);
+        toast({ title: 'Erro', description: `Erro ao atualizar variável: ${error.message}`, variant: 'destructive' });
         return;
       }
     } else {
@@ -279,11 +280,13 @@ export default function ConfigurationForm({ onBack }: Props) {
           id_lob: editingVar.id_lob || null,
           blocked: editingVar.blocked || false,
           value_type: editingVar.value_type || 'number',
-          row_index: variables.length + 1
+          row_index: variables.length + 1,
+          id_proj: selectedProjectId
         }]);
       
       if (error) {
-        toast({ title: 'Erro', description: 'Erro ao criar variável', variant: 'destructive' });
+        console.error('Erro ao criar variável:', error);
+        toast({ title: 'Erro', description: `Erro ao criar variável: ${error.message}`, variant: 'destructive' });
         return;
       }
     }
