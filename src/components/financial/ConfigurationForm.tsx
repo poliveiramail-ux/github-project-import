@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, Edit3, Trash2, ArrowUpDown } from 'lucide-react';
+import { ArrowLeft, Plus, Edit3, Trash2, ArrowUpDown, ChevronRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,6 +29,8 @@ interface ConfigVariable {
   blocked?: boolean;
   value_type?: string;
   account_num: string;
+  parent_account_id?: string | null;
+  level?: number;
 }
 
 interface Props {
@@ -154,7 +156,9 @@ export default function ConfigurationForm({ onBack }: Props) {
       ...v,
       calculation_type: (v.calculation_type || 'AUTO') as 'AUTO' | 'MANUAL' | 'FORMULA',
       id_lang: (v as any).id_lang || null,
-      account_num: (v as any).account_num || ''
+      account_num: (v as any).account_num || '',
+      parent_account_id: (v as any).parent_account_id || null,
+      level: (v as any).level || 0
     })));
   };
 
@@ -247,6 +251,12 @@ export default function ConfigurationForm({ onBack }: Props) {
       return;
     }
 
+    // Calcular o level baseado na conta pai
+    const parentLevel = editingVar.parent_account_id 
+      ? (variables.find(v => v.id_sim_cfg_var === editingVar.parent_account_id)?.level || 0)
+      : -1;
+    const calculatedLevel = parentLevel + 1;
+
     if (editingVar.id_sim_cfg_var) {
       const { error } = await supabase
         .from('simulation_configs_variables')
@@ -258,7 +268,9 @@ export default function ConfigurationForm({ onBack }: Props) {
           id_lang: editingVar.id_lang || null,
           id_lob: editingVar.id_lob || null,
           blocked: editingVar.blocked || false,
-          value_type: editingVar.value_type || 'number'
+          value_type: editingVar.value_type || 'number',
+          parent_account_id: editingVar.parent_account_id || null,
+          level: calculatedLevel
         })
         .eq('id_sim_cfg_var', editingVar.id_sim_cfg_var);
       
@@ -281,7 +293,9 @@ export default function ConfigurationForm({ onBack }: Props) {
           blocked: editingVar.blocked || false,
           value_type: editingVar.value_type || 'number',
           row_index: variables.length + 1,
-          id_proj: selectedProjectId
+          id_proj: selectedProjectId,
+          parent_account_id: editingVar.parent_account_id || null,
+          level: calculatedLevel
         }]);
       
       if (error) {
@@ -312,10 +326,22 @@ export default function ConfigurationForm({ onBack }: Props) {
   };
 
 
-  const getHierarchyLevel = (accountNum: string): number => {
-    // Conta os pontos no account_num para determinar o nível (ex: "1" = 0, "1.1" = 1, "1.1.1" = 2)
-    if (!accountNum) return 0;
-    return (accountNum.match(/\./g) || []).length;
+  // Filtrar variáveis que podem ser pais da variável atual
+  const getAvailableParents = () => {
+    if (!editingVar) return [];
+    
+    // Se estamos editando, excluir a própria variável e seus filhos
+    if (editingVar.id_sim_cfg_var) {
+      return variables.filter(v => {
+        // Não pode ser pai de si mesmo
+        if (v.id_sim_cfg_var === editingVar.id_sim_cfg_var) return false;
+        // Não pode ser filho da variável atual (evitar loops)
+        if (v.parent_account_id === editingVar.id_sim_cfg_var) return false;
+        return true;
+      });
+    }
+    
+    return variables;
   };
 
   const handleSortByAccountNum = async () => {
@@ -474,6 +500,25 @@ export default function ConfigurationForm({ onBack }: Props) {
 
                    {editingVar && (
                     <Card className="p-4 mb-4 bg-muted">
+                       <div className="mb-3">
+                        <Label>Conta Pai (Hierarquia)</Label>
+                        <Select
+                          value={editingVar.parent_account_id || 'none'}
+                          onValueChange={(value) => setEditingVar({ ...editingVar, parent_account_id: value === 'none' ? null : value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Conta de nível raiz" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background z-50">
+                            <SelectItem value="none">-- Conta de Nível Raiz --</SelectItem>
+                            {getAvailableParents().map((variable) => (
+                              <SelectItem key={variable.id_sim_cfg_var} value={variable.id_sim_cfg_var}>
+                                {'  '.repeat(variable.level || 0)}{variable.account_num} - {variable.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                       <div className="mb-3">
                         <Label>Número da Conta *</Label>
                         <Input
@@ -596,7 +641,7 @@ export default function ConfigurationForm({ onBack }: Props) {
 
                    <div className="space-y-1 max-h-96 overflow-y-auto">
                      {variables.map((variable, index) => {
-                       const level = getHierarchyLevel(variable.account_num);
+                       const level = variable.level || 0;
                        
                        return (
                           <div
@@ -618,6 +663,26 @@ export default function ConfigurationForm({ onBack }: Props) {
                               variable.calculation_type === 'MANUAL' ? '✏️' : '🔢'}
                            </span>
                            
+                           <Button
+                             variant="ghost"
+                             size="icon"
+                             className="h-8 w-8"
+                             onClick={() => setEditingVar({ 
+                               id_sim_cfg_var: '', 
+                               id_sim_cfg: selectedConfig.id_sim_cfg, 
+                               name: '', 
+                               calculation_type: 'AUTO', 
+                               formula: null, 
+                               row_index: 0, 
+                               account_num: '',
+                               id_lang: variable.id_lang,
+                               id_lob: variable.id_lob,
+                               parent_account_id: variable.id_sim_cfg_var
+                             })}
+                             title="Adicionar sub-conta"
+                           >
+                             <ChevronRight className="h-4 w-4" />
+                           </Button>
                            <Button
                              variant="ghost"
                              size="icon"

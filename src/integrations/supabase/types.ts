@@ -134,6 +134,7 @@ export type Database = {
           id_proj: string
           id_sim: string
           id_sim_ver: string | null
+          level: string | null
           month: number | null
           name: string
           row_index: number
@@ -153,6 +154,7 @@ export type Database = {
           id_proj: string
           id_sim?: string
           id_sim_ver?: string | null
+          level?: string | null
           month?: number | null
           name: string
           row_index: number
@@ -172,6 +174,7 @@ export type Database = {
           id_proj?: string
           id_sim?: string
           id_sim_ver?: string | null
+          level?: string | null
           month?: number | null
           name?: string
           row_index?: number
@@ -202,7 +205,6 @@ export type Database = {
         Row: {
           created_at: string | null
           description: string | null
-          id_lang: string
           id_prj: string
           id_sim_cfg: string
           is_active: boolean | null
@@ -213,7 +215,6 @@ export type Database = {
         Insert: {
           created_at?: string | null
           description?: string | null
-          id_lang: string
           id_prj: string
           id_sim_cfg?: string
           is_active?: boolean | null
@@ -224,7 +225,6 @@ export type Database = {
         Update: {
           created_at?: string | null
           description?: string | null
-          id_lang?: string
           id_prj?: string
           id_sim_cfg?: string
           is_active?: boolean | null
@@ -233,13 +233,6 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "simulation_configs_id_lang_fkey"
-            columns: ["id_lang"]
-            isOneToOne: false
-            referencedRelation: "lang"
-            referencedColumns: ["id_lang"]
-          },
           {
             foreignKeyName: "simulation_configs_id_prj_fkey"
             columns: ["id_prj"]
@@ -256,11 +249,14 @@ export type Database = {
           calculation_type: string | null
           created_at: string | null
           formula: string | null
-          id_lang: string
-          id_proj: string | null
+          id_lang: string | null
+          id_lob: string | null
+          id_proj: string
           id_sim_cfg: string | null
           id_sim_cfg_var: string
+          level: number
           name: string
+          parent_account_id: string | null
           row_index: number
           value_type: string | null
         }
@@ -270,11 +266,14 @@ export type Database = {
           calculation_type?: string | null
           created_at?: string | null
           formula?: string | null
-          id_lang: string
-          id_proj?: string | null
+          id_lang?: string | null
+          id_lob?: string | null
+          id_proj: string
           id_sim_cfg?: string | null
           id_sim_cfg_var?: string
+          level?: number
           name: string
+          parent_account_id?: string | null
           row_index?: number
           value_type?: string | null
         }
@@ -284,21 +283,45 @@ export type Database = {
           calculation_type?: string | null
           created_at?: string | null
           formula?: string | null
-          id_lang?: string
-          id_proj?: string | null
+          id_lang?: string | null
+          id_lob?: string | null
+          id_proj?: string
           id_sim_cfg?: string | null
           id_sim_cfg_var?: string
+          level?: number
           name?: string
+          parent_account_id?: string | null
           row_index?: number
           value_type?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "simulation_configs_variables_id_lang_fkey"
+            columns: ["id_lang"]
+            isOneToOne: false
+            referencedRelation: "lang"
+            referencedColumns: ["id_lang"]
+          },
+          {
+            foreignKeyName: "simulation_configs_variables_id_lob_fkey"
+            columns: ["id_lob"]
+            isOneToOne: false
+            referencedRelation: "lob"
+            referencedColumns: ["id_lob"]
+          },
           {
             foreignKeyName: "simulation_configs_variables_id_sim_cfg_fkey"
             columns: ["id_sim_cfg"]
             isOneToOne: false
             referencedRelation: "simulation_configs"
             referencedColumns: ["id_sim_cfg"]
+          },
+          {
+            foreignKeyName: "simulation_configs_variables_parent_account_id_fkey"
+            columns: ["parent_account_id"]
+            isOneToOne: false
+            referencedRelation: "simulation_configs_variables"
+            referencedColumns: ["id_sim_cfg_var"]
           },
         ]
       }
