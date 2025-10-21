@@ -39,7 +39,7 @@ export default function ConfigurationForm({ onBack }: Props) {
   const [configs, setConfigs] = useState<SimulationConfig[]>([]);
   const [projects, setProjects] = useState<{ id_prj: string; desc_prj: string | null }[]>([]);
   const [languages, setLanguages] = useState<{ id_lang: string; desc_lang: string | null }[]>([]);
-  const [lobs, setLobs] = useState<{ id_lob: string; name: string }[]>([]);
+  const [lobs, setLobs] = useState<{ id_lob: string; name: string; id_lang: string }[]>([]);
   const [selectedConfig, setSelectedConfig] = useState<SimulationConfig | null>(null);
   const [configName, setConfigName] = useState('');
   const [selectedProjectId, setSelectedProjectId] = useState('');
@@ -491,7 +491,7 @@ export default function ConfigurationForm({ onBack }: Props) {
                         <Label>Linguagem</Label>
                         <Select
                           value={editingVar.id_lang || undefined}
-                          onValueChange={(value) => setEditingVar({ ...editingVar, id_lang: value })}
+                          onValueChange={(value) => setEditingVar({ ...editingVar, id_lang: value, id_lob: null })}
                           disabled={!selectedProjectId}
                         >
                           <SelectTrigger>
@@ -511,16 +511,19 @@ export default function ConfigurationForm({ onBack }: Props) {
                         <Select
                           value={editingVar.id_lob || undefined}
                           onValueChange={(value) => setEditingVar({ ...editingVar, id_lob: value })}
+                          disabled={!editingVar.id_lang}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Selecione um LOB" />
                           </SelectTrigger>
                           <SelectContent className="bg-background z-50">
-                            {lobs.map((lob) => (
-                              <SelectItem key={lob.id_lob} value={lob.id_lob}>
-                                {lob.name || lob.id_lob}
-                              </SelectItem>
-                            ))}
+                            {lobs
+                              .filter((lob: any) => !editingVar.id_lang || lob.id_lang === editingVar.id_lang)
+                              .map((lob) => (
+                                <SelectItem key={lob.id_lob} value={lob.id_lob}>
+                                  {lob.name || lob.id_lob}
+                                </SelectItem>
+                              ))}
                           </SelectContent>
                         </Select>
                       </div>
