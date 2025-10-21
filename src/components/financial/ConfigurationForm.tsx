@@ -60,34 +60,35 @@ export default function ConfigurationForm({ onBack }: Props) {
       loadLanguages(selectedProjectId);
     } else {
       setLanguages([]);
+      setLobs([]);
     }
   }, [selectedProjectId]);
 
   useEffect(() => {
-    if (selectedLanguageId) {
-      loadLobs(selectedLanguageId);
-    } else {
-      setLobs([]);
+    if (languages.length > 0) {
+      loadLobs();
     }
-  }, [selectedLanguageId]);
+  }, [languages]);
 
   useEffect(() => {
-    if (selectedProjectId && selectedLanguageId) {
-      loadConfigByProjectAndLanguage();
+    if (selectedProjectId) {
+      loadConfigByProject();
     }
-  }, [selectedProjectId, selectedLanguageId]);
+  }, [selectedProjectId]);
 
-  const loadConfigByProjectAndLanguage = async () => {
+  const loadConfigByProject = async () => {
     const { data } = await supabase
       .from('simulation_configs')
       .select('*')
       .eq('id_prj', selectedProjectId)
-      .eq('id_lang', selectedLanguageId)
       .order('created_at', { ascending: false })
       .limit(1);
     
     if (data && data.length > 0) {
       handleSelectConfig(data[0]);
+      if (data[0].id_lang) {
+        setSelectedLanguageId(data[0].id_lang);
+      }
     } else {
       setVariables([]);
       setSelectedConfig(null);
@@ -121,11 +122,15 @@ export default function ConfigurationForm({ onBack }: Props) {
     setLanguages(data || []);
   };
 
-  const loadLobs = async (languageId: string) => {
+  const loadLobs = async () => {
+    // Get all LOBs from all languages in the project
+    const languageIds = languages.map(l => l.id_lang);
+    if (languageIds.length === 0) return;
+    
     const { data, error } = await supabase
       .from('lob')
-      .select('id_lob, name')
-      .eq('id_lang', languageId)
+      .select('id_lob, name, id_lang')
+      .in('id_lang', languageIds)
       .order('id_lob');
     
     if (error) {
@@ -168,15 +173,17 @@ export default function ConfigurationForm({ onBack }: Props) {
       return;
     }
 
-    if (!selectedLanguageId) {
-      toast({ title: 'Atenção', description: 'Selecione uma linguagem' });
+    // Use first language from project if not already set
+    const langToUse = selectedLanguageId || languages[0]?.id_lang;
+    if (!langToUse) {
+      toast({ title: 'Atenção', description: 'Nenhuma linguagem disponível para este projeto' });
       return;
     }
 
     if (selectedConfig) {
       const { error } = await supabase
         .from('simulation_configs')
-        .update({ name: configName, id_prj: selectedProjectId, id_lang: selectedLanguageId })
+        .update({ name: configName, id_prj: selectedProjectId, id_lang: langToUse })
         .eq('id_sim_cfg', selectedConfig.id_sim_cfg);
       
       if (error) {
@@ -186,7 +193,7 @@ export default function ConfigurationForm({ onBack }: Props) {
     } else {
       const { data, error } = await supabase
         .from('simulation_configs')
-        .insert([{ name: configName, id_prj: selectedProjectId, id_lang: selectedLanguageId }])
+        .insert([{ name: configName, id_prj: selectedProjectId, id_lang: langToUse }])
         .select();
       
       if (error) {
@@ -428,26 +435,6 @@ export default function ConfigurationForm({ onBack }: Props) {
             </div>
 
             <div>
-              <Label>Linguagem *</Label>
-              <Select
-                value={selectedLanguageId}
-                onValueChange={(value) => setSelectedLanguageId(value)}
-                disabled={!selectedProjectId}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma linguagem" />
-                </SelectTrigger>
-                <SelectContent className="bg-background z-50">
-                  {languages.map((language) => (
-                    <SelectItem key={language.id_lang} value={language.id_lang}>
-                      {language.id_lang} {language.desc_lang && `- ${language.desc_lang}`}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
               <Label>Nome da Configuração *</Label>
               <div className="flex gap-2 mt-1">
                 <Input
@@ -484,7 +471,7 @@ export default function ConfigurationForm({ onBack }: Props) {
                           formula: null, 
                           row_index: 0, 
                           account_num: '',
-                          id_lang: selectedLanguageId || null,
+                          id_lang: languages[0]?.id_lang || null,
                           id_lob: null
                         })}
                       >
