@@ -86,9 +86,6 @@ export default function ConfigurationForm({ onBack }: Props) {
     
     if (data && data.length > 0) {
       handleSelectConfig(data[0]);
-      if (data[0].id_lang) {
-        setSelectedLanguageId(data[0].id_lang);
-      }
     } else {
       setVariables([]);
       setSelectedConfig(null);
@@ -183,7 +180,7 @@ export default function ConfigurationForm({ onBack }: Props) {
     if (selectedConfig) {
       const { error } = await supabase
         .from('simulation_configs')
-        .update({ name: configName, id_prj: selectedProjectId, id_lang: langToUse })
+        .update({ name: configName, id_prj: selectedProjectId })
         .eq('id_sim_cfg', selectedConfig.id_sim_cfg);
       
       if (error) {
@@ -193,7 +190,7 @@ export default function ConfigurationForm({ onBack }: Props) {
     } else {
       const { data, error } = await supabase
         .from('simulation_configs')
-        .insert([{ name: configName, id_prj: selectedProjectId, id_lang: langToUse }])
+        .insert([{ name: configName, id_prj: selectedProjectId } as any])
         .select();
       
       if (error) {
