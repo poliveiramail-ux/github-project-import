@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, Edit3, Trash2, ArrowUpDown, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Plus, Edit3, Trash2, ArrowUpDown, ChevronRight, ChevronDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -377,6 +377,35 @@ export default function ConfigurationForm({ onBack }: Props) {
     return variables;
   };
 
+  // Verificar se uma conta tem filhos
+  const hasChildren = (varId: string) => {
+    return variables.some(v => v.parent_account_id === varId);
+  };
+
+  // Toggle de expansão/colapso
+  const toggleExpanded = (varId: string) => {
+    setExpandedVars(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(varId)) {
+        newSet.delete(varId);
+      } else {
+        newSet.add(varId);
+      }
+      return newSet;
+    });
+  };
+
+  // Filtrar variáveis visíveis (apenas raízes e filhos de pais expandidos)
+  const getVisibleVariables = () => {
+    return variables.filter(variable => {
+      // Contas raiz são sempre visíveis
+      if (!variable.parent_account_id) return true;
+      
+      // Contas filhas são visíveis apenas se o pai está expandido
+      return expandedVars.has(variable.parent_account_id);
+    });
+  };
+
   const handleSortByAccountNum = async () => {
     if (!selectedConfig) return;
     
@@ -673,8 +702,10 @@ export default function ConfigurationForm({ onBack }: Props) {
                   )}
 
                    <div className="space-y-1 max-h-96 overflow-y-auto">
-                     {variables.map((variable, index) => {
+                     {getVisibleVariables().map((variable, index) => {
                        const level = variable.level || 0;
+                       const hasChildVars = hasChildren(variable.id_sim_cfg_var);
+                       const isExpanded = expandedVars.has(variable.id_sim_cfg_var);
                        
                        return (
                           <div
@@ -682,6 +713,25 @@ export default function ConfigurationForm({ onBack }: Props) {
                             className="flex items-center gap-2 p-2 border rounded-lg hover:bg-muted transition-colors"
                             style={{ marginLeft: `${level * 1.5}rem` }}
                           >
+                            {/* Botão de expansão/colapso (apenas se tiver filhos) */}
+                            {hasChildVars ? (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 p-0"
+                                onClick={() => toggleExpanded(variable.id_sim_cfg_var)}
+                                title={isExpanded ? "Colapsar" : "Expandir"}
+                              >
+                                {isExpanded ? (
+                                  <ChevronDown className="h-4 w-4" />
+                                ) : (
+                                  <ChevronRight className="h-4 w-4" />
+                                )}
+                              </Button>
+                            ) : (
+                              <div className="w-6" />
+                            )}
+
                             {level > 0 && (
                               <span className="text-muted-foreground text-sm">└─</span>
                             )}
@@ -714,7 +764,7 @@ export default function ConfigurationForm({ onBack }: Props) {
                              })}
                              title="Adicionar sub-conta"
                            >
-                             <ChevronRight className="h-4 w-4" />
+                             <Plus className="h-4 w-4" />
                            </Button>
                            <Button
                              variant="ghost"
