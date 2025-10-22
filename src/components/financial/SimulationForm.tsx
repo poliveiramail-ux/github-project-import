@@ -37,6 +37,7 @@ interface Variable {
   month: number;
   year: number;
   lob: string;
+  id_lang: string;
 }
 
 interface VariableValue {
@@ -196,7 +197,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
         calculation_type: (v.calculation_type || 'AUTO') as 'AUTO' | 'MANUAL' | 'FORMULA',
         month: v.month || 1,
         year: v.year || new Date().getFullYear(),
-        lob: v.id_lob
+        lob: v.id_lob,
+        id_lang: v.id_lang
       })) as Variable[];
       
       setVariables(vars);
@@ -224,7 +226,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
       // Build value map from the actual value column
       const valueMap = new Map<string, number>();
       data.forEach((v: any) => {
-        const key = `${v.account_num}-${v.year || new Date().getFullYear()}-${v.month || 1}-${v.id_lob}`;
+        const key = `${v.account_num}-${v.year || new Date().getFullYear()}-${v.month || 1}-${v.id_lang}-${v.id_lob}`;
         valueMap.set(key, v.value || 0);
       });
       setVariableValues(valueMap);
@@ -726,7 +728,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
 
   const getValue = (variable: Variable, year: number, month: number): number => {
     const calcType = variable.calculation_type || 'AUTO';
-    const key = `${variable.account_code}-${year}-${month}-${variable.lob}`;
+    const key = `${variable.account_code}-${year}-${month}-${variable.id_lang}-${variable.lob}`;
     
     if (calcType === 'MANUAL') {
       return variableValues.get(key) || 0;
@@ -749,13 +751,14 @@ export default function SimulationForm({ onMenuClick }: Props) {
       v.account_code === variable.account_code && 
       v.year === year && 
       v.month === month && 
-      v.lob === variable.lob
+      v.lob === variable.lob &&
+      v.id_lang === variable.id_lang
     );
     return (matchingVar as any)?.value_orig || 0;
   };
 
-  const updateValue = (accountCode: string, year: number, month: number, lob: string, value: string) => {
-    const key = `${accountCode}-${year}-${month}-${lob}`;
+  const updateValue = (accountCode: string, year: number, month: number, language: string, lob: string, value: string) => {
+    const key = `${accountCode}-${year}-${month}-${language}-${lob}`;
     setVariableValues(prev => {
       const newMap = new Map(prev);
       newMap.set(key, parseFloat(value) || 0);
@@ -1043,7 +1046,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
                                     type="number"
                                     step="0.01"
                                     value={value}
-                                    onChange={(e) => updateValue(variable.account_code, period.year, period.month, variable.lob, e.target.value)}
+                                    onChange={(e) => updateValue(variable.account_code, period.year, period.month, variable.id_lang, variable.lob, e.target.value)}
                                     className="w-full text-right"
                                   />
                                   <span className="text-xs text-muted-foreground">
