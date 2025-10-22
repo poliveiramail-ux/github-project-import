@@ -743,6 +743,17 @@ export default function SimulationForm({ onMenuClick }: Props) {
     return variableValues.get(key) || 0;
   };
 
+  const getOriginalValue = (variable: Variable, year: number, month: number): number => {
+    // Find the original record to get value_orig
+    const matchingVar = variables.find(v => 
+      v.account_code === variable.account_code && 
+      v.year === year && 
+      v.month === month && 
+      v.lob === variable.lob
+    );
+    return (matchingVar as any)?.value_orig || 0;
+  };
+
   const updateValue = (accountCode: string, year: number, month: number, value: string) => {
     if (!selectedLob) return;
     
@@ -1016,22 +1027,37 @@ export default function SimulationForm({ onMenuClick }: Props) {
                       
                       {periods.map((period) => {
                         const value = getValue(variable, period.year, period.month);
+                        const originalValue = getOriginalValue(variable, period.year, period.month);
                         
                         return (
                           <td key={`${period.year}-${period.month}`} className="px-4 py-2 text-right">
-                            {isEditable ? (
-                              <Input
-                                type="number"
-                                step="0.01"
-                                value={value}
-                                onChange={(e) => updateValue(variable.account_code, period.year, period.month, e.target.value)}
-                                className="w-full text-right"
-                              />
-                            ) : (
-                              <span className={hasChildren || calcType === 'FORMULA' ? 'font-semibold' : ''}>
-                                {value.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              </span>
-                            )}
+                            <div className="flex flex-col items-end gap-1">
+                              {isEditable ? (
+                                <>
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    value={value}
+                                    onChange={(e) => updateValue(variable.account_code, period.year, period.month, e.target.value)}
+                                    className="w-full text-right"
+                                  />
+                                  <span className="text-xs text-muted-foreground">
+                                    Original: {originalValue.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  </span>
+                                </>
+                              ) : (
+                                <>
+                                  <span className={hasChildren || calcType === 'FORMULA' ? 'font-semibold' : ''}>
+                                    {value.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  </span>
+                                  {originalValue !== value && (
+                                    <span className="text-xs text-muted-foreground">
+                                      Original: {originalValue.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </span>
+                                  )}
+                                </>
+                              )}
+                            </div>
                           </td>
                         );
                       })}
