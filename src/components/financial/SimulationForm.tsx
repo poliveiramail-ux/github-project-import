@@ -754,10 +754,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
     return (matchingVar as any)?.value_orig || 0;
   };
 
-  const updateValue = (accountCode: string, year: number, month: number, value: string) => {
-    if (!selectedLob) return;
-    
-    const key = `${accountCode}-${year}-${month}-${selectedLob}`;
+  const updateValue = (accountCode: string, year: number, month: number, lob: string, value: string) => {
+    const key = `${accountCode}-${year}-${month}-${lob}`;
     setVariableValues(prev => {
       const newMap = new Map(prev);
       newMap.set(key, parseFloat(value) || 0);
@@ -1045,7 +1043,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
                                     type="number"
                                     step="0.01"
                                     value={value}
-                                    onChange={(e) => updateValue(variable.account_code, period.year, period.month, e.target.value)}
+                                    onChange={(e) => updateValue(variable.account_code, period.year, period.month, variable.lob, e.target.value)}
                                     className="w-full text-right"
                                   />
                                   <span className="text-xs text-muted-foreground">
