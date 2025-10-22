@@ -125,8 +125,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
     setLobs((data || []).map((l: any) => ({ id_lob: l.id_lob, name: l.name })));
   };
 
-  const loadVersions = async (projectId: string, languageId: string) => {
-    if (!projectId || !languageId) {
+  const loadVersions = async (projectId: string) => {
+    if (!projectId) {
       setVersions([]);
       return;
     }
@@ -135,14 +135,12 @@ export default function SimulationForm({ onMenuClick }: Props) {
       .from('simulation_versions')
       .select('*')
       .eq('id_prj', projectId)
-      .eq('id_lang', languageId)
       .order('created_at', { ascending: false });
     
     const mappedData = (data || []).map((v: any) => ({
       id: v.id_sim_ver,
       name: v.name,
       id_prj: v.id_prj,
-      id_lang: v.id_lang,
       created_at: v.created_at
     }));
     setVersions(mappedData);
@@ -228,12 +226,15 @@ export default function SimulationForm({ onMenuClick }: Props) {
     setSelectedLanguage('');
     setVersions([]);
     setCurrentVersionId(null);
+    if (projectId) {
+      loadVersions(projectId);
+    }
   };
 
   const handleLanguageChange = (languageId: string) => {
     setSelectedLanguage(languageId);
-    if (selectedProject && languageId) {
-      loadVersions(selectedProject, languageId);
+    if (currentVersionId) {
+      loadVersion(currentVersionId);
     }
   };
 
@@ -421,7 +422,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
 
       setShowNewVersionModal(false);
       setNewVersionName('');
-      loadVersions(selectedProject, selectedLanguage);
+      loadVersions(selectedProject);
       toast({ title: 'Sucesso', description: 'Versão criada com sucesso' });
     } catch (error) {
       console.error('Error creating version:', error);
@@ -816,7 +817,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
 
             <div>
               <Label>Versão</Label>
-              <Select value={currentVersionId || ''} onValueChange={loadVersion} disabled={!selectedLanguage}>
+              <Select value={currentVersionId || ''} onValueChange={loadVersion} disabled={!selectedProject}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione uma versão" />
                 </SelectTrigger>
