@@ -997,7 +997,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
                                     (calcType === 'MANUAL' || calcType === 'AUTO');
                   
                   return (
-                    <tr key={variable.account_code} className="border-b hover:bg-muted/50 transition-colors">
+                    <tr key={variable.account_code} className={`border-b hover:bg-muted/50 transition-colors ${isEditable ? 'bg-green-50 dark:bg-green-950/20' : ''}`}>
                       <td className="px-4 py-1">
                         <div 
                           className="flex items-center gap-2"
