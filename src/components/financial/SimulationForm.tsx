@@ -977,13 +977,13 @@ export default function SimulationForm({ onMenuClick }: Props) {
             <table className="w-full border-collapse">
               <thead>
                 <tr className="bg-muted border-b">
-                  <th className="px-4 py-3 text-left font-semibold min-w-[300px]">Conta</th>
+                  <th className="px-4 py-2 text-left font-semibold min-w-[300px] text-sm">Conta</th>
                   {periods.map(period => (
-                    <th key={`${period.year}-${period.month}`} className="px-4 py-3 text-right font-semibold min-w-[100px]">
+                    <th key={`${period.year}-${period.month}`} className="px-4 py-2 text-right font-semibold min-w-[100px] text-sm">
                       {period.label}
                     </th>
                   ))}
-                  <th className="px-4 py-3 text-right font-semibold min-w-[100px]">Total</th>
+                  <th className="px-4 py-2 text-right font-semibold min-w-[100px] text-sm">Total</th>
                 </tr>
               </thead>
               <tbody>
@@ -998,7 +998,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
                   
                   return (
                     <tr key={variable.account_code} className="border-b hover:bg-muted/50 transition-colors">
-                      <td className="px-4 py-2">
+                      <td className="px-4 py-1">
                         <div 
                           className="flex items-center gap-2"
                           style={{ paddingLeft: `${level * 20}px` }}
@@ -1007,24 +1007,24 @@ export default function SimulationForm({ onMenuClick }: Props) {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-6 w-6"
+                              className="h-5 w-5"
                               onClick={() => toggleExpandedRow(variable.account_code)}
                             >
-                              {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                              {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
                             </Button>
                           ) : (
-                            <div className="w-6" />
+                            <div className="w-5" />
                           )}
                           
-                          <span className="font-mono text-sm text-muted-foreground">
+                          <span className="font-mono text-xs text-muted-foreground">
                             {variable.account_code}
                           </span>
-                          <span className={hasChildren ? 'font-semibold' : ''}>
+                          <span className={hasChildren ? 'font-semibold text-sm' : 'text-sm'}>
                             {variable.name}
                           </span>
                           
                           {calcType === 'FORMULA' && (
-                            <span className="text-xs bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 px-2 py-0.5 rounded" title={variable.formula || ''}>
+                            <span className="text-xs bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 px-1.5 py-0.5 rounded" title={variable.formula || ''}>
                               ƒ {variable.formula}
                             </span>
                           )}
@@ -1038,8 +1038,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
                         const compareSymbol = value === originalValue ? '=' : value < originalValue ? '<' : '>';
                         
                         return (
-                          <td key={`${period.year}-${period.month}`} className="px-4 py-2 text-right">
-                            <div className="flex flex-col items-end gap-1">
+                          <td key={`${period.year}-${period.month}`} className="px-4 py-1 text-right">
+                            <div className="flex flex-col items-end gap-0.5">
                               {isEditable ? (
                                 <>
                                   <Input
@@ -1047,19 +1047,19 @@ export default function SimulationForm({ onMenuClick }: Props) {
                                     step="0.01"
                                     value={value}
                                     onChange={(e) => updateValue(variable.account_code, period.year, period.month, variable.id_lang, variable.lob, e.target.value)}
-                                    className="w-full text-right"
+                                    className="w-full text-right h-7 text-sm"
                                   />
-                                  <span className="text-xs text-muted-foreground">
+                                  <span className="text-[10px] text-muted-foreground leading-none">
                                     {compareSymbol} {originalValue.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                   </span>
                                 </>
                               ) : (
                                 <>
-                                  <span className={hasChildren || calcType === 'FORMULA' ? 'font-semibold' : ''}>
+                                  <span className={hasChildren || calcType === 'FORMULA' ? 'font-semibold text-sm' : 'text-sm'}>
                                     {value.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                   </span>
                                   {originalValue !== value && (
-                                    <span className="text-xs text-muted-foreground">
+                                    <span className="text-[10px] text-muted-foreground leading-none">
                                       {compareSymbol} {originalValue.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </span>
                                   )}
@@ -1070,12 +1070,12 @@ export default function SimulationForm({ onMenuClick }: Props) {
                         );
                       })}
                       
-                      <td className="px-4 py-2 text-right">
-                        <div className="flex flex-col items-end gap-1">
-                          <span className="font-semibold">
+                      <td className="px-4 py-1 text-right">
+                        <div className="flex flex-col items-end gap-0.5">
+                          <span className="font-semibold text-sm">
                             {getTotal(variable).toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
-                          <span className="text-xs text-muted-foreground">
+                          <span className="text-[10px] text-muted-foreground leading-none">
                             {(() => {
                               const totalValue = getTotal(variable);
                               const totalOriginal = getOriginalTotal(variable);
