@@ -157,7 +157,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
     }
   };
 
-  const loadVersion = async (versionId: string) => {
+  const loadVersion = async (versionId: string, languageFilter?: string, lobFilter?: string) => {
     // Don't load any data if project or version is not selected
     if (!selectedProject || !versionId) {
       setVariables([]);
@@ -167,6 +167,10 @@ export default function SimulationForm({ onMenuClick }: Props) {
       return;
     }
 
+    // Use parameters or fall back to state
+    const langToUse = languageFilter !== undefined ? languageFilter : selectedLanguage;
+    const lobToUse = lobFilter !== undefined ? lobFilter : selectedLob;
+
     let query = (supabase as any)
       .from('simulation')
       .select('*')
@@ -174,25 +178,16 @@ export default function SimulationForm({ onMenuClick }: Props) {
       .eq('id_proj', selectedProject);
     
     // Apply language filter if selected
-    if (selectedLanguage) {
-      query = query.eq('id_lang', selectedLanguage);
+    if (langToUse) {
+      query = query.eq('id_lang', langToUse);
       
       // Apply LOB filter only if language is selected and LOB is selected
-      if (selectedLob) {
-        query = query.eq('id_lob', selectedLob);
+      if (lobToUse) {
+        query = query.eq('id_lob', lobToUse);
       }
     }
     
     const { data } = await query.order('account_num');
-    
-    console.log('🔍 loadVersion - Data received:', {
-      project: selectedProject,
-      version: versionId,
-      language: selectedLanguage || 'ALL',
-      lob: selectedLob || 'ALL',
-      dataCount: data?.length || 0,
-      sampleData: data?.[0]
-    });
     
     if (data) {
       const vars = data.map((v: any) => ({
@@ -203,8 +198,6 @@ export default function SimulationForm({ onMenuClick }: Props) {
         year: v.year || new Date().getFullYear(),
         lob: v.id_lob
       })) as Variable[];
-      
-      console.log('📊 Variables mapped:', vars.length, 'records');
       
       setVariables(vars);
       
@@ -225,8 +218,6 @@ export default function SimulationForm({ onMenuClick }: Props) {
         if (a.year !== b.year) return a.year - b.year;
         return a.month - b.month;
       });
-      
-      console.log('📅 Periods extracted:', sortedPeriods);
       
       setPeriods(sortedPeriods);
       
@@ -259,7 +250,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
     // Clear LOB selection when language changes
     setSelectedLob('');
     if (currentVersionId) {
-      loadVersion(currentVersionId);
+      loadVersion(currentVersionId, actualLanguage, '');
     }
   };
 
@@ -267,7 +258,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
     const actualLob = lobId === 'ALL' ? '' : lobId;
     setSelectedLob(actualLob);
     if (currentVersionId) {
-      loadVersion(currentVersionId);
+      loadVersion(currentVersionId, selectedLanguage, actualLob);
     }
   };
 
@@ -782,14 +773,10 @@ export default function SimulationForm({ onMenuClick }: Props) {
   };
 
   const getVisibleVariables = () => {
-    console.log('👁️ getVisibleVariables - Total variables:', variables.length, 'Selected LOB:', selectedLob || 'ALL');
-    
     // Filter variables by selected LOB first
     const lobFilteredVars = selectedLob 
       ? variables.filter(v => v.lob === selectedLob)
       : variables;
-    
-    console.log('🔽 After LOB filter:', lobFilteredVars.length);
     
     // Get unique variables by account_code
     const uniqueVarsMap = new Map<string, Variable>();
@@ -800,19 +787,14 @@ export default function SimulationForm({ onMenuClick }: Props) {
     });
     
     const uniqueVars = Array.from(uniqueVarsMap.values());
-    console.log('🔢 Unique variables by account_code:', uniqueVars.length);
     
-    const visible = uniqueVars.filter(variable => {
+    return uniqueVars.filter(variable => {
       const level = variable.account_code.split('.').length - 1;
       if (level === 0) return true;
       
       const parentCode = variable.account_code.substring(0, variable.account_code.lastIndexOf('.'));
       return expandedRows.has(parentCode);
     });
-    
-    console.log('✅ Visible variables:', visible.length, visible.map(v => v.account_code));
-    
-    return visible;
   };
 
   if (loading) {
