@@ -1042,7 +1042,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
                                     className="w-full text-right"
                                   />
                                   <span className="text-xs text-muted-foreground">
-                                    Original: {originalValue.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    {originalValue.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                   </span>
                                 </>
                               ) : (
@@ -1052,7 +1052,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
                                   </span>
                                   {originalValue !== value && (
                                     <span className="text-xs text-muted-foreground">
-                                      Original: {originalValue.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                      {originalValue.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </span>
                                   )}
                                 </>
