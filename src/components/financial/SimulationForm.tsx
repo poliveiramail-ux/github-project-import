@@ -494,18 +494,140 @@ export default function SimulationForm({ onMenuClick }: Props) {
     
     try {
       let processedFormula = formula;
-      const references = formula.match(/\[([^\]]+)\]/g);
       
+      // Helper function to get value for account reference
+      const getAccountValue = (accountCode: string, targetYear?: number, targetMonth?: number): number => {
+        const variable = variables.find(v => v.account_code === accountCode);
+        if (!variable) return 0;
+        return getValue(variable, targetYear ?? year, targetMonth ?? month);
+      };
+
+      // Process temporal functions
+      processedFormula = processedFormula.replace(/PREV_MONTH\(\[([^\]]+)\]\)/g, (_, accountCode) => {
+        const prevMonth = month === 1 ? 12 : month - 1;
+        const prevYear = month === 1 ? year - 1 : year;
+        return String(getAccountValue(accountCode, prevYear, prevMonth));
+      });
+
+      processedFormula = processedFormula.replace(/PREV_YEAR\(\[([^\]]+)\]\)/g, (_, accountCode) => {
+        return String(getAccountValue(accountCode, year - 1, month));
+      });
+
+      processedFormula = processedFormula.replace(/YTD\(\[([^\]]+)\]\)/g, (_, accountCode) => {
+        const variable = variables.find(v => v.account_code === accountCode);
+        if (!variable) return '0';
+        let sum = 0;
+        for (let m = 1; m <= month; m++) {
+          sum += getValue(variable, year, m);
+        }
+        return String(sum);
+      });
+
+      // Process mathematical functions with multiple arguments
+      processedFormula = processedFormula.replace(/SUM\(([^)]+)\)/g, (_, args) => {
+        const values = args.split(',').map((arg: string) => {
+          const trimmed = arg.trim();
+          if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+            return getAccountValue(trimmed.slice(1, -1));
+          }
+          return parseFloat(trimmed) || 0;
+        });
+        return String(values.reduce((a: number, b: number) => a + b, 0));
+      });
+
+      processedFormula = processedFormula.replace(/AVG\(([^)]+)\)/g, (_, args) => {
+        const values = args.split(',').map((arg: string) => {
+          const trimmed = arg.trim();
+          if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+            return getAccountValue(trimmed.slice(1, -1));
+          }
+          return parseFloat(trimmed) || 0;
+        });
+        return String(values.reduce((a: number, b: number) => a + b, 0) / values.length);
+      });
+
+      processedFormula = processedFormula.replace(/MAX\(([^)]+)\)/g, (_, args) => {
+        const values = args.split(',').map((arg: string) => {
+          const trimmed = arg.trim();
+          if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+            return getAccountValue(trimmed.slice(1, -1));
+          }
+          return parseFloat(trimmed) || 0;
+        });
+        return String(Math.max(...values));
+      });
+
+      processedFormula = processedFormula.replace(/MIN\(([^)]+)\)/g, (_, args) => {
+        const values = args.split(',').map((arg: string) => {
+          const trimmed = arg.trim();
+          if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+            return getAccountValue(trimmed.slice(1, -1));
+          }
+          return parseFloat(trimmed) || 0;
+        });
+        return String(Math.min(...values));
+      });
+
+      // Process single-argument math functions
+      processedFormula = processedFormula.replace(/ABS\(([^)]+)\)/g, (_, arg) => {
+        const value = arg.trim().startsWith('[') 
+          ? getAccountValue(arg.trim().slice(1, -1))
+          : parseFloat(arg);
+        return String(Math.abs(value));
+      });
+
+      processedFormula = processedFormula.replace(/SQRT\(([^)]+)\)/g, (_, arg) => {
+        const value = arg.trim().startsWith('[') 
+          ? getAccountValue(arg.trim().slice(1, -1))
+          : parseFloat(arg);
+        return String(Math.sqrt(value));
+      });
+
+      processedFormula = processedFormula.replace(/ROUND\(([^,]+),\s*(\d+)\)/g, (_, value, decimals) => {
+        const val = value.trim().startsWith('[') 
+          ? getAccountValue(value.trim().slice(1, -1))
+          : parseFloat(value);
+        const dec = parseInt(decimals);
+        return String(Math.round(val * Math.pow(10, dec)) / Math.pow(10, dec));
+      });
+
+      processedFormula = processedFormula.replace(/POW\(([^,]+),\s*([^)]+)\)/g, (_, base, exp) => {
+        const baseVal = base.trim().startsWith('[') 
+          ? getAccountValue(base.trim().slice(1, -1))
+          : parseFloat(base);
+        const expVal = exp.trim().startsWith('[') 
+          ? getAccountValue(exp.trim().slice(1, -1))
+          : parseFloat(exp);
+        return String(Math.pow(baseVal, expVal));
+      });
+
+      // Process IF function
+      processedFormula = processedFormula.replace(/IF\(([^,]+),\s*([^,]+),\s*([^)]+)\)/g, (_, condition, trueVal, falseVal) => {
+        // Replace account references in condition
+        let processedCondition = condition;
+        const condRefs = condition.match(/\[([^\]]+)\]/g);
+        if (condRefs) {
+          for (const ref of condRefs) {
+            const accountCode = ref.slice(1, -1);
+            processedCondition = processedCondition.replace(ref, String(getAccountValue(accountCode)));
+          }
+        }
+        
+        const isTrue = new Function('return ' + processedCondition)();
+        const resultVal = isTrue ? trueVal.trim() : falseVal.trim();
+        
+        if (resultVal.startsWith('[') && resultVal.endsWith(']')) {
+          return String(getAccountValue(resultVal.slice(1, -1)));
+        }
+        return resultVal;
+      });
+
+      // Process remaining account references
+      const references = processedFormula.match(/\[([^\]]+)\]/g);
       if (references) {
         for (const ref of references) {
           const accountCode = ref.slice(1, -1);
-          const variable = variables.find(v => v.account_code === accountCode);
-          if (variable) {
-            const value = getValue(variable, year, month);
-            processedFormula = processedFormula.replace(ref, String(value));
-          } else {
-            processedFormula = processedFormula.replace(ref, '0');
-          }
+          processedFormula = processedFormula.replace(ref, String(getAccountValue(accountCode)));
         }
       }
       
