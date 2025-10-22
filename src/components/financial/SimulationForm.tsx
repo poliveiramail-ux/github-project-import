@@ -185,6 +185,15 @@ export default function SimulationForm({ onMenuClick }: Props) {
     
     const { data } = await query.order('account_num');
     
+    console.log('🔍 loadVersion - Data received:', {
+      project: selectedProject,
+      version: versionId,
+      language: selectedLanguage || 'ALL',
+      lob: selectedLob || 'ALL',
+      dataCount: data?.length || 0,
+      sampleData: data?.[0]
+    });
+    
     if (data) {
       const vars = data.map((v: any) => ({
         ...v,
@@ -194,6 +203,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
         year: v.year || new Date().getFullYear(),
         lob: v.id_lob
       })) as Variable[];
+      
+      console.log('📊 Variables mapped:', vars.length, 'records');
       
       setVariables(vars);
       
@@ -214,6 +225,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
         if (a.year !== b.year) return a.year - b.year;
         return a.month - b.month;
       });
+      
+      console.log('📅 Periods extracted:', sortedPeriods);
       
       setPeriods(sortedPeriods);
       
@@ -769,10 +782,14 @@ export default function SimulationForm({ onMenuClick }: Props) {
   };
 
   const getVisibleVariables = () => {
+    console.log('👁️ getVisibleVariables - Total variables:', variables.length, 'Selected LOB:', selectedLob || 'ALL');
+    
     // Filter variables by selected LOB first
     const lobFilteredVars = selectedLob 
       ? variables.filter(v => v.lob === selectedLob)
       : variables;
+    
+    console.log('🔽 After LOB filter:', lobFilteredVars.length);
     
     // Get unique variables by account_code
     const uniqueVarsMap = new Map<string, Variable>();
@@ -783,14 +800,19 @@ export default function SimulationForm({ onMenuClick }: Props) {
     });
     
     const uniqueVars = Array.from(uniqueVarsMap.values());
+    console.log('🔢 Unique variables by account_code:', uniqueVars.length);
     
-    return uniqueVars.filter(variable => {
+    const visible = uniqueVars.filter(variable => {
       const level = variable.account_code.split('.').length - 1;
       if (level === 0) return true;
       
       const parentCode = variable.account_code.substring(0, variable.account_code.lastIndexOf('.'));
       return expandedRows.has(parentCode);
     });
+    
+    console.log('✅ Visible variables:', visible.length, visible.map(v => v.account_code));
+    
+    return visible;
   };
 
   if (loading) {
