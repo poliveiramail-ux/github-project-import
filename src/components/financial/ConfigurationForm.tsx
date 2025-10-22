@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, Edit3, Trash2, ArrowUpDown, ChevronRight, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Plus, Edit3, Trash2, ArrowUpDown, ChevronRight, ChevronDown, HelpCircle } from 'lucide-react';
+import FormulaHelp from './FormulaHelp';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -50,6 +51,7 @@ export default function ConfigurationForm({ onBack }: Props) {
   const [editingVar, setEditingVar] = useState<Partial<ConfigVariable> | null>(null);
   const [expandedVars, setExpandedVars] = useState(new Set<string>());
   const [justSaved, setJustSaved] = useState(false);
+  const [showFormulaHelp, setShowFormulaHelp] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -538,6 +540,14 @@ export default function ConfigurationForm({ onBack }: Props) {
                       <Button
                         size="sm"
                         variant="outline"
+                        onClick={() => setShowFormulaHelp(true)}
+                      >
+                        <HelpCircle className="h-4 w-4 mr-1" />
+                        Ajuda Fórmulas
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
                         onClick={handleSortByAccountNum}
                       >
                         <ArrowUpDown className="h-4 w-4 mr-1" />
@@ -803,6 +813,8 @@ export default function ConfigurationForm({ onBack }: Props) {
           </div>
         </div>
       </Card>
+      
+      <FormulaHelp open={showFormulaHelp} onOpenChange={setShowFormulaHelp} />
     </div>
   );
 }
