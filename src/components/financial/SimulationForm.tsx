@@ -815,6 +815,22 @@ export default function SimulationForm({ onMenuClick }: Props) {
             </div>
 
             <div>
+              <Label>Versão</Label>
+              <Select value={currentVersionId || ''} onValueChange={loadVersion} disabled={!selectedLanguage}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione uma versão" />
+                </SelectTrigger>
+                <SelectContent>
+                  {versions.map(v => (
+                    <SelectItem key={v.id} value={v.id}>
+                      {v.name} ({new Date(v.created_at).toLocaleDateString()})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
               <Label>Linguagem</Label>
               <Select value={selectedLanguage} onValueChange={handleLanguageChange} disabled={!selectedProject}>
                 <SelectTrigger>
@@ -845,22 +861,6 @@ export default function SimulationForm({ onMenuClick }: Props) {
                   {lobs.map(l => (
                     <SelectItem key={l.id_lob} value={l.id_lob}>
                       {l.name || l.id_lob}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label>Versão</Label>
-              <Select value={currentVersionId || ''} onValueChange={loadVersion} disabled={!selectedLanguage}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma versão" />
-                </SelectTrigger>
-                <SelectContent>
-                  {versions.map(v => (
-                    <SelectItem key={v.id} value={v.id}>
-                      {v.name} ({new Date(v.created_at).toLocaleDateString()})
                     </SelectItem>
                   ))}
                 </SelectContent>
