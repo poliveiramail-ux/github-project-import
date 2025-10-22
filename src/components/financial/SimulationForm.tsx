@@ -1028,6 +1028,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
                       {periods.map((period) => {
                         const value = getValue(variable, period.year, period.month);
                         const originalValue = getOriginalValue(variable, period.year, period.month);
+                        const compareSymbol = value === originalValue ? '=' : value < originalValue ? '<' : '>';
                         
                         return (
                           <td key={`${period.year}-${period.month}`} className="px-4 py-2 text-right">
@@ -1042,7 +1043,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
                                     className="w-full text-right"
                                   />
                                   <span className="text-xs text-muted-foreground">
-                                    {originalValue.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    {compareSymbol} {originalValue.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                   </span>
                                 </>
                               ) : (
@@ -1052,7 +1053,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
                                   </span>
                                   {originalValue !== value && (
                                     <span className="text-xs text-muted-foreground">
-                                      {originalValue.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                      {compareSymbol} {originalValue.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </span>
                                   )}
                                 </>
