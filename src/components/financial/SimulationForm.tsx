@@ -158,22 +158,29 @@ export default function SimulationForm({ onMenuClick }: Props) {
   };
 
   const loadVersion = async (versionId: string) => {
+    // Don't load any data if project or version is not selected
+    if (!selectedProject || !versionId) {
+      setVariables([]);
+      setVariableValues(new Map());
+      setPeriods([]);
+      setCurrentVersionId(null);
+      return;
+    }
+
     let query = (supabase as any)
       .from('simulation')
       .select('*')
-      .eq('version_id', versionId);
+      .eq('version_id', versionId)
+      .eq('id_proj', selectedProject);
     
-    // Apply progressive filters based on selections
-    if (selectedProject) {
-      query = query.eq('id_proj', selectedProject);
-    }
-    
+    // Apply language filter if selected
     if (selectedLanguage) {
       query = query.eq('id_lang', selectedLanguage);
-    }
-    
-    if (selectedLob) {
-      query = query.eq('id_lob', selectedLob);
+      
+      // Apply LOB filter only if language is selected and LOB is selected
+      if (selectedLob) {
+        query = query.eq('id_lob', selectedLob);
+      }
     }
     
     const { data } = await query.order('account_num');
@@ -235,6 +242,15 @@ export default function SimulationForm({ onMenuClick }: Props) {
 
   const handleLanguageChange = (languageId: string) => {
     setSelectedLanguage(languageId);
+    // Clear LOB selection when language changes
+    setSelectedLob('');
+    if (currentVersionId) {
+      loadVersion(currentVersionId);
+    }
+  };
+
+  const handleLobChange = (lobId: string) => {
+    setSelectedLob(lobId);
     if (currentVersionId) {
       loadVersion(currentVersionId);
     }
@@ -895,11 +911,12 @@ export default function SimulationForm({ onMenuClick }: Props) {
 
             <div>
               <Label>Linguagem</Label>
-              <Select value={selectedLanguage} onValueChange={handleLanguageChange} disabled={!selectedProject}>
+              <Select value={selectedLanguage} onValueChange={handleLanguageChange} disabled={!currentVersionId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione uma linguagem" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="">Todos</SelectItem>
                   {languages.map(l => (
                     <SelectItem key={l.id_lang} value={l.id_lang}>
                       {l.id_lang}{l.desc_lang ? ` - ${l.desc_lang}` : ''}
@@ -911,16 +928,12 @@ export default function SimulationForm({ onMenuClick }: Props) {
 
             <div>
               <Label>LOB</Label>
-              <Select value={selectedLob} onValueChange={(value) => {
-                setSelectedLob(value);
-                if (currentVersionId) {
-                  loadVersion(currentVersionId);
-                }
-              }} disabled={!selectedLanguage}>
+              <Select value={selectedLob} onValueChange={handleLobChange} disabled={!selectedLanguage}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Todos os LOBs" />
+                  <SelectValue placeholder="Selecione um LOB" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="">Todos</SelectItem>
                   {lobs.map(l => (
                     <SelectItem key={l.id_lob} value={l.id_lob}>
                       {l.name || l.id_lob}
