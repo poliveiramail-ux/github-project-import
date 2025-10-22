@@ -76,6 +76,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
   const [newVersionName, setNewVersionName] = useState('');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [periods, setPeriods] = useState<MonthYear[]>([]);
+  const [showVersionChoice, setShowVersionChoice] = useState(false);
+  const [versionCreationType, setVersionCreationType] = useState<'last' | 'template'>('template');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -249,25 +251,50 @@ export default function SimulationForm({ onMenuClick }: Props) {
     setPeriods([]);
   };
 
-  const handleCreateVersion = async () => {
-    if (!newVersionName.trim()) {
-      toast({ title: 'Atenção', description: 'Digite um nome para a versão' });
+  const handleNewVersionClick = async () => {
+    if (!selectedProject) {
+      toast({ title: 'Atenção', description: 'Selecione um projeto' });
       return;
     }
 
-    if (!selectedProject || !selectedLanguage) {
-      toast({ title: 'Atenção', description: 'Selecione projeto e linguagem' });
-      return;
-    }
+    // Check if there are existing versions for this project
+    const { data: existingVersions } = await (supabase as any)
+      .from('simulation_versions')
+      .select('id_sim_ver')
+      .eq('id_prj', selectedProject)
+      .limit(1);
 
+    if (existingVersions && existingVersions.length > 0) {
+      // Show choice dialog
+      setShowVersionChoice(true);
+    } else {
+      // No versions exist, go directly to create from template
+      setShowNewVersionModal(true);
+    }
+  };
+
+  const createVersionFromLastVersion = async (versionName: string) => {
     try {
-      // Create new version first
+      // Get the last version
+      const { data: lastVersionData } = await (supabase as any)
+        .from('simulation_versions')
+        .select('id_sim_ver')
+        .eq('id_prj', selectedProject)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (!lastVersionData || lastVersionData.length === 0) {
+        throw new Error('Nenhuma versão anterior encontrada');
+      }
+
+      const lastVersionId = lastVersionData[0].id_sim_ver;
+
+      // Create new version
       const { data: newVersion, error: versionError } = await (supabase as any)
         .from('simulation_versions')
         .insert([{
-          name: newVersionName,
-          id_prj: selectedProject,
-          id_lang: selectedLanguage
+          name: versionName,
+          id_prj: selectedProject
         }])
         .select();
 
@@ -277,138 +304,148 @@ export default function SimulationForm({ onMenuClick }: Props) {
 
       const versionId = newVersion[0].id_sim_ver;
 
-      // Check if there are existing simulations for this project and language
-      const { data: existingSimulations } = await (supabase as any)
+      // Get all records from the last simulation
+      const { data: lastSimData } = await (supabase as any)
         .from('simulation')
         .select('*')
-        .eq('id_proj', selectedProject)
-        .eq('id_lang', selectedLanguage)
+        .eq('version_id', lastVersionId)
+        .order('account_num');
+
+      if (!lastSimData || lastSimData.length === 0) {
+        throw new Error('Nenhum dado encontrado na última versão');
+      }
+
+      // Copy all data
+      const variablesToInsert = lastSimData.map((record: any) => ({
+        version_id: versionId,
+        row_index: record.row_index,
+        account_num: record.account_num,
+        name: record.name,
+        calculation_type: record.calculation_type || 'AUTO',
+        formula: record.formula || null,
+        value: record.value || 0,
+        value_orig: record.value_orig || 0,
+        month: record.month,
+        year: record.year,
+        id_lob: record.id_lob,
+        id_proj: selectedProject,
+        id_lang: record.id_lang,
+        value_type: record.value_type || 'number',
+        level: record.level
+      }));
+
+      const { error: varsError } = await (supabase as any)
+        .from('simulation')
+        .insert(variablesToInsert);
+
+      if (varsError) {
+        console.error('Error inserting variables:', varsError);
+        throw varsError;
+      }
+
+      loadVersions(selectedProject);
+      toast({ title: 'Sucesso', description: 'Versão criada com sucesso a partir da última versão' });
+    } catch (error) {
+      console.error('Error creating version from last:', error);
+      toast({ title: 'Erro', description: 'Erro ao criar versão', variant: 'destructive' });
+      throw error;
+    }
+  };
+
+  const createVersionFromTemplate = async (versionName: string) => {
+    try {
+      // Get the simulation config for this project
+      const { data: configData } = await (supabase as any)
+        .from('simulation_configs')
+        .select('id_sim_cfg')
+        .eq('id_prj', selectedProject)
+        .eq('is_active', true)
         .limit(1);
 
-      const hasExistingSimulations = existingSimulations && existingSimulations.length > 0;
+      if (!configData || configData.length === 0) {
+        throw new Error('Nenhuma configuração ativa encontrada para este projeto');
+      }
 
-      let variablesToInsert = [];
+      const configId = configData[0].id_sim_cfg;
 
-      if (hasExistingSimulations) {
-        // Copy from the last simulation
-        const { data: lastVersionData } = await (supabase as any)
-          .from('simulation_versions')
-          .select('id_sim_ver')
-          .eq('id_prj', selectedProject)
-          .eq('id_lang', selectedLanguage)
-          .order('created_at', { ascending: false })
-          .limit(1);
+      // Get config variables
+      const { data: configVars } = await (supabase as any)
+        .from('simulation_configs_variables')
+        .select('*')
+        .eq('id_sim_cfg', configId)
+        .order('row_index');
 
-        if (lastVersionData && lastVersionData.length > 0) {
-          const lastVersionId = lastVersionData[0].id_sim_ver;
+      if (!configVars || configVars.length === 0) {
+        throw new Error('Nenhuma variável encontrada no template');
+      }
 
-          // Get all records from the last simulation
-          const { data: lastSimData } = await (supabase as any)
-            .from('simulation')
-            .select('*')
-            .eq('version_id', lastVersionId)
-            .order('account_num');
+      // Create new version
+      const { data: newVersion, error: versionError } = await (supabase as any)
+        .from('simulation_versions')
+        .insert([{
+          name: versionName,
+          id_prj: selectedProject
+        }])
+        .select();
 
-          if (lastSimData && lastSimData.length > 0) {
-            variablesToInsert = lastSimData.map((record: any) => ({
-              version_id: versionId,
-              row_index: record.row_index,
-              account_num: record.account_num,
-              name: record.name,
-              calculation_type: record.calculation_type || 'AUTO',
-              formula: record.formula || null,
-              value: record.value || 0,
-              value_orig: record.value_orig || 0,
-              month: record.month,
-              year: record.year,
-              id_lob: record.id_lob,
-              id_proj: selectedProject,
-              id_lang: selectedLanguage,
-              value_type: record.value_type || 'number'
-            }));
-          }
-        }
-      } else {
-        // No existing simulations - copy from simulation_configs_variables
-        const { data: configVars } = await (supabase as any)
-          .from('simulation_configs_variables')
-          .select('*')
-          .eq('id_proj', selectedProject)
-          .eq('id_lang', selectedLanguage)
-          .order('account_num');
+      if (versionError || !newVersion?.[0]) {
+        throw new Error('Erro ao criar versão');
+      }
 
-        if (!configVars || configVars.length === 0) {
-          toast({ 
-            title: 'Aviso', 
-            description: 'Nenhuma configuração encontrada para este projeto e linguagem.' 
-          });
-          // Delete the created version since we have no data
-          await (supabase as any)
-            .from('simulation_versions')
-            .delete()
-            .eq('id_sim_ver', versionId);
-          return;
-        }
+      const versionId = newVersion[0].id_sim_ver;
 
-        // Get all LOBs for this project and language
-        const { data: allLobs } = await (supabase as any)
+      // Get all languages for this project
+      const { data: languages } = await (supabase as any)
+        .from('lang')
+        .select('id_lang')
+        .eq('id_prj', selectedProject);
+
+      if (!languages || languages.length === 0) {
+        throw new Error('Nenhuma linguagem encontrada para este projeto');
+      }
+
+      // Get all LOBs for each language
+      const variablesToInsert: any[] = [];
+      const monthsToCreate = [1, 2, 3]; // Jan, Feb, Mar
+      const yearToUse = new Date().getFullYear();
+
+      for (const lang of languages) {
+        const { data: lobs } = await (supabase as any)
           .from('lob')
           .select('id_lob')
-          .eq('id_lang', selectedLanguage);
+          .eq('id_lang', lang.id_lang);
 
-        if (!allLobs || allLobs.length === 0) {
-          toast({ 
-            title: 'Aviso', 
-            description: 'Nenhum LOB encontrado para este projeto.' 
-          });
-          await (supabase as any)
-            .from('simulation_versions')
-            .delete()
-            .eq('id_sim_ver', versionId);
-          return;
-        }
-
-        // Create records for Jan, Feb, Mar
-        const monthsToCreate = [1, 2, 3]; // Jan, Feb, Mar
-        const yearToUse = new Date().getFullYear();
-
-        let rowCounter = 1;
-        
-        // Create for all LOBs
-        configVars.forEach((configVar: any) => {
-          allLobs.forEach((lob: any) => {
-            monthsToCreate.forEach((month) => {
-              variablesToInsert.push({
-                version_id: versionId,
-                row_index: rowCounter++,
-                account_num: configVar.account_num,
-                name: configVar.name,
-                calculation_type: configVar.calculation_type || 'AUTO',
-                formula: configVar.formula || null,
-                value: 0,
-                value_orig: 0,
-                month: month,
-                year: yearToUse,
-                id_lob: lob.id_lob,
-                id_proj: selectedProject,
-                id_lang: selectedLanguage,
-                value_type: configVar.value_type || 'number'
+        if (lobs && lobs.length > 0) {
+          let rowCounter = 1;
+          
+          configVars.forEach((configVar: any) => {
+            lobs.forEach((lob: any) => {
+              monthsToCreate.forEach((month) => {
+                variablesToInsert.push({
+                  version_id: versionId,
+                  row_index: rowCounter++,
+                  account_num: configVar.account_num,
+                  name: configVar.name,
+                  calculation_type: configVar.calculation_type || 'AUTO',
+                  formula: configVar.formula || null,
+                  value: 0,
+                  value_orig: 0,
+                  month: month,
+                  year: yearToUse,
+                  id_lob: lob.id_lob,
+                  id_proj: selectedProject,
+                  id_lang: lang.id_lang,
+                  value_type: configVar.value_type || 'number',
+                  level: configVar.level
+                });
               });
             });
           });
-        });
+        }
       }
 
       if (variablesToInsert.length === 0) {
-        toast({ 
-          title: 'Aviso', 
-          description: 'Não há dados para copiar.' 
-        });
-        await (supabase as any)
-          .from('simulation_versions')
-          .delete()
-          .eq('id_sim_ver', versionId);
-        return;
+        throw new Error('Não há dados para criar');
       }
 
       const { error: varsError } = await (supabase as any)
@@ -420,13 +457,38 @@ export default function SimulationForm({ onMenuClick }: Props) {
         throw varsError;
       }
 
-      setShowNewVersionModal(false);
-      setNewVersionName('');
       loadVersions(selectedProject);
-      toast({ title: 'Sucesso', description: 'Versão criada com sucesso' });
+      toast({ title: 'Sucesso', description: 'Versão criada com sucesso a partir do template' });
     } catch (error) {
-      console.error('Error creating version:', error);
+      console.error('Error creating version from template:', error);
       toast({ title: 'Erro', description: 'Erro ao criar versão', variant: 'destructive' });
+      throw error;
+    }
+  };
+
+  const handleCreateVersion = async () => {
+    if (!newVersionName.trim()) {
+      toast({ title: 'Atenção', description: 'Digite um nome para a versão' });
+      return;
+    }
+
+    if (!selectedProject) {
+      toast({ title: 'Atenção', description: 'Selecione um projeto' });
+      return;
+    }
+
+    try {
+      if (versionCreationType === 'last') {
+        await createVersionFromLastVersion(newVersionName);
+      } else {
+        await createVersionFromTemplate(newVersionName);
+      }
+
+      setShowNewVersionModal(false);
+      setShowVersionChoice(false);
+      setNewVersionName('');
+    } catch (error) {
+      // Error already handled in the called functions
     }
   };
 
@@ -759,8 +821,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
               </Button>
               <Button
                 variant="secondary"
-                onClick={() => setShowNewVersionModal(true)}
-                disabled={!selectedProject || !selectedLanguage}
+                onClick={handleNewVersionClick}
+                disabled={!selectedProject}
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Nova Versão
@@ -971,8 +1033,59 @@ export default function SimulationForm({ onMenuClick }: Props) {
         )}
       </div>
 
+      {/* Dialog: Choice between last version or template */}
+      <Dialog open={showVersionChoice} onOpenChange={setShowVersionChoice}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Criar Nova Versão</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-muted-foreground">
+              Como deseja criar a nova versão?
+            </p>
+            <div className="grid gap-4">
+              <Button
+                variant="outline"
+                className="h-auto p-4 justify-start"
+                onClick={() => {
+                  setVersionCreationType('last');
+                  setShowVersionChoice(false);
+                  setShowNewVersionModal(true);
+                }}
+              >
+                <div className="text-left">
+                  <div className="font-semibold">Usar última versão</div>
+                  <div className="text-sm text-muted-foreground">
+                    Copia todos os campos e dados da última versão existente
+                  </div>
+                </div>
+              </Button>
+              <Button
+                variant="outline"
+                className="h-auto p-4 justify-start"
+                onClick={() => {
+                  setVersionCreationType('template');
+                  setShowVersionChoice(false);
+                  setShowNewVersionModal(true);
+                }}
+              >
+                <div className="text-left">
+                  <div className="font-semibold">Criar do template</div>
+                  <div className="text-sm text-muted-foreground">
+                    Usa o template configurado para o projeto
+                  </div>
+                </div>
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Modal Nova Versão */}
-      <Dialog open={showNewVersionModal} onOpenChange={setShowNewVersionModal}>
+      <Dialog open={showNewVersionModal} onOpenChange={(open) => {
+        setShowNewVersionModal(open);
+        if (!open) setNewVersionName('');
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Nova Versão</DialogTitle>
