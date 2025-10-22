@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Menu, Plus, Save, CheckCircle, XCircle, Lock, ChevronDown, ChevronRight, Loader2, X } from 'lucide-react';
+import { Menu, Plus, Save, CheckCircle, XCircle, Lock, ChevronDown, ChevronRight, Loader2, X, HelpCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import FormulaHelp from './FormulaHelp';
 
 interface Project {
   id_prj: string;
@@ -76,6 +77,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
   const [newVersionName, setNewVersionName] = useState('');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [periods, setPeriods] = useState<MonthYear[]>([]);
+  const [showFormulaHelp, setShowFormulaHelp] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -765,6 +767,13 @@ export default function SimulationForm({ onMenuClick }: Props) {
                 Nova Versão
               </Button>
               <Button
+                variant="outline"
+                onClick={() => setShowFormulaHelp(true)}
+              >
+                <HelpCircle className="h-4 w-4 mr-2" />
+                Ajuda Fórmulas
+              </Button>
+              <Button
                 onClick={handleSave}
                 disabled={!currentVersionId || saveStatus === 'saving'}
                 variant={saveStatus === 'success' ? 'default' : saveStatus === 'error' ? 'destructive' : 'default'}
@@ -998,6 +1007,9 @@ export default function SimulationForm({ onMenuClick }: Props) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Modal Ajuda Fórmulas */}
+      <FormulaHelp open={showFormulaHelp} onOpenChange={setShowFormulaHelp} />
     </div>
   );
 }
