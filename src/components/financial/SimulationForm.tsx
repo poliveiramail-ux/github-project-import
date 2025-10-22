@@ -997,7 +997,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
                                     (calcType === 'MANUAL' || calcType === 'AUTO');
                   
                   return (
-                    <tr key={variable.account_code} className={`border-b hover:bg-muted/50 transition-colors ${isEditable ? 'bg-green-50 dark:bg-green-950/20' : ''}`}>
+                    <tr key={variable.account_code} className="border-b hover:bg-muted/50 transition-colors">
                       <td className="px-4 py-1">
                         <div 
                           className="flex items-center gap-2"
@@ -1047,7 +1047,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
                                     step="0.0001"
                                     value={value}
                                     onChange={(e) => updateValue(variable.account_code, period.year, period.month, variable.id_lang, variable.lob, e.target.value)}
-                                    className="w-full text-right h-7 text-sm"
+                                    className="w-full text-right h-7 text-sm bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900/30 focus:ring-green-500"
                                   />
                                   <span className="text-[10px] text-muted-foreground leading-none">
                                     {compareSymbol} {originalValue.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
