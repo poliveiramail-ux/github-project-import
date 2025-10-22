@@ -49,6 +49,7 @@ export default function ConfigurationForm({ onBack }: Props) {
   const [variables, setVariables] = useState<ConfigVariable[]>([]);
   const [editingVar, setEditingVar] = useState<Partial<ConfigVariable> | null>(null);
   const [expandedVars, setExpandedVars] = useState(new Set<string>());
+  const [justSaved, setJustSaved] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -339,7 +340,10 @@ export default function ConfigurationForm({ onBack }: Props) {
     }
       setEditingVar(null);
     loadVariables(selectedConfig.id_sim_cfg);
-    toast({ title: 'Sucesso', description: 'Variável guardada' });
+    
+    // Mostrar feedback visual no botão
+    setJustSaved(true);
+    setTimeout(() => setJustSaved(false), 3000);
   };
 
   const handleDeleteVariable = async (id: string) => {
@@ -695,7 +699,13 @@ export default function ConfigurationForm({ onBack }: Props) {
                         </div>
                       )}
                       <div className="flex gap-2">
-                        <Button size="sm" onClick={handleSaveVariable}>Guardar</Button>
+                        <Button 
+                          size="sm" 
+                          onClick={handleSaveVariable}
+                          className={justSaved ? 'bg-green-600 hover:bg-green-700' : ''}
+                        >
+                          Guardar
+                        </Button>
                         <Button size="sm" variant="outline" onClick={() => setEditingVar(null)}>Cancelar</Button>
                       </div>
                     </Card>
