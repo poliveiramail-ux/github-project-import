@@ -241,7 +241,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
   };
 
   const handleLanguageChange = (languageId: string) => {
-    setSelectedLanguage(languageId);
+    const actualLanguage = languageId === 'ALL' ? '' : languageId;
+    setSelectedLanguage(actualLanguage);
     // Clear LOB selection when language changes
     setSelectedLob('');
     if (currentVersionId) {
@@ -250,7 +251,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
   };
 
   const handleLobChange = (lobId: string) => {
-    setSelectedLob(lobId);
+    const actualLob = lobId === 'ALL' ? '' : lobId;
+    setSelectedLob(actualLob);
     if (currentVersionId) {
       loadVersion(currentVersionId);
     }
@@ -911,12 +913,12 @@ export default function SimulationForm({ onMenuClick }: Props) {
 
             <div>
               <Label>Linguagem</Label>
-              <Select value={selectedLanguage} onValueChange={handleLanguageChange} disabled={!currentVersionId}>
+              <Select value={selectedLanguage || 'ALL'} onValueChange={handleLanguageChange} disabled={!currentVersionId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione uma linguagem" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos</SelectItem>
+                  <SelectItem value="ALL">Todos</SelectItem>
                   {languages.map(l => (
                     <SelectItem key={l.id_lang} value={l.id_lang}>
                       {l.id_lang}{l.desc_lang ? ` - ${l.desc_lang}` : ''}
@@ -928,12 +930,12 @@ export default function SimulationForm({ onMenuClick }: Props) {
 
             <div>
               <Label>LOB</Label>
-              <Select value={selectedLob} onValueChange={handleLobChange} disabled={!selectedLanguage}>
+              <Select value={selectedLob || 'ALL'} onValueChange={handleLobChange} disabled={!selectedLanguage}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione um LOB" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos</SelectItem>
+                  <SelectItem value="ALL">Todos</SelectItem>
                   {lobs.map(l => (
                     <SelectItem key={l.id_lob} value={l.id_lob}>
                       {l.name || l.id_lob}
