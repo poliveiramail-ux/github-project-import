@@ -771,6 +771,12 @@ export default function SimulationForm({ onMenuClick }: Props) {
     );
   };
 
+  const getOriginalTotal = (variable: Variable) => {
+    return periods.reduce((sum, period) => 
+      sum + getOriginalValue(variable, period.year, period.month), 0
+    );
+  };
+
   const toggleExpandedRow = (accountCode: string) => {
     setExpandedRows(prev => {
       const newSet = new Set(prev);
@@ -1063,8 +1069,20 @@ export default function SimulationForm({ onMenuClick }: Props) {
                         );
                       })}
                       
-                      <td className="px-4 py-2 text-right font-semibold">
-                        {getTotal(variable).toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      <td className="px-4 py-2 text-right">
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="font-semibold">
+                            {getTotal(variable).toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {(() => {
+                              const totalValue = getTotal(variable);
+                              const totalOriginal = getOriginalTotal(variable);
+                              const compareSymbol = totalValue === totalOriginal ? '=' : totalValue < totalOriginal ? '<' : '>';
+                              return `${compareSymbol} ${totalOriginal.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                            })()}
+                          </span>
+                        </div>
                       </td>
                     </tr>
                   );
