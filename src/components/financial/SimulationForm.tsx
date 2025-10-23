@@ -432,6 +432,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
       const variablesToInsert: any[] = [];
       const monthsToCreate = [1, 2, 3]; // Jan, Feb, Mar
       const yearToUse = new Date().getFullYear();
+      let rowCounter = 1;
 
       for (const lang of languages) {
         const { data: lobs } = await (supabase as any)
@@ -440,7 +441,6 @@ export default function SimulationForm({ onMenuClick }: Props) {
           .eq('id_lang', lang.id_lang);
 
         if (lobs && lobs.length > 0) {
-          let rowCounter = 1;
           
           configVars.forEach((configVar: any) => {
             lobs.forEach((lob: any) => {
