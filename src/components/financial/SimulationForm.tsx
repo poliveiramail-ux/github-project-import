@@ -176,6 +176,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
     const langToUse = languageFilter !== undefined ? languageFilter : selectedLanguage;
     const lobToUse = lobFilter !== undefined ? lobFilter : selectedLob;
 
+    console.log('Loading version with filters:', { versionId, langToUse, lobToUse, selectedProject });
+
     // Load blocked variables from config
     const { data: configVars } = await (supabase as any)
       .from('simulation_configs_variables')
@@ -200,6 +202,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
       .eq('id_proj', selectedProject)
       .order('account_num');
     
+    console.log('All data loaded from DB:', allData?.length, 'records');
+    
     // Filter data based on selections while keeping hierarchy
     let data = allData;
     if (langToUse || lobToUse) {
@@ -210,6 +214,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
         return langMatch && lobMatch;
       }) || [];
       
+      console.log('After initial filter:', filteredVars.length, 'records');
+      
       // Get all parent_account_ids from filtered variables
       const parentIds = new Set<string>();
       filteredVars.forEach((v: any) => {
@@ -218,10 +224,13 @@ export default function SimulationForm({ onMenuClick }: Props) {
         }
       });
       
+      console.log('Parent IDs to fetch:', parentIds.size);
+      
       // Recursively add all ancestors
       const addAncestors = (parentId: string) => {
         const parent = allData?.find((v: any) => v.id_sim === parentId);
         if (parent && !filteredVars.some((v: any) => v.id_sim === parent.id_sim)) {
+          console.log('Adding ancestor:', parent.account_num, parent.name);
           filteredVars.push(parent);
           if (parent.parent_account_id) {
             addAncestors(parent.parent_account_id);
@@ -230,6 +239,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
       };
       
       parentIds.forEach(parentId => addAncestors(parentId));
+      
+      console.log('After adding ancestors:', filteredVars.length, 'records');
       
       data = filteredVars;
     }
@@ -246,6 +257,16 @@ export default function SimulationForm({ onMenuClick }: Props) {
         level: v.level || 0,
         parent_account_id: v.parent_account_id || null
       })) as Variable[];
+      
+      console.log('Final variables to set:', vars.length, 'records');
+      console.log('Sample variables:', vars.slice(0, 5).map(v => ({ 
+        code: v.account_code, 
+        name: v.name, 
+        level: v.level, 
+        parent: v.parent_account_id,
+        lob: v.lob,
+        lang: v.id_lang
+      })));
       
       setVariables(vars);
       
@@ -878,6 +899,9 @@ export default function SimulationForm({ onMenuClick }: Props) {
   };
 
   const getVisibleVariables = () => {
+    console.log('getVisibleVariables called, total variables:', variables.length);
+    console.log('selectedLob:', selectedLob);
+    
     // Get unique variables by account_code first
     const uniqueVarsMap = new Map<string, Variable>();
     variables.forEach(v => {
@@ -887,12 +911,15 @@ export default function SimulationForm({ onMenuClick }: Props) {
     });
     
     let uniqueVars = Array.from(uniqueVarsMap.values());
+    console.log('Unique variables:', uniqueVars.length);
     
     // Filter by LOB if selected, but keep parent hierarchy
     if (selectedLob) {
       const lobFilteredVars = uniqueVars.filter(v => 
         v.lob === selectedLob || v.lob === null || !v.lob
       );
+      
+      console.log('After LOB filter:', lobFilteredVars.length);
       
       // Get all parent_account_ids from filtered variables
       const parentIds = new Set<string>();
@@ -902,10 +929,13 @@ export default function SimulationForm({ onMenuClick }: Props) {
         }
       });
       
+      console.log('Parent IDs found:', parentIds.size);
+      
       // Recursively add all ancestors
       const addAncestors = (parentId: string) => {
         const parent = uniqueVars.find(v => v.id_sim === parentId);
         if (parent && !lobFilteredVars.some(v => v.id_sim === parent.id_sim)) {
+          console.log('Adding ancestor in getVisibleVariables:', parent.account_code, parent.name);
           lobFilteredVars.push(parent);
           if (parent.parent_account_id) {
             addAncestors(parent.parent_account_id);
@@ -914,10 +944,16 @@ export default function SimulationForm({ onMenuClick }: Props) {
       };
       
       parentIds.forEach(parentId => addAncestors(parentId));
+      
+      console.log('After adding ancestors in getVisibleVariables:', lobFilteredVars.length);
       uniqueVars = lobFilteredVars;
     }
     
-    return uniqueVars.filter(variable => isVariableVisible(variable, uniqueVars));
+    const visibleVars = uniqueVars.filter(variable => isVariableVisible(variable, uniqueVars));
+    console.log('Final visible variables:', visibleVars.length);
+    console.log('Expanded rows:', expandedRows.size);
+    
+    return visibleVars;
   };
 
   if (loading) {
