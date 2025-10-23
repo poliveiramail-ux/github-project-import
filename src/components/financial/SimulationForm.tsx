@@ -445,6 +445,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
           configVars.forEach((configVar: any) => {
             lobs.forEach((lob: any) => {
               monthsToCreate.forEach((month) => {
+                const valueType = configVar.value_type === 'percentage' ? 'percentage' : 'number';
                 variablesToInsert.push({
                   version_id: versionId,
                   row_index: rowCounter++,
@@ -459,7 +460,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
                   id_lob: lob.id_lob,
                   id_proj: selectedProject,
                   id_lang: lang.id_lang,
-                  value_type: configVar.value_type || 'number',
+                  value_type: valueType,
                   level: configVar.level
                 });
               });
