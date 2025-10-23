@@ -174,23 +174,47 @@ export default function SimulationForm({ onMenuClick }: Props) {
     const langToUse = languageFilter !== undefined ? languageFilter : selectedLanguage;
     const lobToUse = lobFilter !== undefined ? lobFilter : selectedLob;
 
-    let query = (supabase as any)
+    // Always load all data first
+    const { data: allData } = await (supabase as any)
       .from('simulation')
       .select('*')
       .eq('version_id', versionId)
-      .eq('id_proj', selectedProject);
+      .eq('id_proj', selectedProject)
+      .order('account_num');
     
-    // Apply language filter if selected
-    if (langToUse) {
-      query = query.eq('id_lang', langToUse);
+    // Filter data based on selections while keeping hierarchy
+    let data = allData;
+    if (langToUse || lobToUse) {
+      const filteredVars = allData?.filter((v: any) => {
+        // Keep all variables that match the filters
+        const langMatch = !langToUse || v.id_lang === langToUse || v.id_lang === null;
+        const lobMatch = !lobToUse || v.id_lob === lobToUse || v.id_lob === null;
+        return langMatch && lobMatch;
+      }) || [];
       
-      // Apply LOB filter only if language is selected and LOB is selected
-      if (lobToUse) {
-        query = query.eq('id_lob', lobToUse);
-      }
+      // Get all parent_account_ids from filtered variables
+      const parentIds = new Set<string>();
+      filteredVars.forEach((v: any) => {
+        if (v.parent_account_id) {
+          parentIds.add(v.parent_account_id);
+        }
+      });
+      
+      // Recursively add all ancestors
+      const addAncestors = (parentId: string) => {
+        const parent = allData?.find((v: any) => v.id_sim === parentId);
+        if (parent && !filteredVars.some((v: any) => v.id_sim === parent.id_sim)) {
+          filteredVars.push(parent);
+          if (parent.parent_account_id) {
+            addAncestors(parent.parent_account_id);
+          }
+        }
+      };
+      
+      parentIds.forEach(parentId => addAncestors(parentId));
+      
+      data = filteredVars;
     }
-    
-    const { data } = await query.order('account_num');
     
     if (data) {
       const vars = data.map((v: any) => ({
