@@ -423,56 +423,34 @@ export default function SimulationForm({ onMenuClick }: Props) {
 
       const versionId = newVersion[0].id_sim_ver;
 
-      // Get all languages for this project
-      const { data: languages } = await (supabase as any)
-        .from('lang')
-        .select('id_lang')
-        .eq('id_prj', selectedProject);
-
-      if (!languages || languages.length === 0) {
-        throw new Error('Nenhuma linguagem encontrada para este projeto');
-      }
-
-      // First pass: Insert all variables without parent_account_id to get their IDs
+      // Create 3 months for each config variable (no duplication by LOB or language)
       const variablesToInsert: any[] = [];
       const monthsToCreate = [1, 2, 3]; // Jan, Feb, Mar
       const yearToUse = new Date().getFullYear();
-      let rowCounter = 1;
 
-      for (const lang of languages) {
-        const { data: lobs } = await (supabase as any)
-          .from('lob')
-          .select('id_lob')
-          .eq('id_lang', lang.id_lang);
-
-        if (lobs && lobs.length > 0) {
-          configVars.forEach((configVar: any) => {
-            lobs.forEach((lob: any) => {
-              monthsToCreate.forEach((month) => {
-                const valueType = configVar.value_type === 'percentage' ? 'percentage' : 'number';
-                variablesToInsert.push({
-                  version_id: versionId,
-                  row_index: rowCounter++,
-                  account_num: configVar.account_num,
-                  name: configVar.name,
-                  calculation_type: configVar.calculation_type || 'AUTO',
-                  formula: configVar.formula || null,
-                  value: 0,
-                  value_orig: 0,
-                  month: month,
-                  year: yearToUse,
-                  id_lob: lob.id_lob,
-                  id_proj: selectedProject,
-                  id_lang: lang.id_lang,
-                  value_type: valueType,
-                  level: configVar.level,
-                  parent_account_id: null
-                });
-              });
-            });
+      configVars.forEach((configVar: any, index: number) => {
+        monthsToCreate.forEach((month) => {
+          const valueType = configVar.value_type === 'percentage' ? 'percentage' : 'number';
+          variablesToInsert.push({
+            version_id: versionId,
+            row_index: (index * 3) + month,
+            account_num: configVar.account_num,
+            name: configVar.name,
+            calculation_type: configVar.calculation_type || 'AUTO',
+            formula: configVar.formula || null,
+            value: 0,
+            value_orig: 0,
+            month: month,
+            year: yearToUse,
+            id_lob: configVar.id_lob,
+            id_proj: selectedProject,
+            id_lang: configVar.id_lang,
+            value_type: valueType,
+            level: configVar.level,
+            parent_account_id: null
           });
-        }
-      }
+        });
+      });
 
       if (variablesToInsert.length === 0) {
         throw new Error('Não há dados para criar');
