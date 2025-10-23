@@ -900,9 +900,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
 
   const getVisibleVariables = () => {
     console.log('getVisibleVariables called, total variables:', variables.length);
-    console.log('selectedLob:', selectedLob);
     
-    // Get unique variables by account_code first
+    // Get unique variables by account_code
     const uniqueVarsMap = new Map<string, Variable>();
     variables.forEach(v => {
       if (!uniqueVarsMap.has(v.account_code)) {
@@ -910,45 +909,11 @@ export default function SimulationForm({ onMenuClick }: Props) {
       }
     });
     
-    let uniqueVars = Array.from(uniqueVarsMap.values());
+    const uniqueVars = Array.from(uniqueVarsMap.values());
     console.log('Unique variables:', uniqueVars.length);
     
-    // Filter by LOB if selected, but keep parent hierarchy
-    if (selectedLob) {
-      const lobFilteredVars = uniqueVars.filter(v => 
-        v.lob === selectedLob || v.lob === null || !v.lob
-      );
-      
-      console.log('After LOB filter:', lobFilteredVars.length);
-      
-      // Get all parent_account_ids from filtered variables
-      const parentIds = new Set<string>();
-      lobFilteredVars.forEach(v => {
-        if (v.parent_account_id) {
-          parentIds.add(v.parent_account_id);
-        }
-      });
-      
-      console.log('Parent IDs found:', parentIds.size);
-      
-      // Recursively add all ancestors
-      const addAncestors = (parentId: string) => {
-        const parent = uniqueVars.find(v => v.id_sim === parentId);
-        if (parent && !lobFilteredVars.some(v => v.id_sim === parent.id_sim)) {
-          console.log('Adding ancestor in getVisibleVariables:', parent.account_code, parent.name);
-          lobFilteredVars.push(parent);
-          if (parent.parent_account_id) {
-            addAncestors(parent.parent_account_id);
-          }
-        }
-      };
-      
-      parentIds.forEach(parentId => addAncestors(parentId));
-      
-      console.log('After adding ancestors in getVisibleVariables:', lobFilteredVars.length);
-      uniqueVars = lobFilteredVars;
-    }
-    
+    // Filter only by visibility (expansion state), not by LOB 
+    // LOB filtering is already done in loadVersion
     const visibleVars = uniqueVars.filter(variable => isVariableVisible(variable, uniqueVars));
     console.log('Final visible variables:', visibleVars.length);
     console.log('Expanded rows:', expandedRows.size);
