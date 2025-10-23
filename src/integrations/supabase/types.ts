@@ -129,7 +129,7 @@ export type Database = {
           calculation_type: string | null
           created_at: string | null
           formula: string | null
-          id_lang: string
+          id_lang: string | null
           id_lob: string | null
           id_proj: string
           id_sim: string
@@ -137,6 +137,7 @@ export type Database = {
           level: string | null
           month: number | null
           name: string
+          parent_account_id: string | null
           row_index: number
           value: number | null
           value_orig: number | null
@@ -149,7 +150,7 @@ export type Database = {
           calculation_type?: string | null
           created_at?: string | null
           formula?: string | null
-          id_lang: string
+          id_lang?: string | null
           id_lob?: string | null
           id_proj: string
           id_sim?: string
@@ -157,6 +158,7 @@ export type Database = {
           level?: string | null
           month?: number | null
           name: string
+          parent_account_id?: string | null
           row_index: number
           value?: number | null
           value_orig?: number | null
@@ -169,7 +171,7 @@ export type Database = {
           calculation_type?: string | null
           created_at?: string | null
           formula?: string | null
-          id_lang?: string
+          id_lang?: string | null
           id_lob?: string | null
           id_proj?: string
           id_sim?: string
@@ -177,6 +179,7 @@ export type Database = {
           level?: string | null
           month?: number | null
           name?: string
+          parent_account_id?: string | null
           row_index?: number
           value?: number | null
           value_orig?: number | null
@@ -370,7 +373,6 @@ export type Database = {
         Row: {
           created_at: string | null
           data: Json | null
-          id_lang: string | null
           id_prj: string | null
           id_sim_ver: string
           is_base: boolean | null
@@ -383,7 +385,6 @@ export type Database = {
         Insert: {
           created_at?: string | null
           data?: Json | null
-          id_lang?: string | null
           id_prj?: string | null
           id_sim_ver?: string
           is_base?: boolean | null
@@ -396,7 +397,6 @@ export type Database = {
         Update: {
           created_at?: string | null
           data?: Json | null
-          id_lang?: string | null
           id_prj?: string | null
           id_sim_ver?: string
           is_base?: boolean | null
@@ -406,7 +406,15 @@ export type Database = {
           updated_at?: string | null
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "simulation_versions_id_prj_fkey"
+            columns: ["id_prj"]
+            isOneToOne: false
+            referencedRelation: "project"
+            referencedColumns: ["id_prj"]
+          },
+        ]
       }
     }
     Views: {
