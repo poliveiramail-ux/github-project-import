@@ -878,20 +878,44 @@ export default function SimulationForm({ onMenuClick }: Props) {
   };
 
   const getVisibleVariables = () => {
-    // Filter variables by selected LOB first
-    const lobFilteredVars = selectedLob 
-      ? variables.filter(v => v.lob === selectedLob)
-      : variables;
-    
-    // Get unique variables by account_code
+    // Get unique variables by account_code first
     const uniqueVarsMap = new Map<string, Variable>();
-    lobFilteredVars.forEach(v => {
+    variables.forEach(v => {
       if (!uniqueVarsMap.has(v.account_code)) {
         uniqueVarsMap.set(v.account_code, v);
       }
     });
     
-    const uniqueVars = Array.from(uniqueVarsMap.values());
+    let uniqueVars = Array.from(uniqueVarsMap.values());
+    
+    // Filter by LOB if selected, but keep parent hierarchy
+    if (selectedLob) {
+      const lobFilteredVars = uniqueVars.filter(v => 
+        v.lob === selectedLob || v.lob === null || !v.lob
+      );
+      
+      // Get all parent_account_ids from filtered variables
+      const parentIds = new Set<string>();
+      lobFilteredVars.forEach(v => {
+        if (v.parent_account_id) {
+          parentIds.add(v.parent_account_id);
+        }
+      });
+      
+      // Recursively add all ancestors
+      const addAncestors = (parentId: string) => {
+        const parent = uniqueVars.find(v => v.id_sim === parentId);
+        if (parent && !lobFilteredVars.some(v => v.id_sim === parent.id_sim)) {
+          lobFilteredVars.push(parent);
+          if (parent.parent_account_id) {
+            addAncestors(parent.parent_account_id);
+          }
+        }
+      };
+      
+      parentIds.forEach(parentId => addAncestors(parentId));
+      uniqueVars = lobFilteredVars;
+    }
     
     return uniqueVars.filter(variable => isVariableVisible(variable, uniqueVars));
   };
