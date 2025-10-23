@@ -1110,12 +1110,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
                               ƒ {variable.formula}
                             </span>
                           )}
-                          {isBlocked && (
-                            <span className="text-xs bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 px-1.5 py-0.5 rounded flex items-center gap-1">
-                              <Lock className="h-3 w-3" />
-                              Bloqueada
-                            </span>
-                          )}
+                          {isBlocked && <Lock className="h-3 w-3 text-muted-foreground" />}
                           {!isEditable && calcType !== 'FORMULA' && !isBlocked && <Lock className="h-3 w-3 text-muted-foreground" />}
                         </div>
                       </td>
