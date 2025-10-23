@@ -819,6 +819,22 @@ export default function SimulationForm({ onMenuClick }: Props) {
     });
   };
 
+  const isVariableVisible = (variable: Variable, allVars: Variable[]): boolean => {
+    // Contas raiz (sem pai) são sempre visíveis
+    if (!variable.parent_account_id) return true;
+    
+    // Verificar se o pai direto está expandido
+    if (!expandedRows.has(variable.parent_account_id)) return false;
+    
+    // Verificar recursivamente se todos os ancestors estão expandidos
+    const parent = allVars.find(v => v.id_sim === variable.parent_account_id);
+    if (parent) {
+      return isVariableVisible(parent, allVars);
+    }
+    
+    return true;
+  };
+
   const getVisibleVariables = () => {
     // Filter variables by selected LOB first
     const lobFilteredVars = selectedLob 
@@ -835,13 +851,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
     
     const uniqueVars = Array.from(uniqueVarsMap.values());
     
-    return uniqueVars.filter(variable => {
-      // Contas raiz (sem pai) são sempre visíveis
-      if (!variable.parent_account_id) return true;
-      
-      // Contas filhas são visíveis apenas se o pai está expandido
-      return expandedRows.has(variable.parent_account_id);
-    });
+    return uniqueVars.filter(variable => isVariableVisible(variable, uniqueVars));
   };
 
   if (loading) {
