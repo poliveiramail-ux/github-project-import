@@ -642,7 +642,16 @@ export default function SimulationForm({ onMenuClick }: Props) {
   };
 
   const hasChildren = (varId: string) => {
-    return variables.some(v => v.parent_account_id === varId);
+    // Find this variable's account_code
+    const thisVar = variables.find(v => v.id_sim === varId);
+    if (!thisVar) return false;
+    
+    // Check if any variable has this account_code as parent
+    return variables.some(v => {
+      if (!v.parent_account_id) return false;
+      const parent = variables.find(p => p.id_sim === v.parent_account_id);
+      return parent?.account_code === thisVar.account_code;
+    });
   };
 
   const isLeafAccount = (accountCode: string, allVars: Variable[]) => {
@@ -882,24 +891,39 @@ export default function SimulationForm({ onMenuClick }: Props) {
     });
   };
 
-  const isVariableVisible = (variable: Variable, allVars: Variable[]): boolean => {
+  const isVariableVisible = (variable: Variable, allVars: Variable[], parentMap: Map<string, string>): boolean => {
     // Contas raiz (sem pai) são sempre visíveis
     if (!variable.parent_account_id) return true;
     
-    // Verificar se o pai direto está expandido
-    if (!expandedRows.has(variable.parent_account_id)) return false;
+    // Find parent by mapping parent_account_id to account_code
+    const parentAccountCode = parentMap.get(variable.parent_account_id);
+    if (!parentAccountCode) return true; // Se não encontrar pai, assume que é raiz
+    
+    // Find parent variable by account_code
+    const parent = allVars.find(v => v.account_code === parentAccountCode);
+    if (!parent) return true;
+    
+    // Verificar se o pai está expandido
+    if (!expandedRows.has(parent.id_sim)) return false;
     
     // Verificar recursivamente se todos os ancestors estão expandidos
-    const parent = allVars.find(v => v.id_sim === variable.parent_account_id);
-    if (parent) {
-      return isVariableVisible(parent, allVars);
-    }
-    
-    return true;
+    return isVariableVisible(parent, allVars, parentMap);
   };
 
   const getVisibleVariables = () => {
     console.log('getVisibleVariables called, total variables:', variables.length);
+    
+    // Create a map of parent_account_id -> account_code for all variables
+    const parentMap = new Map<string, string>();
+    variables.forEach(v => {
+      if (v.parent_account_id) {
+        // Find the parent variable by id_sim and get its account_code
+        const parent = variables.find(p => p.id_sim === v.parent_account_id);
+        if (parent) {
+          parentMap.set(v.parent_account_id, parent.account_code);
+        }
+      }
+    });
     
     // Get unique variables by account_code
     const uniqueVarsMap = new Map<string, Variable>();
@@ -911,10 +935,11 @@ export default function SimulationForm({ onMenuClick }: Props) {
     
     const uniqueVars = Array.from(uniqueVarsMap.values());
     console.log('Unique variables:', uniqueVars.length);
+    console.log('Parent mappings:', parentMap.size);
     
     // Filter only by visibility (expansion state), not by LOB 
     // LOB filtering is already done in loadVersion
-    const visibleVars = uniqueVars.filter(variable => isVariableVisible(variable, uniqueVars));
+    const visibleVars = uniqueVars.filter(variable => isVariableVisible(variable, uniqueVars, parentMap));
     console.log('Final visible variables:', visibleVars.length);
     console.log('Expanded rows:', expandedRows.size);
     
