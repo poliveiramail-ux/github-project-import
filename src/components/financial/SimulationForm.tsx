@@ -81,6 +81,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
   const [periods, setPeriods] = useState<MonthYear[]>([]);
   const [showVersionChoice, setShowVersionChoice] = useState(false);
   const [versionCreationType, setVersionCreationType] = useState<'last' | 'template'>('template');
+  const [blockedVariables, setBlockedVariables] = useState<Set<string>>(new Set());
   const { toast } = useToast();
 
   useEffect(() => {
@@ -167,12 +168,29 @@ export default function SimulationForm({ onMenuClick }: Props) {
       setVariableValues(new Map());
       setPeriods([]);
       setCurrentVersionId(null);
+      setBlockedVariables(new Set());
       return;
     }
 
     // Use parameters or fall back to state
     const langToUse = languageFilter !== undefined ? languageFilter : selectedLanguage;
     const lobToUse = lobFilter !== undefined ? lobFilter : selectedLob;
+
+    // Load blocked variables from config
+    const { data: configVars } = await (supabase as any)
+      .from('simulation_configs_variables')
+      .select('account_num, blocked')
+      .eq('id_proj', selectedProject);
+    
+    const blockedSet = new Set<string>();
+    if (configVars) {
+      configVars.forEach((cv: any) => {
+        if (cv.blocked) {
+          blockedSet.add(cv.account_num);
+        }
+      });
+    }
+    setBlockedVariables(blockedSet);
 
     // Always load all data first
     const { data: allData } = await (supabase as any)
@@ -1054,9 +1072,11 @@ export default function SimulationForm({ onMenuClick }: Props) {
                   const isParent = hasChildren(variable.id_sim);
                   const isExpanded = expandedRows.has(variable.id_sim);
                   const calcType = variable.calculation_type || 'AUTO';
+                  const isBlocked = blockedVariables.has(variable.account_code);
                   const isEditable = isLeafAccount(variable.account_code, variables) && 
                                     calcType !== 'FORMULA' &&
-                                    (calcType === 'MANUAL' || calcType === 'AUTO');
+                                    (calcType === 'MANUAL' || calcType === 'AUTO') &&
+                                    !isBlocked;
                   
                   return (
                     <tr key={variable.id_sim} className="border-b hover:bg-muted/50 transition-colors">
@@ -1090,7 +1110,13 @@ export default function SimulationForm({ onMenuClick }: Props) {
                               ƒ {variable.formula}
                             </span>
                           )}
-                          {!isEditable && calcType !== 'FORMULA' && <Lock className="h-3 w-3 text-muted-foreground" />}
+                          {isBlocked && (
+                            <span className="text-xs bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 px-1.5 py-0.5 rounded flex items-center gap-1">
+                              <Lock className="h-3 w-3" />
+                              Bloqueada
+                            </span>
+                          )}
+                          {!isEditable && calcType !== 'FORMULA' && !isBlocked && <Lock className="h-3 w-3 text-muted-foreground" />}
                         </div>
                       </td>
                       
