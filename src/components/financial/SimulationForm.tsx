@@ -38,6 +38,7 @@ interface Variable {
   year: number;
   lob: string;
   id_lang: string;
+  level: number;
 }
 
 interface VariableValue {
@@ -198,7 +199,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
         month: v.month || 1,
         year: v.year || new Date().getFullYear(),
         lob: v.id_lob,
-        id_lang: v.id_lang
+        id_lang: v.id_lang,
+        level: v.level || 0
       })) as Variable[];
       
       setVariables(vars);
@@ -808,8 +810,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
     const uniqueVars = Array.from(uniqueVarsMap.values());
     
     return uniqueVars.filter(variable => {
-      const level = variable.account_code.split('.').length - 1;
-      if (level === 0) return true;
+      if (variable.level === 0) return true;
       
       const parentCode = variable.account_code.substring(0, variable.account_code.lastIndexOf('.'));
       return expandedRows.has(parentCode);
@@ -989,7 +990,6 @@ export default function SimulationForm({ onMenuClick }: Props) {
               </thead>
               <tbody>
                 {getVisibleVariables().map(variable => {
-                  const level = variable.account_code.split('.').length - 1;
                   const hasChildren = !isLeafAccount(variable.account_code, variables);
                   const isExpanded = expandedRows.has(variable.account_code);
                   const calcType = variable.calculation_type || 'AUTO';
@@ -1002,7 +1002,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
                       <td className="px-4 py-1">
                         <div 
                           className="flex items-center gap-2"
-                          style={{ paddingLeft: `${level * 20}px` }}
+                          style={{ paddingLeft: `${variable.level * 20}px` }}
                         >
                           {hasChildren ? (
                             <Button
