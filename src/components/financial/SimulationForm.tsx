@@ -39,6 +39,7 @@ interface Variable {
   lob: string;
   id_lang: string;
   level: number;
+  parent_account_id?: string | null;
 }
 
 interface VariableValue {
@@ -200,7 +201,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
         year: v.year || new Date().getFullYear(),
         lob: v.id_lob,
         id_lang: v.id_lang,
-        level: v.level || 0
+        level: v.level || 0,
+        parent_account_id: v.parent_account_id || null
       })) as Variable[];
       
       setVariables(vars);
@@ -357,7 +359,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
         id_proj: selectedProject,
         id_lang: record.id_lang,
         value_type: record.value_type || 'number',
-        level: record.level
+        level: record.level,
+        parent_account_id: record.parent_account_id
       }));
 
       const { error: varsError } = await (supabase as any)
@@ -430,7 +433,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
         throw new Error('Nenhuma linguagem encontrada para este projeto');
       }
 
-      // Get all LOBs for each language
+      // First pass: Insert all variables without parent_account_id to get their IDs
       const variablesToInsert: any[] = [];
       const monthsToCreate = [1, 2, 3]; // Jan, Feb, Mar
       const yearToUse = new Date().getFullYear();
@@ -443,7 +446,6 @@ export default function SimulationForm({ onMenuClick }: Props) {
           .eq('id_lang', lang.id_lang);
 
         if (lobs && lobs.length > 0) {
-          
           configVars.forEach((configVar: any) => {
             lobs.forEach((lob: any) => {
               monthsToCreate.forEach((month) => {
@@ -463,7 +465,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
                   id_proj: selectedProject,
                   id_lang: lang.id_lang,
                   value_type: valueType,
-                  level: configVar.level
+                  level: configVar.level,
+                  parent_account_id: null
                 });
               });
             });
@@ -475,13 +478,58 @@ export default function SimulationForm({ onMenuClick }: Props) {
         throw new Error('Não há dados para criar');
       }
 
-      const { error: varsError } = await (supabase as any)
+      // Insert all variables
+      const { data: insertedVars, error: varsError } = await (supabase as any)
         .from('simulation')
-        .insert(variablesToInsert);
+        .insert(variablesToInsert)
+        .select('id_sim, account_num, month, year, id_lob, id_lang');
 
       if (varsError) {
         console.error('Error inserting variables:', varsError);
         throw varsError;
+      }
+
+      // Second pass: Update parent_account_id relationships
+      const updates: Promise<any>[] = [];
+      
+      // Create mapping from account_num to config var
+      const accountToConfigVar = new Map<string, any>();
+      configVars.forEach((cv: any) => {
+        accountToConfigVar.set(cv.account_num, cv);
+      });
+
+      for (const insertedVar of insertedVars || []) {
+        const configVar = accountToConfigVar.get(insertedVar.account_num);
+        
+        if (configVar && configVar.parent_account_id) {
+          // Find the parent config var
+          const parentConfigVar = configVars.find((cv: any) => cv.id_sim_cfg_var === configVar.parent_account_id);
+          
+          if (parentConfigVar) {
+            // Find the corresponding parent simulation var (same account_num, month, year, lob, lang)
+            const parentSimVar = insertedVars.find((sv: any) => 
+              sv.account_num === parentConfigVar.account_num &&
+              sv.month === insertedVar.month &&
+              sv.year === insertedVar.year &&
+              sv.id_lob === insertedVar.id_lob &&
+              sv.id_lang === insertedVar.id_lang
+            );
+
+            if (parentSimVar) {
+              updates.push(
+                (supabase as any)
+                  .from('simulation')
+                  .update({ parent_account_id: parentSimVar.id_sim })
+                  .eq('id_sim', insertedVar.id_sim)
+              );
+            }
+          }
+        }
+      }
+
+      // Execute all updates in parallel
+      if (updates.length > 0) {
+        await Promise.all(updates);
       }
 
       loadVersions(selectedProject);
@@ -552,20 +600,20 @@ export default function SimulationForm({ onMenuClick }: Props) {
     }
   };
 
+  const hasChildren = (varId: string) => {
+    return variables.some(v => v.parent_account_id === varId);
+  };
+
   const isLeafAccount = (accountCode: string, allVars: Variable[]) => {
-    const lobVars = selectedLob ? allVars.filter(v => v.lob === selectedLob) : allVars;
-    return !lobVars.some(v => 
-      v.account_code.startsWith(accountCode + '.') && 
-      v.account_code.split('.').length === accountCode.split('.').length + 1
-    );
+    const variable = allVars.find(v => v.account_code === accountCode);
+    if (!variable) return true;
+    return !hasChildren(variable.id_sim);
   };
 
   const getChildAccounts = (accountCode: string, allVars: Variable[]) => {
-    const lobVars = selectedLob ? allVars.filter(v => v.lob === selectedLob) : allVars;
-    return lobVars.filter(v => 
-      v.account_code.startsWith(accountCode + '.') && 
-      v.account_code.split('.').length === accountCode.split('.').length + 1
-    );
+    const variable = allVars.find(v => v.account_code === accountCode);
+    if (!variable) return [];
+    return allVars.filter(v => v.parent_account_id === variable.id_sim);
   };
 
   const calculateParentValue = (accountCode: string, year: number, month: number): number => {
@@ -781,13 +829,13 @@ export default function SimulationForm({ onMenuClick }: Props) {
     );
   };
 
-  const toggleExpandedRow = (accountCode: string) => {
+  const toggleExpandedRow = (varId: string) => {
     setExpandedRows(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(accountCode)) {
-        newSet.delete(accountCode);
+      if (newSet.has(varId)) {
+        newSet.delete(varId);
       } else {
-        newSet.add(accountCode);
+        newSet.add(varId);
       }
       return newSet;
     });
@@ -810,10 +858,11 @@ export default function SimulationForm({ onMenuClick }: Props) {
     const uniqueVars = Array.from(uniqueVarsMap.values());
     
     return uniqueVars.filter(variable => {
-      if (variable.level === 0) return true;
+      // Contas raiz (sem pai) são sempre visíveis
+      if (!variable.parent_account_id) return true;
       
-      const parentCode = variable.account_code.substring(0, variable.account_code.lastIndexOf('.'));
-      return expandedRows.has(parentCode);
+      // Contas filhas são visíveis apenas se o pai está expandido
+      return expandedRows.has(variable.parent_account_id);
     });
   };
 
@@ -990,26 +1039,26 @@ export default function SimulationForm({ onMenuClick }: Props) {
               </thead>
               <tbody>
                 {getVisibleVariables().map(variable => {
-                  const hasChildren = !isLeafAccount(variable.account_code, variables);
-                  const isExpanded = expandedRows.has(variable.account_code);
+                  const isParent = hasChildren(variable.id_sim);
+                  const isExpanded = expandedRows.has(variable.id_sim);
                   const calcType = variable.calculation_type || 'AUTO';
                   const isEditable = isLeafAccount(variable.account_code, variables) && 
                                     calcType !== 'FORMULA' &&
                                     (calcType === 'MANUAL' || calcType === 'AUTO');
                   
                   return (
-                    <tr key={variable.account_code} className="border-b hover:bg-muted/50 transition-colors">
+                    <tr key={variable.id_sim} className="border-b hover:bg-muted/50 transition-colors">
                       <td className="px-4 py-1">
                         <div 
                           className="flex items-center gap-2"
                           style={{ paddingLeft: `${variable.level * 20}px` }}
                         >
-                          {hasChildren ? (
+                          {isParent ? (
                             <Button
                               variant="ghost"
                               size="icon"
                               className="h-5 w-5"
-                              onClick={() => toggleExpandedRow(variable.account_code)}
+                              onClick={() => toggleExpandedRow(variable.id_sim)}
                             >
                               {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
                             </Button>
@@ -1020,7 +1069,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
                           <span className="font-mono text-xs text-muted-foreground">
                             {variable.account_code}
                           </span>
-                          <span className={hasChildren ? 'font-semibold text-sm' : 'text-sm'}>
+                          <span className={isParent ? 'font-semibold text-sm' : 'text-sm'}>
                             {variable.name}
                           </span>
                           
