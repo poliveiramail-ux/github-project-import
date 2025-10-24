@@ -928,7 +928,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
       return variableValues.get(key) || 0;
     }
     
-    // Always read from the database value field (already calculated values are stored there)
+    // For FORMULA type variables, always recalculate based on current dependencies
+    // This ensures formulas update when their referenced variables change
     const matchingVar = variables.find(v => 
       v.account_code === variable.account_code && 
       v.year === year && 
@@ -936,6 +937,12 @@ export default function SimulationForm({ onMenuClick }: Props) {
       v.lob === variable.lob &&
       v.id_lang === variable.id_lang
     );
+    
+    if (matchingVar?.calculation_type === 'FORMULA' && matchingVar.formula) {
+      return evaluateFormula(matchingVar.formula, year, month, matchingVar.account_code);
+    }
+    
+    // For non-formula variables, read from database value
     return matchingVar?.value || 0;
   };
 
