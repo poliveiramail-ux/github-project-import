@@ -660,22 +660,45 @@ export default function SimulationForm({ onMenuClick }: Props) {
     setSaveStatus('saving');
 
     try {
-      // Update each record with the value from variableValues
-      for (const variable of variables) {
-        if (isLeafAccount(variable.account_code, variables)) {
-          const key = `${variable.account_code}-${variable.year}-${variable.month}-${variable.lob}`;
-          const value = variableValues.get(key) || 0;
-          
-          await (supabase as any)
-            .from('simulation')
-            .update({ value: value })
-            .eq('id_sim', variable.id_sim);
+      // Update each edited value from variableValues Map
+      const updates: Promise<any>[] = [];
+      
+      variableValues.forEach((value, key) => {
+        // Parse the key: accountCode-year-month-language-lob
+        const [accountCode, year, month, language, lob] = key.split('-');
+        
+        // Find the matching variable
+        const variable = variables.find(v => 
+          v.account_code === accountCode && 
+          v.year === parseInt(year) && 
+          v.month === parseInt(month) && 
+          v.id_lang === language &&
+          v.lob === lob
+        );
+        
+        if (variable) {
+          updates.push(
+            (supabase as any)
+              .from('simulation')
+              .update({ value: value })
+              .eq('id_sim', variable.id_sim)
+          );
         }
+      });
+      
+      if (updates.length > 0) {
+        await Promise.all(updates);
       }
+      
+      // Reload the version to update the UI with saved values
+      await loadVersion(currentVersionId, selectedLanguage, selectedLob);
+      
+      // Clear the edited values map since they're now saved
+      setVariableValues(new Map());
       
       setSaveStatus('success');
       setTimeout(() => setSaveStatus('idle'), 3000);
-      toast({ title: 'Sucesso', description: 'Dados guardados' });
+      toast({ title: 'Sucesso', description: `${updates.length} valores guardados` });
     } catch (error) {
       console.error('Error saving:', error);
       setSaveStatus('error');
