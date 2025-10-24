@@ -257,12 +257,12 @@ export default function SimulationForm({ onMenuClick }: Props) {
       const vars = data.map((v: any) => ({
         ...v,
         account_code: v.account_num,
-        calculation_type: (v.calculation_type || 'AUTO') as 'AUTO' | 'MANUAL' | 'FORMULA',
+        calculation_type: (v.calculation_type === 'AUTO' ? 'MANUAL' : v.calculation_type || 'MANUAL') as 'MANUAL' | 'FORMULA',
         month: v.month || 1,
         year: v.year || new Date().getFullYear(),
         lob: v.id_lob,
         id_lang: v.id_lang,
-        level: v.level || 0,
+        level: parseInt(v.level || '0', 10),
         parent_account_id: v.parent_account_id || null
       })) as Variable[];
       
@@ -499,6 +499,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
       const monthsToCreate = [1, 2, 3]; // Jan, Feb, Mar
       const yearToUse = new Date().getFullYear();
 
+      // Store config var ID temporarily for parent mapping
       configVars.forEach((configVar: any, index: number) => {
         monthsToCreate.forEach((month) => {
           const valueType = configVar.value_type === 'percentage' ? 'percentage' : 'number';
@@ -518,7 +519,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
             id_lang: configVar.id_lang,
             value_type: valueType,
             level: configVar.level,
-            parent_account_id: null
+            parent_account_id: configVar.parent_account_id, // Store temporarily
+            _config_id: configVar.id_sim_cfg_var // Temporary field for mapping
           });
         });
       });

@@ -194,7 +194,7 @@ export default function ConfigurationForm({ onBack }: Props) {
       id_lang: (v as any).id_lang || null,
       account_num: (v as any).account_num || '',
       parent_account_id: (v as any).parent_account_id || null,
-      level: (v as any).level || 0
+      level: parseInt((v as any).level || '0', 10)
     }));
 
     // Ordenar hierarquicamente antes de definir o estado
@@ -320,7 +320,7 @@ export default function ConfigurationForm({ onBack }: Props) {
         .update({
           account_num: editingVar.account_num,
           name: editingVar.name,
-          calculation_type: editingVar.calculation_type || 'AUTO',
+          calculation_type: editingVar.calculation_type || 'MANUAL',
           formula: editingVar.formula || null,
           id_lang: editingVar.id_lang || null,
           id_lob: editingVar.id_lob || null,
@@ -343,7 +343,7 @@ export default function ConfigurationForm({ onBack }: Props) {
           id_sim_cfg: selectedConfig.id_sim_cfg,
           account_num: editingVar.account_num,
           name: editingVar.name,
-          calculation_type: editingVar.calculation_type || 'AUTO',
+          calculation_type: editingVar.calculation_type || 'MANUAL',
           formula: editingVar.formula || null,
           id_lang: editingVar.id_lang || null,
           id_lob: editingVar.id_lob || null,
