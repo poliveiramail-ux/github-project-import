@@ -995,8 +995,15 @@ export default function SimulationForm({ onMenuClick }: Props) {
     
     // Build visible list hierarchically
     const visible: Variable[] = [];
+    const visited = new Set<string>(); // Track visited to prevent infinite loops
     
     const addVariableAndChildren = (variable: Variable) => {
+      // Prevent cycles by checking if already visited
+      if (visited.has(variable.id_sim)) {
+        return;
+      }
+      
+      visited.add(variable.id_sim);
       visible.push(variable);
       
       // If this variable is expanded, add its children
@@ -1005,7 +1012,10 @@ export default function SimulationForm({ onMenuClick }: Props) {
         const thisConfigId = simToConfigMap.get(variable.id_sim);
         if (thisConfigId) {
           // Find all children (variables whose parent_account_id equals this config ID)
-          const children = uniqueVars.filter(v => v.parent_account_id === thisConfigId);
+          const children = uniqueVars.filter(v => 
+            v.parent_account_id === thisConfigId && 
+            !visited.has(v.id_sim) // Skip already visited children
+          );
           
           // Sort children by account_num
           children.sort((a, b) => {
