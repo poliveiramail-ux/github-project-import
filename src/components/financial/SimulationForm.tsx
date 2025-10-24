@@ -925,7 +925,9 @@ export default function SimulationForm({ onMenuClick }: Props) {
     
     // Check if user has edited this value in the Map first
     if (variableValues.has(key)) {
-      return variableValues.get(key) || 0;
+      const editedValue = variableValues.get(key) || 0;
+      console.log(`getValue: Using edited value for ${variable.account_code}: ${editedValue}`);
+      return editedValue;
     }
     
     // For FORMULA type variables, always recalculate based on current dependencies
@@ -939,7 +941,9 @@ export default function SimulationForm({ onMenuClick }: Props) {
     );
     
     if (matchingVar?.calculation_type === 'FORMULA' && matchingVar.formula) {
-      return evaluateFormula(matchingVar.formula, year, month, matchingVar.account_code);
+      const result = evaluateFormula(matchingVar.formula, year, month, matchingVar.account_code);
+      console.log(`getValue: Calculated formula for ${variable.account_code} = ${result}`);
+      return result;
     }
     
     // For non-formula variables, read from database value
@@ -960,9 +964,11 @@ export default function SimulationForm({ onMenuClick }: Props) {
 
   const updateValue = (accountCode: string, year: number, month: number, language: string, lob: string, value: string) => {
     const key = `${accountCode}-${year}-${month}-${language}-${lob}`;
+    console.log(`Updating value for ${accountCode} (${year}/${month}): ${value}`);
     setVariableValues(prev => {
       const newMap = new Map(prev);
       newMap.set(key, parseFloat(value) || 0);
+      console.log(`New map size: ${newMap.size}`);
       return newMap;
     });
   };
