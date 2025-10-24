@@ -666,58 +666,35 @@ export default function SimulationForm({ onMenuClick }: Props) {
   };
 
   const hasChildren = (varId: string) => {
-    // Find the account_code for this variable
     const thisVar = variables.find(v => v.id_sim === varId);
-    if (!thisVar) {
-      console.log('❌ hasChildren: variable not found for id:', varId);
-      return false;
+    if (!thisVar) return false;
+    
+    // Get unique account codes
+    const uniqueAccountCodes = [...new Set(variables.map(v => v.account_code))];
+    
+    // Check if any account code starts with this account code followed by a dot
+    // For example: "1" is parent of "1.1", "1.1" is parent of "1.101", etc.
+    const hasDirectChildren = uniqueAccountCodes.some(code => {
+      // Skip if it's the same code
+      if (code === thisVar.account_code) return false;
+      
+      // Check if code starts with thisVar.account_code + "."
+      const pattern = `${thisVar.account_code}.`;
+      if (!code.startsWith(pattern)) return false;
+      
+      // Extract the part after the parent code
+      const remainder = code.substring(pattern.length);
+      
+      // It's a direct child only if remainder has no more dots
+      // e.g., "1" -> "1.1" ✓ but "1" -> "1.1.2" ✗ (that's a grandchild)
+      return !remainder.includes('.');
+    });
+    
+    if (hasDirectChildren && thisVar.account_code === '1') {
+      console.log('✅ Account "1" has children');
     }
     
-    // Log some example parent relationships
-    if (thisVar.account_code === '1') {
-      console.log('🔍 Checking variable "1" (first one)');
-      console.log('  - thisVar:', { id_sim: thisVar.id_sim, account_code: thisVar.account_code, name: thisVar.name });
-      console.log('  - All variables with this account_code:', variables.filter(v => v.account_code === thisVar.account_code).length);
-      
-      // Check what variables have this as parent
-      const directChildren = variables.filter(v => v.parent_account_id === thisVar.id_sim);
-      console.log('  - Variables with this exact id_sim as parent:', directChildren.length);
-      if (directChildren.length > 0) {
-        console.log('  - Example child:', { 
-          account_code: directChildren[0].account_code, 
-          name: directChildren[0].name,
-          parent_account_id: directChildren[0].parent_account_id 
-        });
-      }
-      
-      // Get all id_sim values for variables with account_code "1"
-      const thisAccountIds = variables
-        .filter(v => v.account_code === thisVar.account_code)
-        .map(v => v.id_sim);
-      console.log('  - All id_sim for account_code "1":', thisAccountIds.length);
-      
-      // Check if any variable has any of these IDs as parent
-      const allChildren = variables.filter(v => 
-        v.parent_account_id && thisAccountIds.includes(v.parent_account_id)
-      );
-      console.log('  - Variables with ANY of these ids as parent:', allChildren.length);
-      if (allChildren.length > 0) {
-        const uniqueChildCodes = [...new Set(allChildren.map(c => c.account_code))];
-        console.log('  - Unique child account codes:', uniqueChildCodes);
-      }
-    }
-    
-    // Get all id_sim values for variables with the same account_code
-    const thisAccountIds = variables
-      .filter(v => v.account_code === thisVar.account_code)
-      .map(v => v.id_sim);
-    
-    // Check if any variable has any of these IDs as parent
-    const result = variables.some(v => 
-      v.parent_account_id && thisAccountIds.includes(v.parent_account_id)
-    );
-    
-    return result;
+    return hasDirectChildren;
   };
 
   const isLeafAccount = (accountCode: string, allVars: Variable[]) => {
