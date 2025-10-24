@@ -45,6 +45,7 @@ interface Variable {
   id_lang: string;
   level: number;
   parent_account_id?: string | null;
+  parent_account_code?: string | null;
 }
 
 interface VariableValue {
@@ -254,6 +255,27 @@ export default function SimulationForm({ onMenuClick }: Props) {
     }
     
     if (data) {
+      // Build parent relationships based on account_num hierarchy
+      const findParentAccountCode = (accountNum: string): string | null => {
+        if (!accountNum || accountNum === '0') return null;
+        
+        // For account_num like "1.100", parent is "1.1"
+        // For "1.0", parent is "1"
+        // For "1", parent is "0"
+        const parts = accountNum.split('.');
+        if (parts.length === 1) {
+          // Single digit like "1" or "2", parent is "0"
+          return '0';
+        }
+        
+        // Remove last part to get parent
+        // "1.100" -> "1.10" -> "1.1" (remove trailing zeros)
+        const parentNum = parts.slice(0, -1).join('.');
+        
+        // Clean trailing zeros: "1.10" -> "1.1"
+        return parentNum.replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1');
+      };
+      
       const vars = data.map((v: any) => ({
         ...v,
         account_code: v.account_num,
@@ -263,6 +285,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
         lob: v.id_lob,
         id_lang: v.id_lang,
         level: parseInt(v.level || '0', 10),
+        parent_account_code: findParentAccountCode(v.account_num),
         parent_account_id: v.parent_account_id || null
       })) as Variable[];
       
@@ -309,7 +332,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
       // Auto-expand root variables by account_code
       const rootCodes = new Set<string>();
       vars.forEach(v => {
-        if (!v.parent_account_id) {
+        if (!v.parent_account_code) {
           rootCodes.add(v.account_code);
         }
       });
@@ -918,26 +941,18 @@ export default function SimulationForm({ onMenuClick }: Props) {
   };
 
   const hasChildren = (accountCode: string): boolean => {
-    return variables.some(v => {
-      if (!v.parent_account_id) return false;
-      const parent = variables.find(p => p.id_sim === v.parent_account_id);
-      return parent?.account_code === accountCode;
-    });
+    return variables.some(v => v.parent_account_code === accountCode);
   };
 
-  const sortVariablesHierarchically = (vars: Variable[], parentAccountMap: Map<string, string>): Variable[] => {
-    // Build children map using parent's account_code as key
+  const sortVariablesHierarchically = (vars: Variable[]): Variable[] => {
+    // Build children map using parent_account_code
     const childrenMap = new Map<string, Variable[]>();
     
     vars.forEach(v => {
-      if (v.parent_account_id) {
-        // Get parent's account_code from the map
-        const parentAccountCode = parentAccountMap.get(v.parent_account_id) || '';
-        if (parentAccountCode) {
-          const children = childrenMap.get(parentAccountCode) || [];
-          children.push(v);
-          childrenMap.set(parentAccountCode, children);
-        }
+      if (v.parent_account_code) {
+        const children = childrenMap.get(v.parent_account_code) || [];
+        children.push(v);
+        childrenMap.set(v.parent_account_code, children);
       }
     });
     
@@ -960,8 +975,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
       return result;
     };
     
-    // Find root variables (no parent_account_id)
-    const roots = vars.filter(v => !v.parent_account_id);
+    // Find root variables (no parent_account_code)
+    const roots = vars.filter(v => !v.parent_account_code);
     roots.sort((a, b) => a.account_code.localeCompare(b.account_code, undefined, { numeric: true }));
     
     // Build complete hierarchy
@@ -977,18 +992,6 @@ export default function SimulationForm({ onMenuClick }: Props) {
   const getVisibleVariables = () => {
     console.log('getVisibleVariables called, total variables:', variables.length);
     
-    // Create a map of parent_account_id -> account_code for all variables
-    const parentAccountMap = new Map<string, string>();
-    variables.forEach(v => {
-      if (v.parent_account_id) {
-        // Find the parent variable by id_sim and get its account_code
-        const parent = variables.find(p => p.id_sim === v.parent_account_id);
-        if (parent) {
-          parentAccountMap.set(v.parent_account_id, parent.account_code);
-        }
-      }
-    });
-    
     // Get unique variables by account_code
     const uniqueVarsMap = new Map<string, Variable>();
     variables.forEach(v => {
@@ -999,22 +1002,17 @@ export default function SimulationForm({ onMenuClick }: Props) {
     
     const uniqueVars = Array.from(uniqueVarsMap.values());
     console.log('Unique variables:', uniqueVars.length);
-    console.log('Parent mappings:', parentAccountMap.size);
     
     // Sort variables hierarchically
-    const sortedVars = sortVariablesHierarchically(uniqueVars, parentAccountMap);
+    const sortedVars = sortVariablesHierarchically(uniqueVars);
     
     // Filter by visibility based on expansion state
     const visibleVars = sortedVars.filter(variable => {
       // Root variables are always visible
-      if (!variable.parent_account_id) return true;
-      
-      // Get parent's account_code
-      const parentAccountCode = parentAccountMap.get(variable.parent_account_id);
-      if (!parentAccountCode) return true; // If no parent found, treat as root
+      if (!variable.parent_account_code) return true;
       
       // Check if parent is expanded
-      return expandedRows.has(parentAccountCode);
+      return expandedRows.has(variable.parent_account_code);
     });
     
     console.log('Final visible variables:', visibleVars.length);
