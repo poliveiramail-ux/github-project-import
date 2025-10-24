@@ -88,6 +88,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
   const [versionCreationType, setVersionCreationType] = useState<'last' | 'template'>('template');
   const [blockedVariables, setBlockedVariables] = useState<Set<string>>(new Set());
   const [configVarMap, setConfigVarMap] = useState<Map<string, string>>(new Map()); // config_id -> sim_id
+  const [simToConfigMap, setSimToConfigMap] = useState<Map<string, string>>(new Map()); // sim_id -> config_id
   const { toast } = useToast();
 
   useEffect(() => {
@@ -195,7 +196,6 @@ export default function SimulationForm({ onMenuClick }: Props) {
     
     const blockedSet = new Set<string>();
     const configMap = new Map<string, any>(); // config_id -> config variable
-    const rootConfigIds = new Set<string>(); // config IDs that are roots (self-reference)
     
     if (configVars) {
       configVars.forEach((cv: any) => {
@@ -203,15 +203,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
           blockedSet.add(cv.account_num);
         }
         configMap.set(cv.id_sim_cfg_var, cv);
-        
-        // Check if this is a root (self-reference in parent_account_id)
-        if (cv.parent_account_id === cv.id_sim_cfg_var) {
-          rootConfigIds.add(cv.id_sim_cfg_var);
-          console.log('Root config found:', cv.id_sim_cfg_var, cv.account_num);
-        }
       });
     }
-    console.log('Total root configs:', rootConfigIds.size);
     setBlockedVariables(blockedSet);
 
     // Always load all data first
@@ -290,22 +283,24 @@ export default function SimulationForm({ onMenuClick }: Props) {
       
       setVariables(vars);
       
-      // Create map: config variable ID -> first simulation variable ID with same account_code
-      // This allows us to resolve parent_account_id (which points to config) to simulation variables
+      // Create bidirectional maps between config and sim variables
       const configToSimMap = new Map<string, string>();
-      console.log('Creating config to sim map from', configVars?.length, 'config vars');
+      const simToConfigMapNew = new Map<string, string>();
+      
+      console.log('Creating bidirectional maps from', configVars?.length, 'config vars');
       configVars?.forEach((cv: any) => {
         // Find first sim variable with this account_code
         const simVar = vars.find(v => v.account_code === cv.account_num);
         if (simVar) {
           configToSimMap.set(cv.id_sim_cfg_var, simVar.id_sim);
-          console.log('Mapped config', cv.id_sim_cfg_var, '(', cv.account_num, ') -> sim', simVar.id_sim);
-        } else {
-          console.log('No sim var found for config', cv.id_sim_cfg_var, '(', cv.account_num, ')');
+          simToConfigMapNew.set(simVar.id_sim, cv.id_sim_cfg_var);
+          console.log('Mapped:', cv.account_num, '- config', cv.id_sim_cfg_var, '<-> sim', simVar.id_sim);
         }
       });
+      
       setConfigVarMap(configToSimMap);
-      console.log('Config to Sim map created:', configToSimMap.size, 'mappings');
+      setSimToConfigMap(simToConfigMapNew);
+      console.log('Maps created:', configToSimMap.size, 'mappings');
       
       // Extract unique periods and sort them
       const uniquePeriods = new Map<string, MonthYear>();
@@ -698,20 +693,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
     const thisVar = variables.find(v => v.id_sim === varId);
     if (!thisVar) return false;
     
-    // Check if any simulation variable has this variable as parent
-    // parent_account_id points to config IDs, so we need to:
-    // 1. Find which config ID corresponds to this sim variable
-    // 2. Check if any other sim variable's parent_account_id matches that config ID
-    
-    // Find the config ID that maps to this simulation variable
-    let thisConfigId: string | null = null;
-    for (const [configId, simId] of configVarMap.entries()) {
-      if (simId === thisVar.id_sim) {
-        thisConfigId = configId;
-        break;
-      }
-    }
-    
+    // Find the config ID for this sim variable using simToConfigMap
+    const thisConfigId = simToConfigMap.get(thisVar.id_sim);
     if (!thisConfigId) return false;
     
     // Check if any variable has this config ID as parent
@@ -727,7 +710,13 @@ export default function SimulationForm({ onMenuClick }: Props) {
   const getChildAccounts = (accountCode: string, allVars: Variable[]) => {
     const variable = allVars.find(v => v.account_code === accountCode);
     if (!variable) return [];
-    return allVars.filter(v => v.parent_account_id === variable.id_sim);
+    
+    // Find the config ID for this sim variable
+    const thisConfigId = simToConfigMap.get(variable.id_sim);
+    if (!thisConfigId) return [];
+    
+    // Find all variables whose parent_account_id matches this config ID
+    return allVars.filter(v => v.parent_account_id === thisConfigId);
   };
 
   const calculateParentValue = (accountCode: string, year: number, month: number): number => {
@@ -991,38 +980,28 @@ export default function SimulationForm({ onMenuClick }: Props) {
     const uniqueVars = Array.from(uniqueVarsMap.values());
     console.log('Unique variables:', uniqueVars.length);
     
-    // Build set of root config IDs from configVarMap
-    // A variable is root if its parent_account_id is a self-reference in the config
-    const rootConfigIds = new Set<string>();
-    for (const [configId, simId] of configVarMap.entries()) {
-      // Find the sim variable
-      const simVar = uniqueVars.find(v => v.id_sim === simId);
-      if (simVar && simVar.parent_account_id === configId) {
-        // This config ID is a root (self-reference)
-        rootConfigIds.add(configId);
-        console.log('Root detected:', simVar.account_code, 'config ID:', configId);
-      }
-    }
-    
     // Filter visible variables based on parent_account_id
     const visible = uniqueVars.filter(variable => {
-      // Check if this variable's parent_account_id is a root config ID
-      if (rootConfigIds.has(variable.parent_account_id || '')) {
-        console.log('Variable', variable.account_code, 'is root');
+      // Get this variable's config ID
+      const thisConfigId = simToConfigMap.get(variable.id_sim);
+      
+      // If parent_account_id equals this variable's own config ID, it's a root
+      if (variable.parent_account_id === thisConfigId) {
+        console.log('Variable', variable.account_code, 'is root (self-reference)');
         return true;
       }
       
-      // Find the parent simulation variable using configVarMap
+      // Find the parent simulation ID using configVarMap
       const parentSimId = configVarMap.get(variable.parent_account_id || '');
       
       if (!parentSimId) {
-        console.log('Variable', variable.account_code, 'has no parent mapping, showing as root');
-        return true;
+        console.log('Variable', variable.account_code, 'has no parent mapping');
+        return false;
       }
       
       // Check if parent is expanded
       const isExpanded = expandedRows.has(parentSimId);
-      console.log('Variable', variable.account_code, 'parent is', isExpanded ? 'expanded' : 'collapsed');
+      console.log('Variable', variable.account_code, 'parent', variable.parent_account_id, 'is', isExpanded ? 'expanded' : 'collapsed');
       return isExpanded;
     });
     
