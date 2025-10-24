@@ -316,6 +316,31 @@ export default function SimulationForm({ onMenuClick }: Props) {
       
       setPeriods(sortedPeriods);
       
+      // Fix missing formulas: if a variable has calculation_type=FORMULA but formula=null,
+      // get the formula from config and update it
+      const formulaFixes: Promise<any>[] = [];
+      vars.forEach(v => {
+        if (v.calculation_type === 'FORMULA' && !v.formula) {
+          const configVar = configVars?.find((cv: any) => cv.account_num === v.account_code);
+          if (configVar?.formula) {
+            console.log(`Fixing missing formula for ${v.account_code}: ${configVar.formula}`);
+            formulaFixes.push(
+              (supabase as any)
+                .from('simulation')
+                .update({ formula: configVar.formula })
+                .eq('id_sim', v.id_sim)
+            );
+            // Also update the local variable
+            v.formula = configVar.formula;
+          }
+        }
+      });
+      
+      if (formulaFixes.length > 0) {
+        await Promise.all(formulaFixes);
+        console.log(`Fixed ${formulaFixes.length} missing formulas`);
+      }
+      
       // variableValues Map will only contain user edits, not initial DB values
       // getValue will read from variables array for DB values
     }
