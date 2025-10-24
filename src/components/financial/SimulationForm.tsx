@@ -669,32 +669,14 @@ export default function SimulationForm({ onMenuClick }: Props) {
     const thisVar = variables.find(v => v.id_sim === varId);
     if (!thisVar) return false;
     
-    // Get unique account codes
-    const uniqueAccountCodes = [...new Set(variables.map(v => v.account_code))];
-    
-    // Check if any account code starts with this account code followed by a dot
-    // For example: "1" is parent of "1.1", "1.1" is parent of "1.101", etc.
-    const hasDirectChildren = uniqueAccountCodes.some(code => {
-      // Skip if it's the same code
-      if (code === thisVar.account_code) return false;
-      
-      // Check if code starts with thisVar.account_code + "."
-      const pattern = `${thisVar.account_code}.`;
-      if (!code.startsWith(pattern)) return false;
-      
-      // Extract the part after the parent code
-      const remainder = code.substring(pattern.length);
-      
-      // It's a direct child only if remainder has no more dots
-      // e.g., "1" -> "1.1" ✓ but "1" -> "1.1.2" ✗ (that's a grandchild)
-      return !remainder.includes('.');
-    });
-    
-    if (hasDirectChildren && thisVar.account_code === '1') {
-      console.log('✅ Account "1" has children');
-    }
-    
-    return hasDirectChildren;
+    // Check if any variable has this variable's parent_account_id as their parent
+    // Since all monthly records of the same variable share the same parent_account_id,
+    // we need to check if there's a DIFFERENT account_code with matching parent
+    return variables.some(v => 
+      v.parent_account_id === thisVar.parent_account_id && 
+      v.account_code !== thisVar.account_code &&
+      v.account_code.startsWith(thisVar.account_code + '.')
+    );
   };
 
   const isLeafAccount = (accountCode: string, allVars: Variable[]) => {
@@ -970,23 +952,22 @@ export default function SimulationForm({ onMenuClick }: Props) {
     const uniqueVars = Array.from(uniqueVarsMap.values());
     console.log('Unique variables:', uniqueVars.length);
     
-    // Helper to find parent account code
-    const getParentAccountCode = (accountCode: string): string | null => {
-      const lastDotIndex = accountCode.lastIndexOf('.');
-      if (lastDotIndex === -1) return null; // Root account
-      return accountCode.substring(0, lastDotIndex);
-    };
-    
-    // Filtrar variáveis visíveis baseado em account_code hierarchy
+    // Filtrar variáveis visíveis baseado em parent_account_id
     const visible = uniqueVars.filter(variable => {
-      const parentCode = getParentAccountCode(variable.account_code);
+      // Root: se parent_account_id é igual ao id_sim (referência circular)
+      if (variable.parent_account_id === variable.id_sim) {
+        return true;
+      }
       
-      // Root accounts são sempre visíveis
-      if (!parentCode) return true;
+      // Find parent by checking which variable has matching parent_account_id
+      // The parent is the one whose children would have this parent_account_id
+      const parent = uniqueVars.find(v => 
+        v.parent_account_id === variable.parent_account_id &&
+        v.account_code !== variable.account_code &&
+        variable.account_code.startsWith(v.account_code + '.')
+      );
       
-      // Find parent variable by account_code
-      const parent = uniqueVars.find(v => v.account_code === parentCode);
-      if (!parent) return true; // Se não encontrar pai, mostrar
+      if (!parent) return true; // Se não encontrar pai, mostrar (é root)
       
       // Visible if parent is expanded
       return expandedRows.has(parent.id_sim);
