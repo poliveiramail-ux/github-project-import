@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, Edit3, Trash2, ArrowUpDown, ChevronRight, ChevronDown, HelpCircle } from 'lucide-react';
+import { ArrowLeft, Plus, Edit3, Trash2, ArrowUpDown, ChevronRight, ChevronDown, HelpCircle, AlertCircle, FunctionSquare } from 'lucide-react';
 import FormulaHelp from './FormulaHelp';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,9 @@ import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { validateOrFormula, isOrFormula } from '@/lib/formulaOrEvaluator';
 
 interface SimulationConfig {
   id_sim_cfg: string;
@@ -285,6 +288,24 @@ export default function ConfigurationForm({ onBack }: Props) {
     if (!editingVar?.name) {
       toast({ title: 'Atenção', description: 'Nome é obrigatório' });
       return;
+    }
+
+    // Validar fórmula se for tipo FORMULA
+    if (editingVar.calculation_type === 'FORMULA' && editingVar.formula) {
+      const validation = validateOrFormula(
+        editingVar.formula,
+        editingVar.account_num,
+        () => variables.map(v => ({ account_code: v.account_num, formula: v.formula }))
+      );
+      
+      if (!validation.valid) {
+        toast({ 
+          title: 'Erro na fórmula', 
+          description: validation.error, 
+          variant: 'destructive' 
+        });
+        return;
+      }
     }
 
     // Calcular o level baseado na conta pai
@@ -699,13 +720,33 @@ export default function ConfigurationForm({ onBack }: Props) {
                       </div>
                       {editingVar.calculation_type === 'FORMULA' && (
                         <div className="mb-3">
-                          <Label>Fórmula</Label>
-                          <Input
+                          <Label className="flex items-center gap-2">
+                            <FunctionSquare className="h-4 w-4" />
+                            Fórmula (máximo 5 sub-fórmulas com OR)
+                          </Label>
+                          <Textarea
                             value={editingVar.formula || ''}
                             onChange={(e) => setEditingVar({ ...editingVar, formula: e.target.value })}
-                            className="font-mono"
-                            placeholder="Ex: [1.1] + [1.2]"
+                            className="font-mono min-h-[100px]"
+                            placeholder="Ex: [1.1] * 1.2 OR [1.2] * 0.9 OR 50000"
                           />
+                          <Alert className="mt-2">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertDescription className="text-xs">
+                              Sub-fórmulas são avaliadas pela ordem. A primeira válida será usada.
+                              Use <code className="bg-muted px-1 rounded">OR</code> para separar alternativas.
+                            </AlertDescription>
+                          </Alert>
+                          {editingVar.formula && isOrFormula(editingVar.formula) && (
+                            <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-950/20 rounded text-xs">
+                              <strong>Fórmula OR detectada:</strong>
+                              <ul className="mt-1 list-disc list-inside">
+                                {editingVar.formula.split(/\s+OR\s+/i).map((sub, i) => (
+                                  <li key={i} className="font-mono">{sub.trim()}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
                         </div>
                       )}
                       <div className="flex gap-2">
@@ -758,13 +799,20 @@ export default function ConfigurationForm({ onBack }: Props) {
                             <span className="text-sm font-mono text-muted-foreground">{variable.account_num}</span>
                            <span className="flex-1">{variable.name}</span>
                            {variable.blocked && <span className="text-xs" title="Bloqueada">🔒</span>}
-                           <span className="text-xs" title={
-                             variable.calculation_type === 'FORMULA' ? 'Fórmula' : 
-                             variable.calculation_type === 'MANUAL' ? 'Manual' : 'Automático'
-                           }>
-                             {variable.calculation_type === 'FORMULA' ? '📊' : 
-                              variable.calculation_type === 'MANUAL' ? '✏️' : '🔢'}
-                           </span>
+                           {variable.calculation_type === 'FORMULA' && (
+                             <div className="flex items-center gap-1">
+                               <FunctionSquare className="h-3.5 w-3.5 text-blue-500" />
+                               <span className="text-xs bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded" title={variable.formula || ''}>
+                                 fx
+                               </span>
+                             </div>
+                           )}
+                           {variable.calculation_type === 'MANUAL' && (
+                             <span className="text-xs" title="Manual">✏️</span>
+                           )}
+                           {variable.calculation_type === 'AUTO' && (
+                             <span className="text-xs" title="Automático">🔢</span>
+                           )}
                            
                            <Button
                              variant="ghost"

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Menu, Plus, Save, CheckCircle, XCircle, Lock, ChevronDown, ChevronRight, Loader2, X } from 'lucide-react';
+import { Menu, Plus, Save, CheckCircle, XCircle, Lock, ChevronDown, ChevronRight, Loader2, X, FunctionSquare } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -8,6 +8,11 @@ import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { 
+  clearFormulaCache, 
+  isOrFormula, 
+  evaluateOrFormula 
+} from '@/lib/formulaOrEvaluator';
 
 interface Project {
   id_prj: string;
@@ -162,6 +167,9 @@ export default function SimulationForm({ onMenuClick }: Props) {
   };
 
   const loadVersion = async (versionId: string, languageFilter?: string, lobFilter?: string) => {
+    // Clear formula cache when loading new version
+    clearFormulaCache();
+    
     // Don't load any data if project or version is not selected
     if (!selectedProject || !versionId) {
       setVariables([]);
@@ -677,18 +685,45 @@ export default function SimulationForm({ onMenuClick }: Props) {
     }, 0);
   };
 
-  const evaluateFormula = (formula: string, year: number, month: number): number => {
+  const evaluateFormula = (formula: string, year: number, month: number, accountCode?: string): number => {
     if (!formula) return 0;
     
     try {
-      let processedFormula = formula;
-      
       // Helper function to get value for account reference
-      const getAccountValue = (accountCode: string, targetYear?: number, targetMonth?: number): number => {
-        const variable = variables.find(v => v.account_code === accountCode);
-        if (!variable) return 0;
-        return getValue(variable, targetYear ?? year, targetMonth ?? month);
+      const getAccountValue = (accCode: string, targetYear?: number, targetMonth?: number): number | null => {
+        const variable = variables.find(v => v.account_code === accCode);
+        if (!variable) return null;
+        const value = getValue(variable, targetYear ?? year, targetMonth ?? month);
+        return value;
       };
+
+      // Check if this is an OR formula
+      if (isOrFormula(formula)) {
+        // Use the OR evaluator with cache
+        return evaluateOrFormula(
+          accountCode || 'unknown',
+          formula,
+          (subFormula) => evaluateSimpleFormula(subFormula, year, month, getAccountValue),
+          getAccountValue
+        );
+      }
+
+      // Regular formula evaluation
+      return evaluateSimpleFormula(formula, year, month, getAccountValue);
+    } catch (error) {
+      console.error('Error evaluating formula:', formula, error);
+      return 0;
+    }
+  };
+
+  const evaluateSimpleFormula = (
+    formula: string, 
+    year: number, 
+    month: number, 
+    getAccountValue: (accountCode: string, targetYear?: number, targetMonth?: number) => number | null
+  ): number => {
+    try {
+      let processedFormula = formula;
 
       // Process temporal functions
       processedFormula = processedFormula.replace(/PREV_MONTH\(\[([^\]]+)\]\)/g, (_, accountCode) => {
@@ -815,14 +850,15 @@ export default function SimulationForm({ onMenuClick }: Props) {
       if (references) {
         for (const ref of references) {
           const accountCode = ref.slice(1, -1);
-          processedFormula = processedFormula.replace(ref, String(getAccountValue(accountCode)));
+          const value = getAccountValue(accountCode);
+          processedFormula = processedFormula.replace(ref, String(value ?? 0));
         }
       }
       
       const result = new Function('return ' + processedFormula)();
       return isNaN(result) ? 0 : result;
     } catch (error) {
-      console.error('Error evaluating formula:', formula, error);
+      console.error('Error evaluating simple formula:', formula, error);
       return 0;
     }
   };
@@ -834,7 +870,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
     if (calcType === 'MANUAL') {
       return variableValues.get(key) || 0;
     } else if (calcType === 'FORMULA') {
-      return evaluateFormula(variable.formula || '', year, month);
+      return evaluateFormula(variable.formula || '', year, month, variable.account_code);
     } else if (calcType === 'AUTO') {
       if (!isLeafAccount(variable.account_code, variables)) {
         return calculateParentValue(variable.account_code, year, month);
@@ -1156,9 +1192,12 @@ export default function SimulationForm({ onMenuClick }: Props) {
                           </span>
                           
                           {calcType === 'FORMULA' && (
-                            <span className="text-xs bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 px-1.5 py-0.5 rounded" title={variable.formula || ''}>
-                              ƒ {variable.formula}
-                            </span>
+                            <div className="flex items-center gap-1">
+                              <FunctionSquare className="h-3.5 w-3.5 text-blue-500" />
+                              <span className="text-xs bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded font-mono" title={variable.formula || ''}>
+                                fx
+                              </span>
+                            </div>
                           )}
                           {isBlocked && <Lock className="h-3 w-3 text-muted-foreground" />}
                           {!isEditable && calcType !== 'FORMULA' && !isBlocked && <Lock className="h-3 w-3 text-muted-foreground" />}
