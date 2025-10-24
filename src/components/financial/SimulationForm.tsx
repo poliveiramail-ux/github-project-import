@@ -666,30 +666,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
   };
 
   const hasChildren = (varId: string) => {
-    // Find this variable's account_code
-    const thisVar = variables.find(v => v.id_sim === varId);
-    if (!thisVar) return false;
-    
-    // Get unique variables by account_code to check hierarchy
-    const uniqueVarsMap = new Map<string, Variable>();
-    variables.forEach(v => {
-      if (!uniqueVarsMap.has(v.account_code)) {
-        uniqueVarsMap.set(v.account_code, v);
-      }
-    });
-    
-    const uniqueVars = Array.from(uniqueVarsMap.values());
-    
-    // Check if any unique variable has this variable's id_sim as parent
-    const hasDirectChildren = uniqueVars.some(v => {
-      if (!v.parent_account_id) return false;
-      // Find the parent by id_sim and compare account codes
-      const parent = variables.find(p => p.id_sim === v.parent_account_id);
-      return parent?.account_code === thisVar.account_code;
-    });
-    
-    console.log('hasChildren check:', thisVar.account_code, 'has children:', hasDirectChildren);
-    return hasDirectChildren;
+    return variables.some(v => v.parent_account_id === varId);
   };
 
   const isLeafAccount = (accountCode: string, allVars: Variable[]) => {
