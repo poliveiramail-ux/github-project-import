@@ -939,6 +939,54 @@ export default function SimulationForm({ onMenuClick }: Props) {
     return isVariableVisible(parent, allVars, parentMap);
   };
 
+  const sortVariablesHierarchically = (vars: Variable[]): Variable[] => {
+    // Build a map for quick parent lookup
+    const idToVar = new Map<string, Variable>();
+    vars.forEach(v => idToVar.set(v.id_sim, v));
+    
+    // Build children map
+    const childrenMap = new Map<string, Variable[]>();
+    vars.forEach(v => {
+      if (v.parent_account_id) {
+        const children = childrenMap.get(v.parent_account_id) || [];
+        children.push(v);
+        childrenMap.set(v.parent_account_id, children);
+      }
+    });
+    
+    // Sort children by account_code
+    childrenMap.forEach(children => {
+      children.sort((a, b) => a.account_code.localeCompare(b.account_code, undefined, { numeric: true }));
+    });
+    
+    // Recursive function to build hierarchical list
+    const buildHierarchy = (parentId: string | null): Variable[] => {
+      const result: Variable[] = [];
+      const children = childrenMap.get(parentId || '') || [];
+      
+      children.forEach(child => {
+        result.push(child);
+        // Add children recursively
+        result.push(...buildHierarchy(child.id_sim));
+      });
+      
+      return result;
+    };
+    
+    // Find root variables (no parent_account_id)
+    const roots = vars.filter(v => !v.parent_account_id);
+    roots.sort((a, b) => a.account_code.localeCompare(b.account_code, undefined, { numeric: true }));
+    
+    // Build complete hierarchy
+    const sorted: Variable[] = [];
+    roots.forEach(root => {
+      sorted.push(root);
+      sorted.push(...buildHierarchy(root.id_sim));
+    });
+    
+    return sorted;
+  };
+
   const getVisibleVariables = () => {
     console.log('getVisibleVariables called, total variables:', variables.length);
     
@@ -966,9 +1014,12 @@ export default function SimulationForm({ onMenuClick }: Props) {
     console.log('Unique variables:', uniqueVars.length);
     console.log('Parent mappings:', parentMap.size);
     
+    // Sort variables hierarchically
+    const sortedVars = sortVariablesHierarchically(uniqueVars);
+    
     // Filter only by visibility (expansion state), not by LOB 
     // LOB filtering is already done in loadVersion
-    const visibleVars = uniqueVars.filter(variable => isVariableVisible(variable, uniqueVars, parentMap));
+    const visibleVars = sortedVars.filter(variable => isVariableVisible(variable, uniqueVars, parentMap));
     console.log('Final visible variables:', visibleVars.length);
     console.log('Expanded rows:', expandedRows.size);
     
