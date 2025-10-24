@@ -312,14 +312,10 @@ export default function SimulationForm({ onMenuClick }: Props) {
     
     setCurrentVersionId(versionId);
     
-    // Expandir automaticamente apenas variáveis de nível 0 (raiz)
-    const rootVars = (data || []).filter((v: any) => (parseInt(v.level || '0', 10) === 0));
-    console.log('Root variables (level 0):', rootVars.length);
-    console.log('Root var IDs:', rootVars.map((v: any) => ({ id: v.id_sim, account: v.account_num, level: v.level })));
-    
-    const expandedSet = new Set<string>(rootVars.map((v: any) => v.id_sim));
-    console.log('Initial expanded set size:', expandedSet.size);
-    setExpandedRows(expandedSet);
+    // Iniciar com todas as variáveis colapsadas (set vazio)
+    // As variáveis raiz serão visíveis por terem parent_account_id null
+    console.log('Resetting expanded rows to empty set');
+    setExpandedRows(new Set());
   };
 
   const handleProjectChange = (projectId: string) => {
@@ -936,65 +932,13 @@ export default function SimulationForm({ onMenuClick }: Props) {
       } else {
         newSet.add(varId);
       }
+      console.log('Toggled expansion for:', varId, 'New size:', newSet.size);
       return newSet;
     });
   };
 
-  const isVariableVisible = (variable: Variable, allVars: Variable[], parentMap: Map<string, string>): boolean => {
-    // Variáveis de nível 0 (raiz absoluta) são sempre visíveis
-    if (variable.level === 0) {
-      console.log('✓ Variable visible (level 0):', variable.account_code, variable.name);
-      return true;
-    }
-    
-    // Contas raiz (sem pai ou referência circular) são sempre visíveis
-    if (!variable.parent_account_id || variable.parent_account_id === variable.id_sim) {
-      console.log('✓ Variable visible (no parent or circular):', variable.account_code, variable.name);
-      return true;
-    }
-    
-    // Find parent by mapping parent_account_id to account_code
-    const parentAccountCode = parentMap.get(variable.parent_account_id);
-    if (!parentAccountCode) {
-      // Se não encontrar pai, verifica se é nível 0 ou 1
-      const result = variable.level <= 1;
-      console.log(result ? '✓' : '✗', 'Variable visibility (no parent found):', variable.account_code, variable.name, 'level:', variable.level);
-      return result;
-    }
-    
-    // Find parent variable by account_code
-    const parent = allVars.find(v => v.account_code === parentAccountCode);
-    if (!parent) {
-      // Se não encontrar pai, verifica se é nível 0 ou 1
-      const result = variable.level <= 1;
-      console.log(result ? '✓' : '✗', 'Variable visibility (parent not found in allVars):', variable.account_code, variable.name, 'level:', variable.level);
-      return result;
-    }
-    
-    // Verificar se o pai está expandido
-    if (!expandedRows.has(parent.id_sim)) {
-      console.log('✗ Variable hidden (parent collapsed):', variable.account_code, variable.name, 'parent:', parent.account_code);
-      return false;
-    }
-    
-    // Verificar recursivamente se todos os ancestors estão expandidos
-    return isVariableVisible(parent, allVars, parentMap);
-  };
-
   const getVisibleVariables = () => {
     console.log('getVisibleVariables called, total variables:', variables.length);
-    
-    // Create a map of parent_account_id -> account_code for all variables
-    const parentMap = new Map<string, string>();
-    variables.forEach(v => {
-      if (v.parent_account_id) {
-        // Find the parent variable by id_sim and get its account_code
-        const parent = variables.find(p => p.id_sim === v.parent_account_id);
-        if (parent) {
-          parentMap.set(v.parent_account_id, parent.account_code);
-        }
-      }
-    });
     
     // Get unique variables by account_code
     const uniqueVarsMap = new Map<string, Variable>();
@@ -1006,15 +950,26 @@ export default function SimulationForm({ onMenuClick }: Props) {
     
     const uniqueVars = Array.from(uniqueVarsMap.values());
     console.log('Unique variables:', uniqueVars.length);
-    console.log('Parent mappings:', parentMap.size);
     
-    // Filter only by visibility (expansion state), not by LOB 
-    // LOB filtering is already done in loadVersion
-    const visibleVars = uniqueVars.filter(variable => isVariableVisible(variable, uniqueVars, parentMap));
-    console.log('Final visible variables:', visibleVars.length);
+    // Filtrar variáveis visíveis - igual ao ConfigurationForm
+    const visible = uniqueVars.filter(variable => {
+      // Contas raiz são sempre visíveis (sem pai ou com referência circular)
+      if (!variable.parent_account_id || variable.parent_account_id === variable.id_sim) {
+        return true;
+      }
+      
+      // Contas filhas são visíveis apenas se o pai está expandido
+      // Procurar o pai pelo parent_account_id
+      const parent = variables.find(v => v.id_sim === variable.parent_account_id);
+      if (!parent) return true; // Se não encontrar pai, mostrar
+      
+      return expandedRows.has(parent.id_sim);
+    });
+    
+    console.log('Final visible variables:', visible.length);
     console.log('Expanded rows:', expandedRows.size);
     
-    return visibleVars;
+    return visible;
   };
 
   if (loading) {
