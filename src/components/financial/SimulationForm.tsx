@@ -659,19 +659,6 @@ export default function SimulationForm({ onMenuClick }: Props) {
     }
   };
 
-  const hasChildren = (varId: string) => {
-    // Find this variable's account_code
-    const thisVar = variables.find(v => v.id_sim === varId);
-    if (!thisVar) return false;
-    
-    // Check if any variable has this account_code as parent
-    return variables.some(v => {
-      if (!v.parent_account_id) return false;
-      const parent = variables.find(p => p.id_sim === v.parent_account_id);
-      return parent?.account_code === thisVar.account_code;
-    });
-  };
-
   const isLeafAccount = (accountCode: string, allVars: Variable[]) => {
     const variable = allVars.find(v => v.account_code === accountCode);
     if (!variable) return true;
@@ -930,33 +917,27 @@ export default function SimulationForm({ onMenuClick }: Props) {
     });
   };
 
-  const isVariableVisible = (variable: Variable, allVars: Variable[], parentMap: Map<string, string>): boolean => {
-    // Contas raiz (sem pai) são sempre visíveis
-    if (!variable.parent_account_id) return true;
-    
-    // Find parent by mapping parent_account_id to account_code
-    const parentAccountCode = parentMap.get(variable.parent_account_id);
-    if (!parentAccountCode) return true; // Se não encontrar pai, assume que é raiz
-    
-    // Find parent variable by account_code
-    const parent = allVars.find(v => v.account_code === parentAccountCode);
-    if (!parent) return true;
-    
-    // Verificar se o pai está expandido (usando account_code)
-    if (!expandedRows.has(parentAccountCode)) return false;
-    
-    // Verificar recursivamente se todos os ancestors estão expandidos
-    return isVariableVisible(parent, allVars, parentMap);
+  const hasChildren = (accountCode: string): boolean => {
+    return variables.some(v => {
+      if (!v.parent_account_id) return false;
+      const parent = variables.find(p => p.id_sim === v.parent_account_id);
+      return parent?.account_code === accountCode;
+    });
   };
 
-  const sortVariablesHierarchically = (vars: Variable[]): Variable[] => {
-    // Build children map using id_sim as key
+  const sortVariablesHierarchically = (vars: Variable[], parentAccountMap: Map<string, string>): Variable[] => {
+    // Build children map using parent's account_code as key
     const childrenMap = new Map<string, Variable[]>();
+    
     vars.forEach(v => {
       if (v.parent_account_id) {
-        const children = childrenMap.get(v.parent_account_id) || [];
-        children.push(v);
-        childrenMap.set(v.parent_account_id, children);
+        // Get parent's account_code from the map
+        const parentAccountCode = parentAccountMap.get(v.parent_account_id) || '';
+        if (parentAccountCode) {
+          const children = childrenMap.get(parentAccountCode) || [];
+          children.push(v);
+          childrenMap.set(parentAccountCode, children);
+        }
       }
     });
     
@@ -966,14 +947,14 @@ export default function SimulationForm({ onMenuClick }: Props) {
     });
     
     // Recursive function to build hierarchical list
-    const buildHierarchy = (parentId: string): Variable[] => {
+    const buildHierarchy = (accountCode: string): Variable[] => {
       const result: Variable[] = [];
-      const children = childrenMap.get(parentId) || [];
+      const children = childrenMap.get(accountCode) || [];
       
       children.forEach(child => {
         result.push(child);
-        // Add children recursively
-        result.push(...buildHierarchy(child.id_sim));
+        // Add children recursively using account_code
+        result.push(...buildHierarchy(child.account_code));
       });
       
       return result;
@@ -987,7 +968,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
     const sorted: Variable[] = [];
     roots.forEach(root => {
       sorted.push(root);
-      sorted.push(...buildHierarchy(root.id_sim));
+      sorted.push(...buildHierarchy(root.account_code));
     });
     
     return sorted;
@@ -997,13 +978,13 @@ export default function SimulationForm({ onMenuClick }: Props) {
     console.log('getVisibleVariables called, total variables:', variables.length);
     
     // Create a map of parent_account_id -> account_code for all variables
-    const parentMap = new Map<string, string>();
+    const parentAccountMap = new Map<string, string>();
     variables.forEach(v => {
       if (v.parent_account_id) {
         // Find the parent variable by id_sim and get its account_code
         const parent = variables.find(p => p.id_sim === v.parent_account_id);
         if (parent) {
-          parentMap.set(v.parent_account_id, parent.account_code);
+          parentAccountMap.set(v.parent_account_id, parent.account_code);
         }
       }
     });
@@ -1018,16 +999,27 @@ export default function SimulationForm({ onMenuClick }: Props) {
     
     const uniqueVars = Array.from(uniqueVarsMap.values());
     console.log('Unique variables:', uniqueVars.length);
-    console.log('Parent mappings:', parentMap.size);
+    console.log('Parent mappings:', parentAccountMap.size);
     
     // Sort variables hierarchically
-    const sortedVars = sortVariablesHierarchically(uniqueVars);
+    const sortedVars = sortVariablesHierarchically(uniqueVars, parentAccountMap);
     
-    // Filter only by visibility (expansion state), not by LOB 
-    // LOB filtering is already done in loadVersion
-    const visibleVars = sortedVars.filter(variable => isVariableVisible(variable, uniqueVars, parentMap));
+    // Filter by visibility based on expansion state
+    const visibleVars = sortedVars.filter(variable => {
+      // Root variables are always visible
+      if (!variable.parent_account_id) return true;
+      
+      // Get parent's account_code
+      const parentAccountCode = parentAccountMap.get(variable.parent_account_id);
+      if (!parentAccountCode) return true; // If no parent found, treat as root
+      
+      // Check if parent is expanded
+      return expandedRows.has(parentAccountCode);
+    });
+    
     console.log('Final visible variables:', visibleVars.length);
     console.log('Expanded rows:', expandedRows.size);
+    console.log('Expanded codes:', Array.from(expandedRows));
     
     return visibleVars;
   };
@@ -1205,7 +1197,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
               </thead>
               <tbody>
                 {getVisibleVariables().map(variable => {
-                  const isParent = hasChildren(variable.id_sim);
+                  const isParent = hasChildren(variable.account_code);
                   const isExpanded = expandedRows.has(variable.account_code);
                   const calcType = variable.calculation_type || 'AUTO';
                   const isBlocked = blockedVariables.has(variable.account_code);
