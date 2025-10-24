@@ -25,7 +25,7 @@ interface ConfigVariable {
   id_sim_cfg_var: string;
   id_sim_cfg: string;
   name: string;
-  calculation_type: 'AUTO' | 'MANUAL' | 'FORMULA';
+  calculation_type: 'MANUAL' | 'FORMULA';
   formula: string | null;
   row_index: number;
   id_lang?: string | null;
@@ -190,7 +190,7 @@ export default function ConfigurationForm({ onBack }: Props) {
     
     const mappedVars = (data || []).map(v => ({
       ...v,
-      calculation_type: (v.calculation_type || 'AUTO') as 'AUTO' | 'MANUAL' | 'FORMULA',
+      calculation_type: (v.calculation_type === 'AUTO' ? 'MANUAL' : v.calculation_type || 'MANUAL') as 'MANUAL' | 'FORMULA',
       id_lang: (v as any).id_lang || null,
       account_num: (v as any).account_num || '',
       parent_account_id: (v as any).parent_account_id || null,
@@ -581,7 +581,7 @@ export default function ConfigurationForm({ onBack }: Props) {
                           id_sim_cfg_var: '', 
                           id_sim_cfg: selectedConfig.id_sim_cfg, 
                           name: '', 
-                          calculation_type: 'AUTO', 
+                          calculation_type: 'MANUAL', 
                           formula: null, 
                           row_index: 0, 
                           account_num: '',
@@ -703,8 +703,8 @@ export default function ConfigurationForm({ onBack }: Props) {
                       <div className="mb-3">
                         <Label>Tipo de Cálculo</Label>
                         <Select
-                          value={editingVar.calculation_type || 'AUTO'}
-                          onValueChange={(value: 'AUTO' | 'MANUAL' | 'FORMULA') => 
+                          value={editingVar.calculation_type || 'MANUAL'}
+                          onValueChange={(value: 'MANUAL' | 'FORMULA') => 
                             setEditingVar({ ...editingVar, calculation_type: value })
                           }
                         >
@@ -712,7 +712,6 @@ export default function ConfigurationForm({ onBack }: Props) {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent className="bg-background z-50">
-                            <SelectItem value="AUTO">Automático (soma filhas)</SelectItem>
                             <SelectItem value="MANUAL">Manual</SelectItem>
                             <SelectItem value="FORMULA">Fórmula</SelectItem>
                           </SelectContent>
@@ -810,9 +809,6 @@ export default function ConfigurationForm({ onBack }: Props) {
                            {variable.calculation_type === 'MANUAL' && (
                              <span className="text-xs" title="Manual">✏️</span>
                            )}
-                           {variable.calculation_type === 'AUTO' && (
-                             <span className="text-xs" title="Automático">🔢</span>
-                           )}
                            
                            <Button
                              variant="ghost"
@@ -822,7 +818,7 @@ export default function ConfigurationForm({ onBack }: Props) {
                                id_sim_cfg_var: '', 
                                id_sim_cfg: selectedConfig.id_sim_cfg, 
                                name: '', 
-                               calculation_type: 'AUTO', 
+                               calculation_type: 'MANUAL', 
                                formula: null, 
                                row_index: 0, 
                                account_num: '',

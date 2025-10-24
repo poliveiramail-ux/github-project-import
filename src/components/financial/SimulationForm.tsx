@@ -37,7 +37,7 @@ interface Variable {
   version_id: string;
   account_code: string;
   name: string;
-  calculation_type: 'AUTO' | 'MANUAL' | 'FORMULA';
+  calculation_type: 'MANUAL' | 'FORMULA';
   formula: string | null;
   month: number;
   year: number;
@@ -420,7 +420,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
         row_index: record.row_index,
         account_num: record.account_num,
         name: record.name,
-        calculation_type: record.calculation_type || 'AUTO',
+        calculation_type: record.calculation_type === 'AUTO' ? 'MANUAL' : (record.calculation_type || 'MANUAL'),
         formula: record.formula || null,
         value: record.value || 0,
         value_orig: record.value_orig || 0,
@@ -507,7 +507,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
             row_index: (index * 3) + month,
             account_num: configVar.account_num,
             name: configVar.name,
-            calculation_type: configVar.calculation_type || 'AUTO',
+            calculation_type: configVar.calculation_type === 'AUTO' ? 'MANUAL' : (configVar.calculation_type || 'MANUAL'),
             formula: configVar.formula || null,
             value: 0,
             value_orig: 0,
@@ -864,22 +864,15 @@ export default function SimulationForm({ onMenuClick }: Props) {
   };
 
   const getValue = (variable: Variable, year: number, month: number): number => {
-    const calcType = variable.calculation_type || 'AUTO';
+    const calcType = variable.calculation_type || 'MANUAL';
     const key = `${variable.account_code}-${year}-${month}-${variable.id_lang}-${variable.lob}`;
     
-    if (calcType === 'MANUAL') {
-      return variableValues.get(key) || 0;
-    } else if (calcType === 'FORMULA') {
+    if (calcType === 'FORMULA') {
       return evaluateFormula(variable.formula || '', year, month, variable.account_code);
-    } else if (calcType === 'AUTO') {
-      if (!isLeafAccount(variable.account_code, variables)) {
-        return calculateParentValue(variable.account_code, year, month);
-      } else {
-        return variableValues.get(key) || 0;
-      }
+    } else {
+      // MANUAL or default
+      return variableValues.get(key) || 0;
     }
-    
-    return variableValues.get(key) || 0;
   };
 
   const getOriginalValue = (variable: Variable, year: number, month: number): number => {
@@ -1161,7 +1154,6 @@ export default function SimulationForm({ onMenuClick }: Props) {
                   const isBlocked = blockedVariables.has(variable.account_code);
                   const isEditable = isLeafAccount(variable.account_code, variables) && 
                                     calcType !== 'FORMULA' &&
-                                    (calcType === 'MANUAL' || calcType === 'AUTO') &&
                                     !isBlocked;
                   
                   return (
