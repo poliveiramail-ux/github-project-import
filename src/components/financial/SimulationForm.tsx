@@ -1303,11 +1303,9 @@ export default function SimulationForm({ onMenuClick }: Props) {
                                   <span className={hasChildren || calcType === 'FORMULA' ? 'font-semibold text-sm' : 'text-sm'}>
                                     {value.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
                                   </span>
-                                  {originalValue !== value && (
-                                    <span className="text-[10px] text-muted-foreground leading-none">
-                                      {compareSymbol} {originalValue.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
-                                    </span>
-                                  )}
+                                  <span className="text-[10px] text-muted-foreground leading-none">
+                                    {compareSymbol} {originalValue.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+                                  </span>
                                 </>
                               )}
                             </div>
