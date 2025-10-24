@@ -666,12 +666,28 @@ export default function SimulationForm({ onMenuClick }: Props) {
   };
 
   const hasChildren = (varId: string) => {
-    const result = variables.some(v => v.parent_account_id === varId);
+    // Find the account_code for this variable
+    const thisVar = variables.find(v => v.id_sim === varId);
+    if (!thisVar) return false;
+    
+    // Get all id_sim values for variables with the same account_code
+    const thisAccountIds = variables
+      .filter(v => v.account_code === thisVar.account_code)
+      .map(v => v.id_sim);
+    
+    // Check if any variable has any of these IDs as parent
+    const result = variables.some(v => 
+      v.parent_account_id && thisAccountIds.includes(v.parent_account_id)
+    );
+    
     if (result) {
-      const thisVar = variables.find(v => v.id_sim === varId);
-      console.log('✅ Has children:', thisVar?.account_code, thisVar?.name, 'children:', 
-        variables.filter(v => v.parent_account_id === varId).map(v => v.account_code));
+      const children = variables.filter(v => 
+        v.parent_account_id && thisAccountIds.includes(v.parent_account_id)
+      );
+      const uniqueChildCodes = [...new Set(children.map(c => c.account_code))];
+      console.log('✅ Has children:', thisVar.account_code, thisVar.name, 'children:', uniqueChildCodes);
     }
+    
     return result;
   };
 
