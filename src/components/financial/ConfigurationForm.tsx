@@ -165,28 +165,34 @@ export default function ConfigurationForm({ onBack }: Props) {
 
       // Adicionar filhas imediatamente após o pai
       const children = vars
-        .filter(v => v.parent_account_id === variable.id_sim_cfg_var)
+        .filter(v => v.parent_account_id === variable.id_sim_cfg_var && v.parent_account_id !== v.id_sim_cfg_var)
         .sort((a, b) => a.account_num.localeCompare(b.account_num));
       
       children.forEach(child => addWithChildren(child));
     };
 
-    // Começar com as contas raiz (sem pai)
+    // Começar com as contas raiz (sem pai ou com referência circular)
     const rootVars = vars
-      .filter(v => !v.parent_account_id)
+      .filter(v => !v.parent_account_id || v.parent_account_id === v.id_sim_cfg_var)
       .sort((a, b) => a.account_num.localeCompare(b.account_num));
     
+    console.log('🌱 Root variables found:', rootVars.length);
     rootVars.forEach(rootVar => addWithChildren(rootVar));
 
+    console.log('✅ Hierarchical sort complete:', result.length, 'variables processed');
     return result;
   };
 
   const loadVariables = async (configId: string) => {
-    const { data } = await supabase
+    console.log('🔍 Loading variables for config:', configId);
+    const { data, error } = await supabase
       .from('simulation_configs_variables')
       .select('*')
       .eq('id_sim_cfg', configId)
       .order('row_index');
+    
+    console.log('📦 Raw data from DB:', data);
+    console.log('❌ Error:', error);
     
     const mappedVars = (data || []).map(v => ({
       ...v,
@@ -197,8 +203,12 @@ export default function ConfigurationForm({ onBack }: Props) {
       level: parseInt((v as any).level || '0', 10)
     }));
 
+    console.log('🗺️ Mapped variables:', mappedVars);
+    
     // Ordenar hierarquicamente antes de definir o estado
-    setVariables(sortVariablesHierarchically(mappedVars));
+    const sorted = sortVariablesHierarchically(mappedVars);
+    console.log('📊 Sorted variables:', sorted);
+    setVariables(sorted);
   };
 
   const handleSaveConfig = async () => {
@@ -424,13 +434,17 @@ export default function ConfigurationForm({ onBack }: Props) {
 
   // Filtrar variáveis visíveis (apenas raízes e filhos de pais expandidos)
   const getVisibleVariables = () => {
-    return variables.filter(variable => {
+    const visible = variables.filter(variable => {
       // Contas raiz são sempre visíveis (sem pai ou com referência circular)
       if (!variable.parent_account_id || variable.parent_account_id === variable.id_sim_cfg_var) return true;
       
       // Contas filhas são visíveis apenas se o pai está expandido
       return expandedVars.has(variable.parent_account_id);
     });
+    console.log('👁️ Visible variables:', visible.length, 'out of', variables.length);
+    console.log('📋 Variables list:', variables);
+    console.log('🔓 Expanded vars:', Array.from(expandedVars));
+    return visible;
   };
 
   const handleSortByAccountNum = async () => {
