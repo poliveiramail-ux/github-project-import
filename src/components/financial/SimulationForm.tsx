@@ -308,7 +308,11 @@ export default function SimulationForm({ onMenuClick }: Props) {
     }
     
     setCurrentVersionId(versionId);
-    setExpandedRows(new Set());
+    
+    // Expandir automaticamente apenas variáveis de nível 0 (raiz)
+    const rootVars = (data || []).filter((v: any) => (parseInt(v.level || '0', 10) === 0));
+    const expandedSet = new Set<string>(rootVars.map((v: any) => v.id_sim));
+    setExpandedRows(expandedSet);
   };
 
   const handleProjectChange = (projectId: string) => {
@@ -930,16 +934,25 @@ export default function SimulationForm({ onMenuClick }: Props) {
   };
 
   const isVariableVisible = (variable: Variable, allVars: Variable[], parentMap: Map<string, string>): boolean => {
-    // Contas raiz (sem pai) são sempre visíveis
-    if (!variable.parent_account_id) return true;
+    // Variáveis de nível 0 (raiz absoluta) são sempre visíveis
+    if (variable.level === 0) return true;
+    
+    // Contas raiz (sem pai ou referência circular) são sempre visíveis
+    if (!variable.parent_account_id || variable.parent_account_id === variable.id_sim) return true;
     
     // Find parent by mapping parent_account_id to account_code
     const parentAccountCode = parentMap.get(variable.parent_account_id);
-    if (!parentAccountCode) return true; // Se não encontrar pai, assume que é raiz
+    if (!parentAccountCode) {
+      // Se não encontrar pai, verifica se é nível 0 ou 1
+      return variable.level <= 1;
+    }
     
     // Find parent variable by account_code
     const parent = allVars.find(v => v.account_code === parentAccountCode);
-    if (!parent) return true;
+    if (!parent) {
+      // Se não encontrar pai, verifica se é nível 0 ou 1
+      return variable.level <= 1;
+    }
     
     // Verificar se o pai está expandido
     if (!expandedRows.has(parent.id_sim)) return false;
