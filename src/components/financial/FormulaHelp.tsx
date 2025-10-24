@@ -16,10 +16,11 @@ export default function FormulaHelp({ open, onOpenChange }: Props) {
         </DialogHeader>
 
         <Tabs defaultValue="math" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="math">Matemáticas</TabsTrigger>
             <TabsTrigger value="conditional">Condicionais</TabsTrigger>
             <TabsTrigger value="temporal">Temporais</TabsTrigger>
+            <TabsTrigger value="or">Fórmulas OR</TabsTrigger>
             <TabsTrigger value="basic">Básicas</TabsTrigger>
           </TabsList>
 
@@ -198,6 +199,137 @@ export default function FormulaHelp({ open, onOpenChange }: Props) {
               <p className="text-xs text-muted-foreground mt-1">
                 Exemplo: Percentagem acumulada do ano sobre total
               </p>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="or" className="space-y-4">
+            <Card className="p-4 bg-blue-50 dark:bg-blue-950/20">
+              <h3 className="font-semibold mb-2 text-blue-900 dark:text-blue-100">🎯 Fórmulas OR - Alternativas com Prioridade</h3>
+              <p className="text-sm text-blue-800 dark:text-blue-200 mb-2">
+                Use o operador <code className="bg-blue-100 dark:bg-blue-900 px-1.5 py-0.5 rounded font-mono">OR</code> para definir múltiplas sub-fórmulas alternativas. 
+                O sistema avalia da esquerda para direita e usa a primeira que tiver todas as variáveis disponíveis.
+              </p>
+            </Card>
+
+            <Card className="p-4">
+              <h3 className="font-semibold mb-2">Sintaxe Básica</h3>
+              <p className="text-sm text-muted-foreground mb-2">
+                Separe sub-fórmulas com <code className="bg-muted px-1 rounded">OR</code> (máximo 5 alternativas)
+              </p>
+              <code className="block bg-muted p-2 rounded text-sm mb-2">
+                [1.1] * 1.2 OR [1.2] * 0.9 OR 50000
+              </code>
+              <div className="text-xs text-muted-foreground space-y-1">
+                <p><strong>Cenário 1:</strong> Se [1.1] existe → usa primeira: [1.1] * 1.2</p>
+                <p><strong>Cenário 2:</strong> Se [1.1] não existe mas [1.2] existe → usa segunda: [1.2] * 0.9</p>
+                <p><strong>Cenário 3:</strong> Se nenhuma existe → usa terceira: 50000</p>
+              </div>
+            </Card>
+
+            <Card className="p-4">
+              <h3 className="font-semibold mb-2">Cascata com Prioridade</h3>
+              <p className="text-sm text-muted-foreground mb-2">
+                As sub-fórmulas são testadas em ordem. A primeira válida é executada.
+              </p>
+              <code className="block bg-muted p-2 rounded text-sm mb-2">
+                [vendas_online] * 1.15 OR [vendas_loja] * 1.05 OR PREV_YEAR([total]) OR 100000
+              </code>
+              <div className="text-xs text-muted-foreground">
+                <p className="mb-1"><strong>Ordem de prioridade:</strong></p>
+                <ol className="list-decimal list-inside space-y-1 ml-2">
+                  <li>Tenta vendas online com 15% de margem</li>
+                  <li>Se não disponível, tenta vendas loja com 5%</li>
+                  <li>Se não disponível, usa valor do ano anterior</li>
+                  <li>Como último recurso, usa valor fixo de 100000</li>
+                </ol>
+              </div>
+            </Card>
+
+            <Card className="p-4">
+              <h3 className="font-semibold mb-2">⚡ Sistema de Cache</h3>
+              <p className="text-sm text-muted-foreground mb-2">
+                Para melhor performance, o sistema memoriza qual sub-fórmula funcionou.
+              </p>
+              <div className="text-xs text-muted-foreground space-y-2">
+                <div className="bg-muted p-2 rounded">
+                  <p className="font-semibold mb-1">1ª Execução (cascata completa):</p>
+                  <p>• Testa [1.1] → falha (variável não existe)</p>
+                  <p>• Testa [1.2] → sucesso! ✓</p>
+                  <p>• Guarda em cache: usar sub-fórmula #2</p>
+                </div>
+                <div className="bg-muted p-2 rounded">
+                  <p className="font-semibold mb-1">2ª Execução em diante (rápido):</p>
+                  <p>• Vai direto para sub-fórmula #2 ⚡</p>
+                  <p>• Se falhar, volta para cascata</p>
+                </div>
+              </div>
+            </Card>
+
+            <Card className="p-4">
+              <h3 className="font-semibold mb-2">Fórmulas Complexas com OR</h3>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-xs font-semibold mb-1">Projeção com múltiplas fontes:</p>
+                  <code className="block bg-muted p-2 rounded text-xs mb-1">
+                    IF([1.1] &gt; 1000, [1.1] * 1.1, [1.1]) OR [1.2] * 0.9 OR PREV_YEAR([1.0]) * 1.05
+                  </code>
+                  <p className="text-xs text-muted-foreground">
+                    Tenta projeção condicional, depois alternativa, depois ano anterior com crescimento
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold mb-1">Média com fallback:</p>
+                  <code className="block bg-muted p-2 rounded text-xs mb-1">
+                    AVG([2.1], [2.2], [2.3]) OR SUM([2.1], [2.2]) / 2 OR [2.1] OR 5000
+                  </code>
+                  <p className="text-xs text-muted-foreground">
+                    Tenta média de 3, depois de 2, depois só uma variável, depois valor fixo
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold mb-1">Máximo com alternativas temporais:</p>
+                  <code className="block bg-muted p-2 rounded text-xs mb-1">
+                    MAX([3.1], [3.2]) OR PREV_MONTH([3.0]) OR YTD([3.0]) / 3
+                  </code>
+                  <p className="text-xs text-muted-foreground">
+                    Tenta máximo atual, depois mês anterior, depois média YTD
+                  </p>
+                </div>
+              </div>
+            </Card>
+
+            <Card className="p-4 border-orange-200 dark:border-orange-800">
+              <h3 className="font-semibold mb-2 flex items-center gap-2">
+                <span className="text-orange-600 dark:text-orange-400">⚠️</span>
+                Limites e Validações
+              </h3>
+              <div className="text-sm space-y-2">
+                <p className="text-muted-foreground">
+                  <strong>Máximo de sub-fórmulas:</strong> 5 alternativas
+                </p>
+                <p className="text-muted-foreground">
+                  <strong>Referências circulares:</strong> Detectadas automaticamente ao guardar
+                </p>
+                <p className="text-muted-foreground">
+                  <strong>Validação:</strong> Sistema valida sintaxe antes de guardar
+                </p>
+                <code className="block bg-red-50 dark:bg-red-950/20 p-2 rounded text-xs mt-2">
+                  ❌ ERRO: A = B * 2 OR 100<br />
+                  ❌ ERRO: B = A * 3 OR 50<br />
+                  → Referência circular detectada!
+                </code>
+              </div>
+            </Card>
+
+            <Card className="p-4 bg-green-50 dark:bg-green-950/20">
+              <h3 className="font-semibold mb-2 text-green-900 dark:text-green-100">💡 Dicas de Uso</h3>
+              <ul className="text-sm text-green-800 dark:text-green-200 space-y-1 list-disc list-inside">
+                <li>Coloque as fórmulas mais específicas primeiro</li>
+                <li>Use valores fixos como última alternativa</li>
+                <li>Combine com funções temporais (PREV_MONTH, PREV_YEAR)</li>
+                <li>O cache é limpo ao trocar de versão</li>
+                <li>Sub-fórmulas podem conter qualquer função válida</li>
+              </ul>
             </Card>
           </TabsContent>
 
