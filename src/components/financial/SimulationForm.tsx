@@ -500,10 +500,11 @@ export default function SimulationForm({ onMenuClick }: Props) {
       const yearToUse = new Date().getFullYear();
 
       // Store config var ID temporarily for parent mapping
+      const tempConfigMapping: any[] = [];
       configVars.forEach((configVar: any, index: number) => {
         monthsToCreate.forEach((month) => {
           const valueType = configVar.value_type === 'percentage' ? 'percentage' : 'number';
-          variablesToInsert.push({
+          const recordData = {
             version_id: versionId,
             row_index: (index * 3) + month,
             account_num: configVar.account_num,
@@ -519,8 +520,13 @@ export default function SimulationForm({ onMenuClick }: Props) {
             id_lang: configVar.id_lang,
             value_type: valueType,
             level: configVar.level,
-            parent_account_id: configVar.parent_account_id, // Store temporarily
-            _config_id: configVar.id_sim_cfg_var // Temporary field for mapping
+            parent_account_id: configVar.parent_account_id
+          };
+          
+          variablesToInsert.push(recordData);
+          tempConfigMapping.push({
+            ...recordData,
+            _config_id: configVar.id_sim_cfg_var
           });
         });
       });
@@ -543,18 +549,19 @@ export default function SimulationForm({ onMenuClick }: Props) {
       // Second pass: Update parent_account_id relationships
       const updates: Promise<any>[] = [];
       
-      // Create mapping from account_num to config var
-      const accountToConfigVar = new Map<string, any>();
-      configVars.forEach((cv: any) => {
-        accountToConfigVar.set(cv.account_num, cv);
-      });
-
       for (const insertedVar of insertedVars || []) {
-        const configVar = accountToConfigVar.get(insertedVar.account_num);
+        // Find the temp mapping for this inserted var
+        const tempMapping = tempConfigMapping.find((tm: any) => 
+          tm.account_num === insertedVar.account_num &&
+          tm.month === insertedVar.month &&
+          tm.year === insertedVar.year &&
+          tm.id_lob === insertedVar.id_lob &&
+          tm.id_lang === insertedVar.id_lang
+        );
         
-        if (configVar && configVar.parent_account_id) {
+        if (tempMapping && tempMapping.parent_account_id) {
           // Find the parent config var
-          const parentConfigVar = configVars.find((cv: any) => cv.id_sim_cfg_var === configVar.parent_account_id);
+          const parentConfigVar = configVars.find((cv: any) => cv.id_sim_cfg_var === tempMapping.parent_account_id);
           
           if (parentConfigVar) {
             // Find the corresponding parent simulation var (same account_num, month, year, lob, lang)
