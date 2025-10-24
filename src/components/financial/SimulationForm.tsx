@@ -670,12 +670,11 @@ export default function SimulationForm({ onMenuClick }: Props) {
     const thisVar = variables.find(v => v.id_sim === varId);
     if (!thisVar) return false;
     
-    // Check if any variable has this account_code as parent
-    return variables.some(v => {
-      if (!v.parent_account_id) return false;
-      const parent = variables.find(p => p.id_sim === v.parent_account_id);
-      return parent?.account_code === thisVar.account_code;
-    });
+    // Check if any variable has this variable's id_sim as parent
+    const hasDirectChildren = variables.some(v => v.parent_account_id === thisVar.id_sim);
+    
+    console.log('hasChildren check:', thisVar.account_code, 'has children:', hasDirectChildren);
+    return hasDirectChildren;
   };
 
   const isLeafAccount = (accountCode: string, allVars: Variable[]) => {
@@ -1164,13 +1163,14 @@ export default function SimulationForm({ onMenuClick }: Props) {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-5 w-5"
+                              className="h-6 w-6 hover:bg-muted"
                               onClick={() => toggleExpandedRow(variable.id_sim)}
+                              title={isExpanded ? "Colapsar" : "Expandir"}
                             >
-                              {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                              {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                             </Button>
                           ) : (
-                            <div className="w-5" />
+                            <div className="w-6" />
                           )}
                           
                           <span className="font-mono text-xs text-muted-foreground">
