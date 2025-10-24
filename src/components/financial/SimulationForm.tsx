@@ -275,25 +275,6 @@ export default function SimulationForm({ onMenuClick }: Props) {
         value_orig: v.value_orig !== undefined ? v.value_orig : 0
       })) as Variable[];
       
-      console.log('First 3 variables with values:', vars.slice(0, 3).map(v => ({ 
-        code: v.account_code, 
-        name: v.name, 
-        value: v.value,
-        value_orig: v.value_orig,
-        month: v.month,
-        year: v.year
-      })));
-      
-      console.log('Final variables to set:', vars.length, 'records');
-      console.log('Sample variables:', vars.slice(0, 5).map(v => ({ 
-        code: v.account_code, 
-        name: v.name, 
-        level: v.level, 
-        parent: v.parent_account_id,
-        lob: v.lob,
-        lang: v.id_lang
-      })));
-      
       setVariables(vars);
       
       // Create bidirectional maps between config and sim variables
@@ -959,7 +940,6 @@ export default function SimulationForm({ onMenuClick }: Props) {
         v.lob === variable.lob &&
         v.id_lang === variable.id_lang
       );
-      console.log('getValue for', variable.account_code, year, month, ':', matchingVar?.value, '(orig:', matchingVar?.value_orig, ')');
       return matchingVar?.value || 0;
     }
   };
