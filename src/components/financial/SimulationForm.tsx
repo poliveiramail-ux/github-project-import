@@ -322,13 +322,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
       
       setPeriods(sortedPeriods);
       
-      // Build value map from the actual value column
-      const valueMap = new Map<string, number>();
-      data.forEach((v: any) => {
-        const key = `${v.account_num}-${v.year || new Date().getFullYear()}-${v.month || 1}-${v.id_lang}-${v.id_lob}`;
-        valueMap.set(key, v.value || 0);
-      });
-      setVariableValues(valueMap);
+      // variableValues Map will only contain user edits, not initial DB values
+      // getValue will read from variables array for DB values
     }
     
     console.log('Setting version:', versionId);
@@ -915,8 +910,20 @@ export default function SimulationForm({ onMenuClick }: Props) {
     if (calcType === 'FORMULA') {
       return evaluateFormula(variable.formula || '', year, month, variable.account_code);
     } else {
-      // MANUAL or default
-      return variableValues.get(key) || 0;
+      // Check if user has edited this value in the Map first
+      if (variableValues.has(key)) {
+        return variableValues.get(key) || 0;
+      }
+      
+      // Otherwise, read from the database value field
+      const matchingVar = variables.find(v => 
+        v.account_code === variable.account_code && 
+        v.year === year && 
+        v.month === month && 
+        v.lob === variable.lob &&
+        v.id_lang === variable.id_lang
+      );
+      return (matchingVar as any)?.value || 0;
     }
   };
 
