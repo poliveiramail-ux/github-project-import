@@ -307,11 +307,18 @@ export default function SimulationForm({ onMenuClick }: Props) {
       setVariableValues(valueMap);
     }
     
+    console.log('Setting version:', versionId);
+    console.log('Total variables loaded:', data?.length);
+    
     setCurrentVersionId(versionId);
     
     // Expandir automaticamente apenas variáveis de nível 0 (raiz)
     const rootVars = (data || []).filter((v: any) => (parseInt(v.level || '0', 10) === 0));
+    console.log('Root variables (level 0):', rootVars.length);
+    console.log('Root var IDs:', rootVars.map((v: any) => ({ id: v.id_sim, account: v.account_num, level: v.level })));
+    
     const expandedSet = new Set<string>(rootVars.map((v: any) => v.id_sim));
+    console.log('Initial expanded set size:', expandedSet.size);
     setExpandedRows(expandedSet);
   };
 
@@ -935,27 +942,40 @@ export default function SimulationForm({ onMenuClick }: Props) {
 
   const isVariableVisible = (variable: Variable, allVars: Variable[], parentMap: Map<string, string>): boolean => {
     // Variáveis de nível 0 (raiz absoluta) são sempre visíveis
-    if (variable.level === 0) return true;
+    if (variable.level === 0) {
+      console.log('✓ Variable visible (level 0):', variable.account_code, variable.name);
+      return true;
+    }
     
     // Contas raiz (sem pai ou referência circular) são sempre visíveis
-    if (!variable.parent_account_id || variable.parent_account_id === variable.id_sim) return true;
+    if (!variable.parent_account_id || variable.parent_account_id === variable.id_sim) {
+      console.log('✓ Variable visible (no parent or circular):', variable.account_code, variable.name);
+      return true;
+    }
     
     // Find parent by mapping parent_account_id to account_code
     const parentAccountCode = parentMap.get(variable.parent_account_id);
     if (!parentAccountCode) {
       // Se não encontrar pai, verifica se é nível 0 ou 1
-      return variable.level <= 1;
+      const result = variable.level <= 1;
+      console.log(result ? '✓' : '✗', 'Variable visibility (no parent found):', variable.account_code, variable.name, 'level:', variable.level);
+      return result;
     }
     
     // Find parent variable by account_code
     const parent = allVars.find(v => v.account_code === parentAccountCode);
     if (!parent) {
       // Se não encontrar pai, verifica se é nível 0 ou 1
-      return variable.level <= 1;
+      const result = variable.level <= 1;
+      console.log(result ? '✓' : '✗', 'Variable visibility (parent not found in allVars):', variable.account_code, variable.name, 'level:', variable.level);
+      return result;
     }
     
     // Verificar se o pai está expandido
-    if (!expandedRows.has(parent.id_sim)) return false;
+    if (!expandedRows.has(parent.id_sim)) {
+      console.log('✗ Variable hidden (parent collapsed):', variable.account_code, variable.name, 'parent:', parent.account_code);
+      return false;
+    }
     
     // Verificar recursivamente se todos os ancestors estão expandidos
     return isVariableVisible(parent, allVars, parentMap);
