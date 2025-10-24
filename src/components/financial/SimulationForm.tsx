@@ -967,8 +967,6 @@ export default function SimulationForm({ onMenuClick }: Props) {
   };
 
   const getVisibleVariables = () => {
-    console.log('getVisibleVariables called, total variables:', variables.length);
-    
     // Get unique variables by account_code  
     const uniqueVarsMap = new Map<string, Variable>();
     variables.forEach(v => {
@@ -978,42 +976,54 @@ export default function SimulationForm({ onMenuClick }: Props) {
     });
     
     const uniqueVars = Array.from(uniqueVarsMap.values());
-    console.log('Unique variables:', uniqueVars.length);
     
-    // Filter visible variables based on parent_account_id
-    const visible = uniqueVars.filter(variable => {
-      // Get this variable's config ID
+    // Identify root variables (where parent_account_id equals own config ID)
+    const rootVars: Variable[] = [];
+    uniqueVars.forEach(variable => {
       const thisConfigId = simToConfigMap.get(variable.id_sim);
-      
-      // If parent_account_id equals this variable's own config ID, it's a root
       if (variable.parent_account_id === thisConfigId) {
-        console.log('Variable', variable.account_code, 'is root (self-reference)');
-        return true;
+        rootVars.push(variable);
       }
-      
-      // Find the parent simulation ID using configVarMap
-      const parentSimId = configVarMap.get(variable.parent_account_id || '');
-      
-      if (!parentSimId) {
-        console.log('Variable', variable.account_code, 'has no parent mapping');
-        return false;
-      }
-      
-      // Check if parent is expanded
-      const isExpanded = expandedRows.has(parentSimId);
-      console.log('Variable', variable.account_code, 'parent', variable.parent_account_id, 'is', isExpanded ? 'expanded' : 'collapsed');
-      return isExpanded;
     });
     
-    console.log('Final visible variables:', visible.length);
-    console.log('Expanded rows:', expandedRows.size);
-    
-    // Sort by account_code before returning
-    return visible.sort((a, b) => {
-      const aCode = a.account_code || '';
-      const bCode = b.account_code || '';
-      return aCode.localeCompare(bCode, undefined, { numeric: true });
+    // Sort roots by account_num
+    rootVars.sort((a, b) => {
+      const aNum = a.account_code || '';
+      const bNum = b.account_code || '';
+      return aNum.localeCompare(bNum, undefined, { numeric: true });
     });
+    
+    // Build visible list hierarchically
+    const visible: Variable[] = [];
+    
+    const addVariableAndChildren = (variable: Variable) => {
+      visible.push(variable);
+      
+      // If this variable is expanded, add its children
+      if (expandedRows.has(variable.id_sim)) {
+        // Get this variable's config ID
+        const thisConfigId = simToConfigMap.get(variable.id_sim);
+        if (thisConfigId) {
+          // Find all children (variables whose parent_account_id equals this config ID)
+          const children = uniqueVars.filter(v => v.parent_account_id === thisConfigId);
+          
+          // Sort children by account_num
+          children.sort((a, b) => {
+            const aNum = a.account_code || '';
+            const bNum = b.account_code || '';
+            return aNum.localeCompare(bNum, undefined, { numeric: true });
+          });
+          
+          // Recursively add each child
+          children.forEach(child => addVariableAndChildren(child));
+        }
+      }
+    };
+    
+    // Start with root variables
+    rootVars.forEach(root => addVariableAndChildren(root));
+    
+    return visible;
   };
 
   if (loading) {
