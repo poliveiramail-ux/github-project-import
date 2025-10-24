@@ -393,7 +393,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
         .from('simulation_versions')
         .insert([{
           name: versionName,
-          id_prj: selectedProject
+          id_prj: selectedProject,
+          id_lang: selectedLanguage || null
         }])
         .select();
 
@@ -484,7 +485,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
         .from('simulation_versions')
         .insert([{
           name: versionName,
-          id_prj: selectedProject
+          id_prj: selectedProject,
+          id_lang: selectedLanguage || null
         }])
         .select();
 
