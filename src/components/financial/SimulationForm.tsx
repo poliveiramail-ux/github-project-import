@@ -921,27 +921,22 @@ export default function SimulationForm({ onMenuClick }: Props) {
   };
 
   const getValue = (variable: Variable, year: number, month: number): number => {
-    const calcType = variable.calculation_type || 'MANUAL';
     const key = `${variable.account_code}-${year}-${month}-${variable.id_lang}-${variable.lob}`;
     
-    if (calcType === 'FORMULA') {
-      return evaluateFormula(variable.formula || '', year, month, variable.account_code);
-    } else {
-      // Check if user has edited this value in the Map first
-      if (variableValues.has(key)) {
-        return variableValues.get(key) || 0;
-      }
-      
-      // Otherwise, read from the database value field
-      const matchingVar = variables.find(v => 
-        v.account_code === variable.account_code && 
-        v.year === year && 
-        v.month === month && 
-        v.lob === variable.lob &&
-        v.id_lang === variable.id_lang
-      );
-      return matchingVar?.value || 0;
+    // Check if user has edited this value in the Map first
+    if (variableValues.has(key)) {
+      return variableValues.get(key) || 0;
     }
+    
+    // Always read from the database value field (already calculated values are stored there)
+    const matchingVar = variables.find(v => 
+      v.account_code === variable.account_code && 
+      v.year === year && 
+      v.month === month && 
+      v.lob === variable.lob &&
+      v.id_lang === variable.id_lang
+    );
+    return matchingVar?.value || 0;
   };
 
   const getOriginalValue = (variable: Variable, year: number, month: number): number => {
