@@ -668,7 +668,44 @@ export default function SimulationForm({ onMenuClick }: Props) {
   const hasChildren = (varId: string) => {
     // Find the account_code for this variable
     const thisVar = variables.find(v => v.id_sim === varId);
-    if (!thisVar) return false;
+    if (!thisVar) {
+      console.log('❌ hasChildren: variable not found for id:', varId);
+      return false;
+    }
+    
+    // Log some example parent relationships
+    if (thisVar.account_code === '1') {
+      console.log('🔍 Checking variable "1" (first one)');
+      console.log('  - thisVar:', { id_sim: thisVar.id_sim, account_code: thisVar.account_code, name: thisVar.name });
+      console.log('  - All variables with this account_code:', variables.filter(v => v.account_code === thisVar.account_code).length);
+      
+      // Check what variables have this as parent
+      const directChildren = variables.filter(v => v.parent_account_id === thisVar.id_sim);
+      console.log('  - Variables with this exact id_sim as parent:', directChildren.length);
+      if (directChildren.length > 0) {
+        console.log('  - Example child:', { 
+          account_code: directChildren[0].account_code, 
+          name: directChildren[0].name,
+          parent_account_id: directChildren[0].parent_account_id 
+        });
+      }
+      
+      // Get all id_sim values for variables with account_code "1"
+      const thisAccountIds = variables
+        .filter(v => v.account_code === thisVar.account_code)
+        .map(v => v.id_sim);
+      console.log('  - All id_sim for account_code "1":', thisAccountIds.length);
+      
+      // Check if any variable has any of these IDs as parent
+      const allChildren = variables.filter(v => 
+        v.parent_account_id && thisAccountIds.includes(v.parent_account_id)
+      );
+      console.log('  - Variables with ANY of these ids as parent:', allChildren.length);
+      if (allChildren.length > 0) {
+        const uniqueChildCodes = [...new Set(allChildren.map(c => c.account_code))];
+        console.log('  - Unique child account codes:', uniqueChildCodes);
+      }
+    }
     
     // Get all id_sim values for variables with the same account_code
     const thisAccountIds = variables
@@ -679,14 +716,6 @@ export default function SimulationForm({ onMenuClick }: Props) {
     const result = variables.some(v => 
       v.parent_account_id && thisAccountIds.includes(v.parent_account_id)
     );
-    
-    if (result) {
-      const children = variables.filter(v => 
-        v.parent_account_id && thisAccountIds.includes(v.parent_account_id)
-      );
-      const uniqueChildCodes = [...new Set(children.map(c => c.account_code))];
-      console.log('✅ Has children:', thisVar.account_code, thisVar.name, 'children:', uniqueChildCodes);
-    }
     
     return result;
   };
