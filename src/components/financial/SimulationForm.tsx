@@ -284,11 +284,15 @@ export default function SimulationForm({ onMenuClick }: Props) {
       // Create map: config variable ID -> first simulation variable ID with same account_code
       // This allows us to resolve parent_account_id (which points to config) to simulation variables
       const configToSimMap = new Map<string, string>();
+      console.log('Creating config to sim map from', configVars?.length, 'config vars');
       configVars?.forEach((cv: any) => {
         // Find first sim variable with this account_code
         const simVar = vars.find(v => v.account_code === cv.account_num);
         if (simVar) {
           configToSimMap.set(cv.id_sim_cfg_var, simVar.id_sim);
+          console.log('Mapped config', cv.id_sim_cfg_var, '(', cv.account_num, ') -> sim', simVar.id_sim);
+        } else {
+          console.log('No sim var found for config', cv.id_sim_cfg_var, '(', cv.account_num, ')');
         }
       });
       setConfigVarMap(configToSimMap);
