@@ -78,7 +78,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
   const [variableValues, setVariableValues] = useState<Map<string, number>>(new Map());
   const [versions, setVersions] = useState<SimulationVersion[]>([]);
   const [currentVersionId, setCurrentVersionId] = useState<string | null>(null);
-  const [expandedRows, setExpandedRows] = useState(new Set<string>());
+  const [expandedRows, setExpandedRows] = useState(new Set<string>()); // Set of account_codes
   const [loading, setLoading] = useState(true);
   const [showNewVersionModal, setShowNewVersionModal] = useState(false);
   const [newVersionName, setNewVersionName] = useState('');
@@ -306,14 +306,14 @@ export default function SimulationForm({ onMenuClick }: Props) {
       });
       setVariableValues(valueMap);
       
-      // Auto-expand root variables
-      const rootIds = new Set<string>();
+      // Auto-expand root variables by account_code
+      const rootCodes = new Set<string>();
       vars.forEach(v => {
         if (!v.parent_account_id) {
-          rootIds.add(v.id_sim);
+          rootCodes.add(v.account_code);
         }
       });
-      setExpandedRows(rootIds);
+      setExpandedRows(rootCodes);
     } else {
       setExpandedRows(new Set());
     }
@@ -918,13 +918,13 @@ export default function SimulationForm({ onMenuClick }: Props) {
     );
   };
 
-  const toggleExpandedRow = (varId: string) => {
+  const toggleExpandedRow = (accountCode: string) => {
     setExpandedRows(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(varId)) {
-        newSet.delete(varId);
+      if (newSet.has(accountCode)) {
+        newSet.delete(accountCode);
       } else {
-        newSet.add(varId);
+        newSet.add(accountCode);
       }
       return newSet;
     });
@@ -942,8 +942,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
     const parent = allVars.find(v => v.account_code === parentAccountCode);
     if (!parent) return true;
     
-    // Verificar se o pai está expandido
-    if (!expandedRows.has(parent.id_sim)) return false;
+    // Verificar se o pai está expandido (usando account_code)
+    if (!expandedRows.has(parentAccountCode)) return false;
     
     // Verificar recursivamente se todos os ancestors estão expandidos
     return isVariableVisible(parent, allVars, parentMap);
@@ -1206,7 +1206,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
               <tbody>
                 {getVisibleVariables().map(variable => {
                   const isParent = hasChildren(variable.id_sim);
-                  const isExpanded = expandedRows.has(variable.id_sim);
+                  const isExpanded = expandedRows.has(variable.account_code);
                   const calcType = variable.calculation_type || 'AUTO';
                   const isBlocked = blockedVariables.has(variable.account_code);
                   const isEditable = isLeafAccount(variable.account_code, variables) && 
@@ -1225,7 +1225,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
                               variant="ghost"
                               size="icon"
                               className="h-5 w-5"
-                              onClick={() => toggleExpandedRow(variable.id_sim)}
+                              onClick={() => toggleExpandedRow(variable.account_code)}
                             >
                               {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
                             </Button>
