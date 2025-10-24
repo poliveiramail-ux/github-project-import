@@ -666,7 +666,13 @@ export default function SimulationForm({ onMenuClick }: Props) {
   };
 
   const hasChildren = (varId: string) => {
-    return variables.some(v => v.parent_account_id === varId);
+    const result = variables.some(v => v.parent_account_id === varId);
+    if (result) {
+      const thisVar = variables.find(v => v.id_sim === varId);
+      console.log('✅ Has children:', thisVar?.account_code, thisVar?.name, 'children:', 
+        variables.filter(v => v.parent_account_id === varId).map(v => v.account_code));
+    }
+    return result;
   };
 
   const isLeafAccount = (accountCode: string, allVars: Variable[]) => {
