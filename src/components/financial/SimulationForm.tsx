@@ -499,7 +499,6 @@ export default function SimulationForm({ onMenuClick }: Props) {
       const monthsToCreate = [1, 2, 3]; // Jan, Feb, Mar
       const yearToUse = new Date().getFullYear();
 
-      // Store config var ID temporarily for parent mapping
       configVars.forEach((configVar: any, index: number) => {
         monthsToCreate.forEach((month) => {
           const valueType = configVar.value_type === 'percentage' ? 'percentage' : 'number';
@@ -519,8 +518,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
             id_lang: configVar.id_lang,
             value_type: valueType,
             level: configVar.level,
-            parent_account_id: configVar.parent_account_id, // Store temporarily
-            _config_id: configVar.id_sim_cfg_var // Temporary field for mapping
+            parent_account_id: configVar.parent_account_id
           });
         });
       });
