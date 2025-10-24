@@ -305,10 +305,20 @@ export default function SimulationForm({ onMenuClick }: Props) {
         valueMap.set(key, v.value || 0);
       });
       setVariableValues(valueMap);
+      
+      // Auto-expand root variables
+      const rootIds = new Set<string>();
+      vars.forEach(v => {
+        if (!v.parent_account_id) {
+          rootIds.add(v.id_sim);
+        }
+      });
+      setExpandedRows(rootIds);
+    } else {
+      setExpandedRows(new Set());
     }
     
     setCurrentVersionId(versionId);
-    setExpandedRows(new Set());
   };
 
   const handleProjectChange = (projectId: string) => {
