@@ -970,18 +970,25 @@ export default function SimulationForm({ onMenuClick }: Props) {
     const uniqueVars = Array.from(uniqueVarsMap.values());
     console.log('Unique variables:', uniqueVars.length);
     
-    // Filtrar variáveis visíveis - igual ao ConfigurationForm
+    // Helper to find parent account code
+    const getParentAccountCode = (accountCode: string): string | null => {
+      const lastDotIndex = accountCode.lastIndexOf('.');
+      if (lastDotIndex === -1) return null; // Root account
+      return accountCode.substring(0, lastDotIndex);
+    };
+    
+    // Filtrar variáveis visíveis baseado em account_code hierarchy
     const visible = uniqueVars.filter(variable => {
-      // Contas raiz são sempre visíveis (sem pai ou com referência circular)
-      if (!variable.parent_account_id || variable.parent_account_id === variable.id_sim) {
-        return true;
-      }
+      const parentCode = getParentAccountCode(variable.account_code);
       
-      // Contas filhas são visíveis apenas se o pai está expandido
-      // Procurar o pai pelo parent_account_id
-      const parent = variables.find(v => v.id_sim === variable.parent_account_id);
+      // Root accounts são sempre visíveis
+      if (!parentCode) return true;
+      
+      // Find parent variable by account_code
+      const parent = uniqueVars.find(v => v.account_code === parentCode);
       if (!parent) return true; // Se não encontrar pai, mostrar
       
+      // Visible if parent is expanded
       return expandedRows.has(parent.id_sim);
     });
     
