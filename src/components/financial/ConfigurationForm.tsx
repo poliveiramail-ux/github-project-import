@@ -425,8 +425,8 @@ export default function ConfigurationForm({ onBack }: Props) {
   // Filtrar variáveis visíveis (apenas raízes e filhos de pais expandidos)
   const getVisibleVariables = () => {
     return variables.filter(variable => {
-      // Contas raiz são sempre visíveis
-      if (!variable.parent_account_id) return true;
+      // Contas raiz são sempre visíveis (sem pai ou com referência circular)
+      if (!variable.parent_account_id || variable.parent_account_id === variable.id_sim_cfg_var) return true;
       
       // Contas filhas são visíveis apenas se o pai está expandido
       return expandedVars.has(variable.parent_account_id);
