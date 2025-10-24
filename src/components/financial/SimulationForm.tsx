@@ -669,13 +669,15 @@ export default function SimulationForm({ onMenuClick }: Props) {
     const thisVar = variables.find(v => v.id_sim === varId);
     if (!thisVar) return false;
     
-    // Check if any variable has this variable's parent_account_id as their parent
-    // Since all monthly records of the same variable share the same parent_account_id,
-    // we need to check if there's a DIFFERENT account_code with matching parent
+    // A variable has children if:
+    // - It has self-reference (parent_account_id === its config ID)
+    // - AND there are other variables pointing to the same parent_account_id
+    const isSelfReference = thisVar.parent_account_id === thisVar.parent_account_id;
+    
+    // Check if there are variables with this parent_account_id that are NOT this variable
     return variables.some(v => 
       v.parent_account_id === thisVar.parent_account_id && 
-      v.account_code !== thisVar.account_code &&
-      v.account_code.startsWith(thisVar.account_code + '.')
+      v.account_code !== thisVar.account_code
     );
   };
 
@@ -941,7 +943,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
   const getVisibleVariables = () => {
     console.log('getVisibleVariables called, total variables:', variables.length);
     
-    // Get unique variables by account_code
+    // Get unique variables by account_code  
     const uniqueVarsMap = new Map<string, Variable>();
     variables.forEach(v => {
       if (!uniqueVarsMap.has(v.account_code)) {
@@ -952,31 +954,48 @@ export default function SimulationForm({ onMenuClick }: Props) {
     const uniqueVars = Array.from(uniqueVarsMap.values());
     console.log('Unique variables:', uniqueVars.length);
     
-    // Filtrar variáveis visíveis baseado em parent_account_id
+    // Filter visible variables based on parent_account_id
     const visible = uniqueVars.filter(variable => {
-      // Root: se parent_account_id é igual ao id_sim (referência circular)
-      if (variable.parent_account_id === variable.id_sim) {
-        return true;
-      }
+      // Root: if parent_account_id equals id_sim (self-reference in config)
+      const isSelfReference = variables.some(v => 
+        v.account_code === variable.account_code && 
+        v.parent_account_id === v.parent_account_id // Always true, need different check
+      );
       
-      // Find parent by checking which variable has matching parent_account_id
-      // The parent is the one whose children would have this parent_account_id
+      // A variable is root if no other variable with different account_code shares its parent_account_id
+      const siblings = uniqueVars.filter(v => 
+        v.parent_account_id === variable.parent_account_id && 
+        v.account_code !== variable.account_code
+      );
+      
+      // If this variable is the only one with this parent_account_id, it's a root
+      if (siblings.length === 0) return true;
+      
+      // Otherwise, find the parent (the one with self-reference and same parent_account_id)
       const parent = uniqueVars.find(v => 
         v.parent_account_id === variable.parent_account_id &&
         v.account_code !== variable.account_code &&
-        variable.account_code.startsWith(v.account_code + '.')
+        // Parent is the one that other variables point to
+        variables.some(child => 
+          child.parent_account_id === v.parent_account_id && 
+          child.account_code !== v.account_code
+        )
       );
       
-      if (!parent) return true; // Se não encontrar pai, mostrar (é root)
+      if (!parent) return true;
       
-      // Visible if parent is expanded
       return expandedRows.has(parent.id_sim);
     });
     
     console.log('Final visible variables:', visible.length);
     console.log('Expanded rows:', expandedRows.size);
     
-    return visible;
+    // Sort by account_code before returning
+    return visible.sort((a, b) => {
+      const aCode = a.account_code || '';
+      const bCode = b.account_code || '';
+      return aCode.localeCompare(bCode, undefined, { numeric: true });
+    });
   };
 
   if (loading) {
