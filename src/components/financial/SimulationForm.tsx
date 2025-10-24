@@ -45,6 +45,8 @@ interface Variable {
   id_lang: string;
   level: number;
   parent_account_id?: string | null;
+  value?: number;
+  value_orig?: number;
 }
 
 interface VariableValue {
@@ -946,7 +948,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
         v.lob === variable.lob &&
         v.id_lang === variable.id_lang
       );
-      return (matchingVar as any)?.value || 0;
+      return matchingVar?.value || 0;
     }
   };
 
@@ -959,7 +961,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
       v.lob === variable.lob &&
       v.id_lang === variable.id_lang
     );
-    return (matchingVar as any)?.value_orig || 0;
+    return matchingVar?.value_orig || 0;
   };
 
   const updateValue = (accountCode: string, year: number, month: number, language: string, lob: string, value: string) => {
