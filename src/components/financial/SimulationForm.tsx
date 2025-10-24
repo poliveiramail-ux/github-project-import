@@ -940,11 +940,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
   };
 
   const sortVariablesHierarchically = (vars: Variable[]): Variable[] => {
-    // Build a map for quick parent lookup
-    const idToVar = new Map<string, Variable>();
-    vars.forEach(v => idToVar.set(v.id_sim, v));
-    
-    // Build children map
+    // Build children map using id_sim as key
     const childrenMap = new Map<string, Variable[]>();
     vars.forEach(v => {
       if (v.parent_account_id) {
@@ -954,15 +950,15 @@ export default function SimulationForm({ onMenuClick }: Props) {
       }
     });
     
-    // Sort children by account_code
+    // Sort children by account_code within each parent
     childrenMap.forEach(children => {
       children.sort((a, b) => a.account_code.localeCompare(b.account_code, undefined, { numeric: true }));
     });
     
     // Recursive function to build hierarchical list
-    const buildHierarchy = (parentId: string | null): Variable[] => {
+    const buildHierarchy = (parentId: string): Variable[] => {
       const result: Variable[] = [];
-      const children = childrenMap.get(parentId || '') || [];
+      const children = childrenMap.get(parentId) || [];
       
       children.forEach(child => {
         result.push(child);
