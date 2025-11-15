@@ -223,9 +223,10 @@ export default function SimulationForm({ onMenuClick }: Props) {
     let data = allData;
     if (langToUse || lobToUse) {
       const filteredVars = allData?.filter((v: any) => {
-        // Keep all variables that match the filters
-        const langMatch = !langToUse || v.id_lang === langToUse || v.id_lang === null;
-        const lobMatch = !lobToUse || v.id_lob === lobToUse || v.id_lob === null;
+        // When language is selected, only show variables with that language
+        const langMatch = !langToUse || v.id_lang === langToUse;
+        // When LOB is selected, only show variables with that LOB
+        const lobMatch = !lobToUse || v.id_lob === lobToUse;
         return langMatch && lobMatch;
       }) || [];
       

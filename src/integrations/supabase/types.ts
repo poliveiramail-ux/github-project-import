@@ -133,16 +133,16 @@ export type Database = {
           id_lob: string | null
           id_proj: string
           id_sim: string
-          id_sim_ver: string | null
+          id_sim_ver: string
           level: string | null
           month: number | null
           name: string
-          parent_account_id: string | null
+          parent_account_id: string
           row_index: number
           value: number | null
           value_orig: number | null
           value_type: string | null
-          version_id: string | null
+          version_id: string
           year: number | null
         }
         Insert: {
@@ -154,16 +154,16 @@ export type Database = {
           id_lob?: string | null
           id_proj: string
           id_sim?: string
-          id_sim_ver?: string | null
+          id_sim_ver?: string
           level?: string | null
           month?: number | null
           name: string
-          parent_account_id?: string | null
+          parent_account_id: string
           row_index: number
           value?: number | null
           value_orig?: number | null
           value_type?: string | null
-          version_id?: string | null
+          version_id: string
           year?: number | null
         }
         Update: {
@@ -175,16 +175,16 @@ export type Database = {
           id_lob?: string | null
           id_proj?: string
           id_sim?: string
-          id_sim_ver?: string | null
+          id_sim_ver?: string
           level?: string | null
           month?: number | null
           name?: string
-          parent_account_id?: string | null
+          parent_account_id?: string
           row_index?: number
           value?: number | null
           value_orig?: number | null
           value_type?: string | null
-          version_id?: string | null
+          version_id?: string
           year?: number | null
         }
         Relationships: [
@@ -194,6 +194,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "lob"
             referencedColumns: ["id_lob"]
+          },
+          {
+            foreignKeyName: "simulation_parent_account_id_fkey"
+            columns: ["parent_account_id"]
+            isOneToOne: false
+            referencedRelation: "simulation_configs_variables"
+            referencedColumns: ["id_sim_cfg_var"]
           },
           {
             foreignKeyName: "simulation_version_id_fkey"
@@ -321,6 +328,89 @@ export type Database = {
           },
           {
             foreignKeyName: "simulation_configs_variables_parent_account_id_fkey"
+            columns: ["parent_account_id"]
+            isOneToOne: false
+            referencedRelation: "simulation_configs_variables"
+            referencedColumns: ["id_sim_cfg_var"]
+          },
+        ]
+      }
+      simulation_configs_variables_duplicate: {
+        Row: {
+          account_num: string
+          blocked: boolean | null
+          calculation_type: string | null
+          created_at: string | null
+          formula: string | null
+          id_lang: string | null
+          id_lob: string | null
+          id_proj: string
+          id_sim_cfg: string | null
+          id_sim_cfg_var: string
+          level: number
+          name: string
+          parent_account_id: string | null
+          row_index: number
+          value_type: string | null
+        }
+        Insert: {
+          account_num: string
+          blocked?: boolean | null
+          calculation_type?: string | null
+          created_at?: string | null
+          formula?: string | null
+          id_lang?: string | null
+          id_lob?: string | null
+          id_proj: string
+          id_sim_cfg?: string | null
+          id_sim_cfg_var?: string
+          level?: number
+          name: string
+          parent_account_id?: string | null
+          row_index?: number
+          value_type?: string | null
+        }
+        Update: {
+          account_num?: string
+          blocked?: boolean | null
+          calculation_type?: string | null
+          created_at?: string | null
+          formula?: string | null
+          id_lang?: string | null
+          id_lob?: string | null
+          id_proj?: string
+          id_sim_cfg?: string | null
+          id_sim_cfg_var?: string
+          level?: number
+          name?: string
+          parent_account_id?: string | null
+          row_index?: number
+          value_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "simulation_configs_variables_duplicate_id_lang_fkey"
+            columns: ["id_lang"]
+            isOneToOne: false
+            referencedRelation: "lang"
+            referencedColumns: ["id_lang"]
+          },
+          {
+            foreignKeyName: "simulation_configs_variables_duplicate_id_lob_fkey"
+            columns: ["id_lob"]
+            isOneToOne: false
+            referencedRelation: "lob"
+            referencedColumns: ["id_lob"]
+          },
+          {
+            foreignKeyName: "simulation_configs_variables_duplicate_id_sim_cfg_fkey"
+            columns: ["id_sim_cfg"]
+            isOneToOne: false
+            referencedRelation: "simulation_configs"
+            referencedColumns: ["id_sim_cfg"]
+          },
+          {
+            foreignKeyName: "simulation_configs_variables_duplicate_parent_account_id_fkey"
             columns: ["parent_account_id"]
             isOneToOne: false
             referencedRelation: "simulation_configs_variables"
