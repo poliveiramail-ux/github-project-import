@@ -201,40 +201,13 @@ export default function SimulationForm({ onMenuClick }: Props) {
     let data = allData;
     
     if (langToUse) {
-      // Filter to show only variables that match the language
+      // Filter to show variables that match the language OR have null language (parent nodes)
       const filtered = allData?.filter((v: any) => {
-        return v.id_lang === langToUse;
+        return v.id_lang === langToUse || v.id_lang === null;
       }) || [];
       
       console.log('Filtered to', filtered.length, 'records matching language:', langToUse);
-      
-      // Include all ancestors (parent records) even if they have null id_lang
-      const resultSet = new Set<string>();
-      const allDataMap = new Map<string, any>();
-      
-      allData?.forEach((v: any) => {
-        allDataMap.set(v.id_sim, v);
-      });
-      
-      // Add all filtered records to result set
-      filtered.forEach((v: any) => {
-        resultSet.add(v.id_sim);
-        
-        // Recursively add all ancestors
-        let current = v;
-        while (current.parent_account_id) {
-          const parent = allData?.find((p: any) => p.id_sim === current.parent_account_id);
-          if (parent && !resultSet.has(parent.id_sim)) {
-            resultSet.add(parent.id_sim);
-            current = parent;
-          } else {
-            break;
-          }
-        }
-      });
-      
-      data = Array.from(resultSet).map(id => allDataMap.get(id)).filter(Boolean);
-      console.log('After including ancestors:', data.length, 'records');
+      data = filtered;
     }
     
     if (data) {
