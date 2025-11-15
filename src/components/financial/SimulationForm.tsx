@@ -103,8 +103,19 @@ export default function SimulationForm({ onMenuClick }: Props) {
     } else {
       setLanguages([]);
       setSelectedLanguage('');
+      setLobs([]);
+      setSelectedLob('');
     }
   }, [selectedProject]);
+
+  useEffect(() => {
+    if (selectedLanguage) {
+      loadLobs(selectedLanguage);
+    } else {
+      setLobs([]);
+      setSelectedLob('');
+    }
+  }, [selectedLanguage]);
 
   const loadProjects = async () => {
     const { data } = await supabase.from('project').select('id_prj, desc_prj').order('id_prj');
@@ -119,6 +130,15 @@ export default function SimulationForm({ onMenuClick }: Props) {
       .eq('id_prj', projectId)
       .order('id_lang');
     setLanguages((data || []).map(l => ({ id_lang: l.id_lang, desc_lang: l.desc_lang })));
+  };
+
+  const loadLobs = async (languageId: string) => {
+    const { data } = await supabase
+      .from('lob')
+      .select('id_lob, name')
+      .eq('id_lang', languageId)
+      .order('name');
+    setLobs((data || []).map(l => ({ id_lob: l.id_lob, name: l.name })));
   };
 
   const loadVersions = async (projectId: string) => {
