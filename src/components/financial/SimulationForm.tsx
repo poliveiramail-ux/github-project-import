@@ -226,29 +226,43 @@ export default function SimulationForm({ onMenuClick }: Props) {
     
     if (langToUse || lobToUse) {
       // Filter to show only variables that match the exact filters
-      data = allData?.filter((v: any) => {
+      const filtered = allData?.filter((v: any) => {
         // When language is selected, only show variables with that exact language
         const langMatch = !langToUse || (v.id_lang !== null && v.id_lang === langToUse);
         // When LOB is selected, only show variables with that exact LOB  
         const lobMatch = !lobToUse || (v.id_lob !== null && v.id_lob === lobToUse);
-        const matches = langMatch && lobMatch;
-        
-        if (v.account_num === '1.1020201') {
-          console.log('Testing 1.1020201:', { 
-            id_lang: v.id_lang, 
-            id_lob: v.id_lob, 
-            langToUse, 
-            lobToUse, 
-            langMatch, 
-            lobMatch, 
-            matches 
-          });
-        }
-        
-        return matches;
+        return langMatch && lobMatch;
       }) || [];
       
-      console.log('Filtered to', data.length, 'records matching', { langToUse, lobToUse });
+      console.log('Filtered to', filtered.length, 'records matching', { langToUse, lobToUse });
+      
+      // Now include all ancestors (parent records) even if they have null id_lang or id_lob
+      const resultSet = new Set<string>();
+      const allDataMap = new Map<string, any>();
+      
+      allData?.forEach((v: any) => {
+        allDataMap.set(v.id_sim, v);
+      });
+      
+      // Add all filtered records to result set
+      filtered.forEach((v: any) => {
+        resultSet.add(v.id_sim);
+        
+        // Recursively add all ancestors
+        let current = v;
+        while (current.parent_account_id) {
+          const parent = allData?.find((p: any) => p.id_sim === current.parent_account_id);
+          if (parent && !resultSet.has(parent.id_sim)) {
+            resultSet.add(parent.id_sim);
+            current = parent;
+          } else {
+            break;
+          }
+        }
+      });
+      
+      data = Array.from(resultSet).map(id => allDataMap.get(id)).filter(Boolean);
+      console.log('After including ancestors:', data.length, 'records');
     }
     
     if (data) {
