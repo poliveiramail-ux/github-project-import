@@ -170,7 +170,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
     }
   };
 
-  const loadVersion = async (versionId: string, languageFilter?: string, lobFilter?: string) => {
+  const loadVersion = async (versionId: string) => {
     // Clear formula cache when loading new version
     clearFormulaCache();
     
@@ -184,11 +184,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
       return;
     }
 
-    // Use parameters or fall back to state
-    const langToUse = languageFilter !== undefined ? languageFilter : selectedLanguage;
-    const lobToUse = lobFilter !== undefined ? lobFilter : selectedLob;
-
-    console.log('Loading version with filters:', { versionId, langToUse, lobToUse, selectedProject, languageFilter, lobFilter });
+    console.log('Loading version:', { versionId, selectedProject });
 
     // Load blocked variables and config structure from config
     const { data: configVars } = await (supabase as any)
@@ -209,61 +205,15 @@ export default function SimulationForm({ onMenuClick }: Props) {
     }
     setBlockedVariables(blockedSet);
 
-    // Always load all data first
-    const { data: allData } = await (supabase as any)
+    // Load all data
+    const { data } = await (supabase as any)
       .from('simulation')
       .select('*')
       .eq('version_id', versionId)
       .eq('id_proj', selectedProject)
       .order('account_num');
     
-    console.log('All data loaded from DB:', allData?.length, 'records');
-    
-    // Filter data based on selections
-    let data = allData;
-    
-    console.log('Starting filter. Total records:', allData?.length, 'Filters:', { langToUse, lobToUse });
-    
-    if (langToUse || lobToUse) {
-      // Filter to show only variables that match the exact filters
-      const filtered = allData?.filter((v: any) => {
-        // When language is selected, only show variables with that exact language
-        const langMatch = !langToUse || (v.id_lang !== null && v.id_lang === langToUse);
-        // When LOB is selected, only show variables with that exact LOB  
-        const lobMatch = !lobToUse || (v.id_lob !== null && v.id_lob === lobToUse);
-        return langMatch && lobMatch;
-      }) || [];
-      
-      console.log('Filtered to', filtered.length, 'records matching', { langToUse, lobToUse });
-      
-      // Now include all ancestors (parent records) even if they have null id_lang or id_lob
-      const resultSet = new Set<string>();
-      const allDataMap = new Map<string, any>();
-      
-      allData?.forEach((v: any) => {
-        allDataMap.set(v.id_sim, v);
-      });
-      
-      // Add all filtered records to result set
-      filtered.forEach((v: any) => {
-        resultSet.add(v.id_sim);
-        
-        // Recursively add all ancestors
-        let current = v;
-        while (current.parent_account_id) {
-          const parent = allData?.find((p: any) => p.id_sim === current.parent_account_id);
-          if (parent && !resultSet.has(parent.id_sim)) {
-            resultSet.add(parent.id_sim);
-            current = parent;
-          } else {
-            break;
-          }
-        }
-      });
-      
-      data = Array.from(resultSet).map(id => allDataMap.get(id)).filter(Boolean);
-      console.log('After including ancestors:', data.length, 'records');
-    }
+    console.log('Data loaded from DB:', data?.length, 'records');
     
     if (data) {
       const vars = data.map((v: any) => ({
@@ -368,24 +318,6 @@ export default function SimulationForm({ onMenuClick }: Props) {
     setCurrentVersionId(null);
     if (projectId) {
       loadVersions(projectId);
-    }
-  };
-
-  const handleLanguageChange = (languageId: string) => {
-    const actualLanguage = languageId === 'ALL' ? '' : languageId;
-    setSelectedLanguage(actualLanguage);
-    // Clear LOB selection when language changes
-    setSelectedLob('');
-    if (currentVersionId) {
-      loadVersion(currentVersionId, actualLanguage, '');
-    }
-  };
-
-  const handleLobChange = (lobId: string) => {
-    const actualLob = lobId === 'ALL' ? '' : lobId;
-    setSelectedLob(actualLob);
-    if (currentVersionId) {
-      loadVersion(currentVersionId, selectedLanguage, actualLob);
     }
   };
 
@@ -715,7 +647,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
       }
       
       // Reload the version to update the UI with saved values
-      await loadVersion(currentVersionId, selectedLanguage, selectedLob);
+      await loadVersion(currentVersionId);
       
       // Clear the edited values map since they're now saved
       setVariableValues(new Map());
@@ -1216,39 +1148,6 @@ export default function SimulationForm({ onMenuClick }: Props) {
               </Select>
             </div>
 
-            <div>
-              <Label>Linguagem</Label>
-              <Select value={selectedLanguage || 'ALL'} onValueChange={handleLanguageChange} disabled={!currentVersionId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma linguagem" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">Todos</SelectItem>
-                  {languages.map(l => (
-                    <SelectItem key={l.id_lang} value={l.id_lang}>
-                      {l.id_lang}{l.desc_lang ? ` - ${l.desc_lang}` : ''}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label>LOB</Label>
-              <Select value={selectedLob || 'ALL'} onValueChange={handleLobChange} disabled={!selectedLanguage}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um LOB" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">Todos</SelectItem>
-                  {lobs.map(l => (
-                    <SelectItem key={l.id_lob} value={l.id_lob}>
-                      {l.name || l.id_lob}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
           </div>
         </div>
       </div>
