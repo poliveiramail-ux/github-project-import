@@ -190,10 +190,20 @@ export default function SimulationForm({ onMenuClick }: Props) {
     console.log('Loading version:', { versionId, selectedProject, langToUse, lobToUse });
 
     // Load blocked variables and config structure from config
-    const { data: configVars } = await (supabase as any)
+    let configVarsQuery = (supabase as any)
       .from('simulation_configs_variables')
-      .select('id_sim_cfg_var, account_num, blocked, parent_account_id')
+      .select('id_sim_cfg_var, account_num, blocked, parent_account_id, id_lang, id_lob')
       .eq('id_proj', selectedProject);
+    
+    // Apply same filters as simulation data
+    if (langToUse) {
+      configVarsQuery = configVarsQuery.eq('id_lang', langToUse);
+    }
+    if (lobToUse) {
+      configVarsQuery = configVarsQuery.eq('id_lob', lobToUse);
+    }
+    
+    const { data: configVars } = await configVarsQuery;
     
     const blockedSet = new Set<string>();
     const configMap = new Map<string, any>(); // config_id -> config variable
