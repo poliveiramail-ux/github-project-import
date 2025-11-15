@@ -151,7 +151,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
     }
   };
 
-  const loadVersion = async (versionId: string, languageFilter?: string) => {
+  const loadVersion = async (versionId: string, languageFilter?: string, lobFilter?: string) => {
     // Clear formula cache when loading new version
     clearFormulaCache();
     
@@ -166,7 +166,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
     }
 
     const langToUse = languageFilter !== undefined ? languageFilter : selectedLanguage;
-    console.log('Loading version:', { versionId, selectedProject, langToUse });
+    const lobToUse = lobFilter !== undefined ? lobFilter : selectedLob;
+    console.log('Loading version:', { versionId, selectedProject, langToUse, lobToUse });
 
     // Load blocked variables and config structure from config
     const { data: configVars } = await (supabase as any)
@@ -197,7 +198,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
     
     console.log('All data loaded from DB:', allData?.length, 'records');
     
-    // Filter data based on language selection
+    // Filter data based on language and LOB selection
     let data = allData;
     const activeFilters: string[] = [];
     
@@ -218,7 +219,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
         } else {
           excluded.push(v);
           // Log specifically excluded records
-          console.log(`❌ EXCLUDED: ${v.account_num}`, {
+          console.log(`❌ EXCLUDED (lang): ${v.account_num}`, {
             id_lang: v.id_lang,
             name: v.name,
             expected: langToUse
@@ -226,11 +227,37 @@ export default function SimulationForm({ onMenuClick }: Props) {
         }
       });
       
-      console.log('✅ INCLUDED:', included.length, 'records');
-      console.log('Included account numbers:', included.map(r => `${r.account_num}(${r.id_lang || 'null'})`).join(', '));
+      console.log('✅ INCLUDED after lang filter:', included.length, 'records');
+      console.log('❌ EXCLUDED by lang:', excluded.length, 'records');
       
-      console.log('❌ EXCLUDED:', excluded.length, 'records');
-      console.log('Excluded account numbers:', excluded.map(r => `${r.account_num}(${r.id_lang})`).join(', '));
+      data = included;
+    }
+    
+    if (lobToUse) {
+      console.log('🔍 Starting filter with LOB:', lobToUse);
+      activeFilters.push(`Programa: ${lobToUse}`);
+      
+      const included: any[] = [];
+      const excluded: any[] = [];
+      
+      // Filter to show variables that match the LOB OR have null LOB (parent nodes)
+      data?.forEach((v: any) => {
+        const matches = v.id_lob === lobToUse || v.id_lob === null;
+        
+        if (matches) {
+          included.push(v);
+        } else {
+          excluded.push(v);
+          console.log(`❌ EXCLUDED (lob): ${v.account_num}`, {
+            id_lob: v.id_lob,
+            name: v.name,
+            expected: lobToUse
+          });
+        }
+      });
+      
+      console.log('✅ INCLUDED after LOB filter:', included.length, 'records');
+      console.log('❌ EXCLUDED by LOB:', excluded.length, 'records');
       
       data = included;
     }
@@ -345,7 +372,15 @@ export default function SimulationForm({ onMenuClick }: Props) {
     const actualLanguage = languageId === 'ALL' ? '' : languageId;
     setSelectedLanguage(actualLanguage);
     if (currentVersionId) {
-      loadVersion(currentVersionId, actualLanguage);
+      loadVersion(currentVersionId, actualLanguage, selectedLob);
+    }
+  };
+
+  const handleLobChange = (lobId: string) => {
+    const actualLob = lobId === 'ALL' ? '' : lobId;
+    setSelectedLob(actualLob);
+    if (currentVersionId) {
+      loadVersion(currentVersionId, selectedLanguage, actualLob);
     }
   };
 
@@ -1187,6 +1222,23 @@ export default function SimulationForm({ onMenuClick }: Props) {
                   {languages.map(l => (
                     <SelectItem key={l.id_lang} value={l.id_lang}>
                       {l.id_lang}{l.desc_lang ? ` - ${l.desc_lang}` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Programa</Label>
+              <Select value={selectedLob || 'ALL'} onValueChange={handleLobChange} disabled={!currentVersionId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um programa" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">Todos</SelectItem>
+                  {lobs.map(l => (
+                    <SelectItem key={l.id_lob} value={l.id_lob}>
+                      {l.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
