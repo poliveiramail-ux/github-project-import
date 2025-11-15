@@ -219,46 +219,19 @@ export default function SimulationForm({ onMenuClick }: Props) {
     
     console.log('All data loaded from DB:', allData?.length, 'records');
     
-    // Filter data based on selections while keeping hierarchy
+    // Filter data based on selections
     let data = allData;
     if (langToUse || lobToUse) {
-      const filteredVars = allData?.filter((v: any) => {
-        // When language is selected, only show variables with that language
+      // Filter to show only variables that match the exact filters
+      data = allData?.filter((v: any) => {
+        // When language is selected, only show variables with that exact language
         const langMatch = !langToUse || v.id_lang === langToUse;
-        // When LOB is selected, only show variables with that LOB
+        // When LOB is selected, only show variables with that exact LOB  
         const lobMatch = !lobToUse || v.id_lob === lobToUse;
         return langMatch && lobMatch;
       }) || [];
       
-      console.log('After initial filter:', filteredVars.length, 'records');
-      
-      // Get all parent_account_ids from filtered variables
-      const parentIds = new Set<string>();
-      filteredVars.forEach((v: any) => {
-        if (v.parent_account_id) {
-          parentIds.add(v.parent_account_id);
-        }
-      });
-      
-      console.log('Parent IDs to fetch:', parentIds.size);
-      
-      // Recursively add all ancestors
-      const addAncestors = (parentId: string) => {
-        const parent = allData?.find((v: any) => v.id_sim === parentId);
-        if (parent && !filteredVars.some((v: any) => v.id_sim === parent.id_sim)) {
-          console.log('Adding ancestor:', parent.account_num, parent.name);
-          filteredVars.push(parent);
-          if (parent.parent_account_id) {
-            addAncestors(parent.parent_account_id);
-          }
-        }
-      };
-      
-      parentIds.forEach(parentId => addAncestors(parentId));
-      
-      console.log('After adding ancestors:', filteredVars.length, 'records');
-      
-      data = filteredVars;
+      console.log('Filtered to', data.length, 'records matching', { langToUse, lobToUse });
     }
     
     if (data) {
