@@ -214,28 +214,34 @@ export default function SimulationForm({ onMenuClick }: Props) {
       console.log('🔍 Starting filter with language:', langToUse);
       activeFilters.push(`Língua: ${langToUse}`);
       
+      // Separate included and excluded records
+      const included: any[] = [];
+      const excluded: any[] = [];
+      
       // Filter to show variables that match the language OR have null language (parent nodes)
-      const filtered = allData?.filter((v: any) => {
+      allData?.forEach((v: any) => {
         const matches = v.id_lang === langToUse || v.id_lang === null;
         
-        // Debug: log ALL records with their match status
-        console.log(`Record ${v.account_num}:`, {
-          id_lang: v.id_lang,
-          matches: matches,
-          reason: matches ? (v.id_lang === null ? 'null lang (parent)' : 'matches filter') : 'excluded'
-        });
-        
-        return matches;
-      }) || [];
+        if (matches) {
+          included.push(v);
+        } else {
+          excluded.push(v);
+          // Log specifically excluded records
+          console.log(`❌ EXCLUDED: ${v.account_num}`, {
+            id_lang: v.id_lang,
+            name: v.name,
+            expected: langToUse
+          });
+        }
+      });
       
-      console.log('✅ Filtered result:', filtered.length, 'records for language:', langToUse);
-      console.log('Filtered records:', filtered.map((r: any) => ({ 
-        account_num: r.account_num, 
-        id_lang: r.id_lang,
-        name: r.name
-      })));
+      console.log('✅ INCLUDED:', included.length, 'records');
+      console.log('Included account numbers:', included.map(r => `${r.account_num}(${r.id_lang || 'null'})`).join(', '));
       
-      data = filtered;
+      console.log('❌ EXCLUDED:', excluded.length, 'records');
+      console.log('Excluded account numbers:', excluded.map(r => `${r.account_num}(${r.id_lang})`).join(', '));
+      
+      data = included;
     }
     
     // Update debug stats
