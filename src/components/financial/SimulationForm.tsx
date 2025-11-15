@@ -197,7 +197,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
     
     // Apply same filters as simulation data
     if (langToUse) {
-      configVarsQuery = configVarsQuery.eq('id_lang', langToUse);
+      configVarsQuery = configVarsQuery.or(`id_lang.eq.${langToUse},id_lang.is.null`);
     }
     if (lobToUse) {
       configVarsQuery = configVarsQuery.eq('id_lob', lobToUse);
