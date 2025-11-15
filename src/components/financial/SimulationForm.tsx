@@ -188,7 +188,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
     const langToUse = languageFilter !== undefined ? languageFilter : selectedLanguage;
     const lobToUse = lobFilter !== undefined ? lobFilter : selectedLob;
 
-    console.log('Loading version with filters:', { versionId, langToUse, lobToUse, selectedProject });
+    console.log('Loading version with filters:', { versionId, langToUse, lobToUse, selectedProject, languageFilter, lobFilter });
 
     // Load blocked variables and config structure from config
     const { data: configVars } = await (supabase as any)
@@ -221,6 +221,9 @@ export default function SimulationForm({ onMenuClick }: Props) {
     
     // Filter data based on selections
     let data = allData;
+    
+    console.log('Starting filter. Total records:', allData?.length, 'Filters:', { langToUse, lobToUse });
+    
     if (langToUse || lobToUse) {
       // Filter to show only variables that match the exact filters
       data = allData?.filter((v: any) => {
@@ -228,7 +231,21 @@ export default function SimulationForm({ onMenuClick }: Props) {
         const langMatch = !langToUse || v.id_lang === langToUse;
         // When LOB is selected, only show variables with that exact LOB  
         const lobMatch = !lobToUse || v.id_lob === lobToUse;
-        return langMatch && lobMatch;
+        const matches = langMatch && lobMatch;
+        
+        if (v.account_num === '1.1020201') {
+          console.log('Testing 1.1020201:', { 
+            id_lang: v.id_lang, 
+            id_lob: v.id_lob, 
+            langToUse, 
+            lobToUse, 
+            langMatch, 
+            lobMatch, 
+            matches 
+          });
+        }
+        
+        return matches;
       }) || [];
       
       console.log('Filtered to', data.length, 'records matching', { langToUse, lobToUse });
