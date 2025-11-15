@@ -235,7 +235,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
     
     if (lobToUse) {
       console.log('🔍 Starting filter with LOB:', lobToUse);
-      activeFilters.push(`Programa: ${lobToUse}`);
+      activeFilters.push(`LOB: ${lobToUse}`);
       
       const included: any[] = [];
       const excluded: any[] = [];
@@ -1229,10 +1229,10 @@ export default function SimulationForm({ onMenuClick }: Props) {
             </div>
 
             <div>
-              <Label>Programa</Label>
+              <Label>LOB</Label>
               <Select value={selectedLob || 'ALL'} onValueChange={handleLobChange} disabled={!currentVersionId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione um programa" />
+                  <SelectValue placeholder="Selecione um LOB" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ALL">Todos</SelectItem>
