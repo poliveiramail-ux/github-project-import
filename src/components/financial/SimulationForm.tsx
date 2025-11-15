@@ -106,15 +106,6 @@ export default function SimulationForm({ onMenuClick }: Props) {
     }
   }, [selectedProject]);
 
-  useEffect(() => {
-    if (selectedProject && selectedLanguage) {
-      loadLobs(selectedProject, selectedLanguage);
-    } else {
-      setLobs([]);
-      setSelectedLob('');
-    }
-  }, [selectedProject, selectedLanguage]);
-
   const loadProjects = async () => {
     const { data } = await supabase.from('project').select('id_prj, desc_prj').order('id_prj');
     setProjects((data || []).map(p => ({ id_prj: p.id_prj, desc_prj: p.desc_prj })));
@@ -128,16 +119,6 @@ export default function SimulationForm({ onMenuClick }: Props) {
       .eq('id_prj', projectId)
       .order('id_lang');
     setLanguages((data || []).map(l => ({ id_lang: l.id_lang, desc_lang: l.desc_lang })));
-  };
-
-  const loadLobs = async (projectId: string, languageId: string) => {
-    const { data } = await (supabase as any)
-      .from('lob')
-      .select('id_lob, name')
-      .eq('id_lang', languageId)
-      .order('id_lob');
-    
-    setLobs((data || []).map((l: any) => ({ id_lob: l.id_lob, name: l.name })));
   };
 
   const loadVersions = async (projectId: string) => {
@@ -170,7 +151,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
     }
   };
 
-  const loadVersion = async (versionId: string) => {
+  const loadVersion = async (versionId: string, languageFilter?: string) => {
     // Clear formula cache when loading new version
     clearFormulaCache();
     
@@ -184,7 +165,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
       return;
     }
 
-    console.log('Loading version:', { versionId, selectedProject });
+    const langToUse = languageFilter !== undefined ? languageFilter : selectedLanguage;
+    console.log('Loading version:', { versionId, selectedProject, langToUse });
 
     // Load blocked variables and config structure from config
     const { data: configVars } = await (supabase as any)
@@ -206,14 +188,54 @@ export default function SimulationForm({ onMenuClick }: Props) {
     setBlockedVariables(blockedSet);
 
     // Load all data
-    const { data } = await (supabase as any)
+    const { data: allData } = await (supabase as any)
       .from('simulation')
       .select('*')
       .eq('version_id', versionId)
       .eq('id_proj', selectedProject)
       .order('account_num');
     
-    console.log('Data loaded from DB:', data?.length, 'records');
+    console.log('All data loaded from DB:', allData?.length, 'records');
+    
+    // Filter data based on language selection
+    let data = allData;
+    
+    if (langToUse) {
+      // Filter to show only variables that match the language
+      const filtered = allData?.filter((v: any) => {
+        return v.id_lang === langToUse;
+      }) || [];
+      
+      console.log('Filtered to', filtered.length, 'records matching language:', langToUse);
+      
+      // Include all ancestors (parent records) even if they have null id_lang
+      const resultSet = new Set<string>();
+      const allDataMap = new Map<string, any>();
+      
+      allData?.forEach((v: any) => {
+        allDataMap.set(v.id_sim, v);
+      });
+      
+      // Add all filtered records to result set
+      filtered.forEach((v: any) => {
+        resultSet.add(v.id_sim);
+        
+        // Recursively add all ancestors
+        let current = v;
+        while (current.parent_account_id) {
+          const parent = allData?.find((p: any) => p.id_sim === current.parent_account_id);
+          if (parent && !resultSet.has(parent.id_sim)) {
+            resultSet.add(parent.id_sim);
+            current = parent;
+          } else {
+            break;
+          }
+        }
+      });
+      
+      data = Array.from(resultSet).map(id => allDataMap.get(id)).filter(Boolean);
+      console.log('After including ancestors:', data.length, 'records');
+    }
     
     if (data) {
       const vars = data.map((v: any) => ({
@@ -318,6 +340,14 @@ export default function SimulationForm({ onMenuClick }: Props) {
     setCurrentVersionId(null);
     if (projectId) {
       loadVersions(projectId);
+    }
+  };
+
+  const handleLanguageChange = (languageId: string) => {
+    const actualLanguage = languageId === 'ALL' ? '' : languageId;
+    setSelectedLanguage(actualLanguage);
+    if (currentVersionId) {
+      loadVersion(currentVersionId, actualLanguage);
     }
   };
 
@@ -1142,6 +1172,23 @@ export default function SimulationForm({ onMenuClick }: Props) {
                   {versions.map(v => (
                     <SelectItem key={v.id} value={v.id}>
                       {v.name} ({new Date(v.created_at).toLocaleDateString()})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Linguagem</Label>
+              <Select value={selectedLanguage || 'ALL'} onValueChange={handleLanguageChange} disabled={!currentVersionId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione uma linguagem" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">Todos</SelectItem>
+                  {languages.map(l => (
+                    <SelectItem key={l.id_lang} value={l.id_lang}>
+                      {l.id_lang}{l.desc_lang ? ` - ${l.desc_lang}` : ''}
                     </SelectItem>
                   ))}
                 </SelectContent>
