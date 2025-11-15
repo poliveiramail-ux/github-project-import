@@ -91,15 +91,6 @@ export default function SimulationForm({ onMenuClick }: Props) {
   const [blockedVariables, setBlockedVariables] = useState<Set<string>>(new Set());
   const [configVarMap, setConfigVarMap] = useState<Map<string, string>>(new Map()); // config_id -> sim_id
   const [simToConfigMap, setSimToConfigMap] = useState<Map<string, string>>(new Map()); // sim_id -> config_id
-  const [debugStats, setDebugStats] = useState<{
-    totalLoaded: number;
-    totalFiltered: number;
-    activeFilters: string[];
-  }>({
-    totalLoaded: 0,
-    totalFiltered: 0,
-    activeFilters: []
-  });
   const { toast } = useToast();
 
   useEffect(() => {
@@ -243,13 +234,6 @@ export default function SimulationForm({ onMenuClick }: Props) {
       
       data = included;
     }
-    
-    // Update debug stats
-    setDebugStats({
-      totalLoaded: allData?.length || 0,
-      totalFiltered: data?.length || 0,
-      activeFilters
-    });
     
     if (data) {
       const vars = data.map((v: any) => ({
@@ -1210,55 +1194,6 @@ export default function SimulationForm({ onMenuClick }: Props) {
             </div>
 
           </div>
-          
-          {/* Debug Panel */}
-          {currentVersionId && (
-            <Card className="mt-4 p-4 bg-muted/30 border-muted">
-              <div className="flex items-start gap-6">
-                <div className="flex-1">
-                  <h3 className="text-sm font-semibold mb-2 text-foreground">📊 Estatísticas</h3>
-                  <div className="grid grid-cols-2 gap-4 text-xs">
-                    <div>
-                      <span className="text-muted-foreground">Total carregado:</span>
-                      <span className="ml-2 font-medium text-foreground">{debugStats.totalLoaded} registos</span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Após filtros:</span>
-                      <span className="ml-2 font-medium text-foreground">{debugStats.totalFiltered} registos</span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Visíveis:</span>
-                      <span className="ml-2 font-medium text-foreground">
-                        {getVisibleVariables().length} registos
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Expandidos:</span>
-                      <span className="ml-2 font-medium text-foreground">{expandedRows.size} nós</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="flex-1">
-                  <h3 className="text-sm font-semibold mb-2 text-foreground">🔍 Filtros Ativos</h3>
-                  {debugStats.activeFilters.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      {debugStats.activeFilters.map((filter, idx) => (
-                        <div
-                          key={idx}
-                          className="px-2 py-1 bg-primary/10 text-primary rounded text-xs font-medium"
-                        >
-                          {filter}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">Nenhum filtro ativo</p>
-                  )}
-                </div>
-              </div>
-            </Card>
-          )}
         </div>
       </div>
 
