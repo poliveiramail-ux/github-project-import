@@ -228,9 +228,9 @@ export default function SimulationForm({ onMenuClick }: Props) {
       // Filter to show only variables that match the exact filters
       data = allData?.filter((v: any) => {
         // When language is selected, only show variables with that exact language
-        const langMatch = !langToUse || v.id_lang === langToUse;
+        const langMatch = !langToUse || (v.id_lang !== null && v.id_lang === langToUse);
         // When LOB is selected, only show variables with that exact LOB  
-        const lobMatch = !lobToUse || v.id_lob === lobToUse;
+        const lobMatch = !lobToUse || (v.id_lob !== null && v.id_lob === lobToUse);
         const matches = langMatch && lobMatch;
         
         if (v.account_num === '1.1020201') {
