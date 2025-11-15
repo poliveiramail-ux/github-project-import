@@ -203,7 +203,18 @@ export default function SimulationForm({ onMenuClick }: Props) {
     if (langToUse) {
       // Filter to show variables that match the language OR have null language (parent nodes)
       const filtered = allData?.filter((v: any) => {
-        return v.id_lang === langToUse || v.id_lang === null;
+        const matches = v.id_lang === langToUse || v.id_lang === null;
+        
+        // Debug: log any non-matching records that might be included
+        if (!matches && v.id_lang) {
+          console.log('Excluding record with different language:', { 
+            account_num: v.account_num, 
+            id_lang: v.id_lang, 
+            expected: langToUse 
+          });
+        }
+        
+        return matches;
       }) || [];
       
       console.log('Filtered to', filtered.length, 'records matching language:', langToUse);
