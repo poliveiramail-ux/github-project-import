@@ -195,12 +195,12 @@ export default function SimulationForm({ onMenuClick }: Props) {
       .select('id_sim_cfg_var, account_num, blocked, parent_account_id, id_lang, id_lob')
       .eq('id_proj', selectedProject);
     
-    // Apply same filters as simulation data
+    // Apply same filters as simulation data (include nulls for parent nodes)
     if (langToUse) {
       configVarsQuery = configVarsQuery.or(`id_lang.eq.${langToUse},id_lang.is.null`);
     }
     if (lobToUse) {
-      configVarsQuery = configVarsQuery.eq('id_lob', lobToUse);
+      configVarsQuery = configVarsQuery.or(`id_lob.eq.${lobToUse},id_lob.is.null`);
     }
     
     const { data: configVars } = await configVarsQuery;
