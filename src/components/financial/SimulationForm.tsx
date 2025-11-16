@@ -130,6 +130,12 @@ export default function SimulationForm({ onMenuClick }: Props) {
     }
   }, [selectedProject, currentVersionId, selectedLanguage]);
 
+  useEffect(() => {
+    if (currentVersionId && selectedProject) {
+      loadVersion(currentVersionId, selectedLanguage, selectedLob);
+    }
+  }, [currentVersionId, selectedLanguage, selectedLob, selectedProject]);
+
   const loadProjects = async () => {
     const { data } = await supabase.from('project').select('id_prj, desc_prj').order('id_prj');
     setProjects((data || []).map(p => ({ id_prj: p.id_prj, desc_prj: p.desc_prj })));
