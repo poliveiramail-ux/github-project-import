@@ -304,11 +304,10 @@ export default function SimulationForm({ onMenuClick }: Props) {
       const included: any[] = [];
       const excluded: any[] = [];
       
-      // Filter to show variables that match the language OR have null language (parent nodes)
+      // Filter to show ONLY variables that match the language exactly
+      // Parents with different/null language will be added later in the hierarchy logic
       allData?.forEach((v: any) => {
-        const matches = v.id_lang === langToUse || v.id_lang === null;
-        
-        if (matches) {
+        if (v.id_lang === langToUse) {
           included.push(v);
         } else {
           excluded.push(v);
@@ -324,11 +323,10 @@ export default function SimulationForm({ onMenuClick }: Props) {
       const included: any[] = [];
       const excluded: any[] = [];
       
-      // Filter to show variables that match the LOB
+      // Filter to show ONLY variables that match the LOB exactly
+      // Parents with different/null LOB will be added later in the hierarchy logic
       data?.forEach((v: any) => {
-        const matches = v.id_lob === lobToUse || v.id_lob === null;
-        
-        if (matches) {
+        if (v.id_lob === lobToUse) {
           included.push(v);
         } else {
           excluded.push(v);
