@@ -132,7 +132,6 @@ export type Database = {
           id_lang: string | null
           id_lob: string | null
           id_proj: string
-          id_sim: string
           id_sim_cfg_var: string
           id_sim_ver: string
           level: string | null
@@ -154,7 +153,6 @@ export type Database = {
           id_lang?: string | null
           id_lob?: string | null
           id_proj: string
-          id_sim?: string
           id_sim_cfg_var?: string
           id_sim_ver?: string
           level?: string | null
@@ -176,7 +174,6 @@ export type Database = {
           id_lang?: string | null
           id_lob?: string | null
           id_proj?: string
-          id_sim?: string
           id_sim_cfg_var?: string
           id_sim_ver?: string
           level?: string | null

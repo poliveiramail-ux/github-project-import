@@ -33,7 +33,7 @@ interface SimulationVersion {
 }
 
 interface Variable {
-  id_sim: string;
+  uniqueId: string; // Computed from version_id + account_num + month + year
   version_id: string;
   account_code: string;
   name: string;
@@ -48,6 +48,7 @@ interface Variable {
   id_sim_cfg_var: string;
   value?: number;
   value_orig?: number;
+  row_index: number;
 }
 
 interface VariableValue {
@@ -69,6 +70,11 @@ interface MonthYear {
 }
 
 const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+// Helper function to generate unique ID for a variable
+const getUniqueId = (accountNum: string, month: number, year: number, lang?: string, lob?: string): string => {
+  return `${accountNum}_${month}_${year}_${lang || 'null'}_${lob || 'null'}`;
+};
 
 export default function SimulationForm({ onMenuClick }: Props) {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -376,6 +382,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
     if (data) {
       const vars = data.map((v: any) => ({
         ...v,
+        uniqueId: getUniqueId(v.account_num, v.month || 1, v.year || new Date().getFullYear(), v.id_lang, v.id_lob),
         account_code: v.account_num,
         calculation_type: (v.calculation_type === 'AUTO' ? 'MANUAL' : v.calculation_type || 'MANUAL') as 'MANUAL' | 'FORMULA',
         month: v.month || 1,
@@ -385,67 +392,13 @@ export default function SimulationForm({ onMenuClick }: Props) {
         level: parseInt(v.level || '0', 10),
         parent_account_id: v.parent_account_id || null,
         id_sim_cfg_var: v.id_sim_cfg_var,
+        row_index: v.row_index || 0,
         value: v.value !== undefined ? v.value : 0,
         value_orig: v.value_orig !== undefined ? v.value_orig : 0
       })) as Variable[];
       
       setVariables(vars);
-      
-      // Create bidirectional maps between config and sim variables
-      const configToSimMap = new Map<string, string>();
-      const simToConfigMapNew = new Map<string, string>();
-      
-      console.log('Creating bidirectional maps from', configVars?.length, 'config vars');
-      configVars?.forEach((cv: any) => {
-        // Find first sim variable with this account_code
-        const simVar = vars.find(v => v.account_code === cv.account_num);
-        if (simVar) {
-          configToSimMap.set(cv.id_sim_cfg_var, simVar.id_sim);
-          simToConfigMapNew.set(simVar.id_sim, cv.id_sim_cfg_var);
-          console.log('Mapped:', cv.account_num, '- config', cv.id_sim_cfg_var, '<-> sim', simVar.id_sim);
-        }
-      });
-      
-      setConfigVarMap(configToSimMap);
-      setSimToConfigMap(simToConfigMapNew);
-      console.log('Maps created:', configToSimMap.size, 'mappings');
-      
-      // Fix parent_account_id if they point to id_sim instead of id_sim_cfg_var
-      const fixParentIds = async () => {
-        const updates: any[] = [];
-        
-        vars.forEach(v => {
-          if (v.parent_account_id && simToConfigMapNew.has(v.parent_account_id)) {
-            // parent_account_id is an id_sim, convert to id_sim_cfg_var
-            const correctParentId = simToConfigMapNew.get(v.parent_account_id);
-            if (correctParentId !== v.parent_account_id) {
-              updates.push({
-                id_sim: v.id_sim,
-                new_parent: correctParentId
-              });
-            }
-          }
-        });
-        
-        if (updates.length > 0) {
-          console.log(`Fixing ${updates.length} parent_account_id references...`);
-          
-          // Update in batches
-          for (const update of updates) {
-            await (supabase as any)
-              .from('simulation')
-              .update({ parent_account_id: update.new_parent })
-              .eq('id_sim', update.id_sim);
-          }
-          
-          console.log('Parent IDs fixed successfully');
-          
-          // Reload the data with corrected parent_account_id
-          loadVersion(versionId, langToUse, lobToUse);
-        }
-      };
-      
-      fixParentIds();
+      console.log('Variables mapped successfully:', vars.length);
       
       
       // Extract unique periods and sort them
@@ -480,7 +433,12 @@ export default function SimulationForm({ onMenuClick }: Props) {
               (supabase as any)
                 .from('simulation')
                 .update({ formula: configVar.formula })
-                .eq('id_sim', v.id_sim)
+                .eq('account_num', v.account_code)
+                .eq('month', v.month)
+                .eq('year', v.year)
+                .eq('version_id', v.version_id)
+                .eq('id_lang', v.id_lang || null)
+                .eq('id_lob', v.lob || null)
             );
             // Also update the local variable
             v.formula = configVar.formula;
@@ -859,7 +817,12 @@ export default function SimulationForm({ onMenuClick }: Props) {
             (supabase as any)
               .from('simulation')
               .update({ value: value })
-              .eq('id_sim', variable.id_sim)
+              .eq('account_num', variable.account_code)
+              .eq('month', variable.month)
+              .eq('year', variable.year)
+              .eq('version_id', variable.version_id)
+              .eq('id_lang', variable.id_lang || null)
+              .eq('id_lob', variable.lob || null)
           );
         }
       });
@@ -885,34 +848,26 @@ export default function SimulationForm({ onMenuClick }: Props) {
     }
   };
 
-  const hasChildren = (varId: string) => {
-    const thisVar = variables.find(v => v.id_sim === varId);
+  const hasChildren = (uniqueId: string) => {
+    const thisVar = variables.find(v => v.uniqueId === uniqueId);
     if (!thisVar) return false;
     
-    // Find the config ID for this sim variable using simToConfigMap
-    const thisConfigId = simToConfigMap.get(thisVar.id_sim);
-    if (!thisConfigId) return false;
-    
     // Check if any variable has this config ID as parent
-    return variables.some(v => v.parent_account_id === thisConfigId);
+    return variables.some(v => v.parent_account_id === thisVar.id_sim_cfg_var);
   };
 
   const isLeafAccount = (accountCode: string, allVars: Variable[]) => {
     const variable = allVars.find(v => v.account_code === accountCode);
     if (!variable) return true;
-    return !hasChildren(variable.id_sim);
+    return !hasChildren(variable.uniqueId);
   };
 
   const getChildAccounts = (accountCode: string, allVars: Variable[]) => {
     const variable = allVars.find(v => v.account_code === accountCode);
     if (!variable) return [];
     
-    // Find the config ID for this sim variable
-    const thisConfigId = simToConfigMap.get(variable.id_sim);
-    if (!thisConfigId) return [];
-    
     // Find all variables whose parent_account_id matches this config ID
-    return allVars.filter(v => v.parent_account_id === thisConfigId);
+    return allVars.filter(v => v.parent_account_id === variable.id_sim_cfg_var);
   };
 
   const calculateParentValue = (accountCode: string, year: number, month: number): number => {
@@ -1240,19 +1195,19 @@ export default function SimulationForm({ onMenuClick }: Props) {
     
     const addVariableAndChildren = (variable: Variable) => {
       // Prevent cycles by checking if already visited
-      if (visited.has(variable.id_sim)) {
+      if (visited.has(variable.uniqueId)) {
         return;
       }
       
-      visited.add(variable.id_sim);
+      visited.add(variable.uniqueId);
       visible.push(variable);
       
       // If this variable is expanded, add its children
-      if (expandedRows.has(variable.id_sim)) {
+      if (expandedRows.has(variable.uniqueId)) {
         // Find all children (variables whose parent_account_id equals this variable's id_sim_cfg_var)
         const children = uniqueVars.filter(v => 
           v.parent_account_id === variable.id_sim_cfg_var && 
-          !visited.has(v.id_sim) // Skip already visited children
+          !visited.has(v.uniqueId) // Skip already visited children
         );
         
         console.log(`Children of ${variable.account_code} (${variable.name}):`, children.length);
@@ -1454,8 +1409,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
               </thead>
               <tbody>
                 {getVisibleVariables().map(variable => {
-                  const isParent = hasChildren(variable.id_sim);
-                  const isExpanded = expandedRows.has(variable.id_sim);
+                  const isParent = hasChildren(variable.uniqueId);
+                  const isExpanded = expandedRows.has(variable.uniqueId);
                   const calcType = variable.calculation_type || 'AUTO';
                   const isBlocked = blockedVariables.has(variable.account_code);
                   const isEditable = isLeafAccount(variable.account_code, variables) && 
@@ -1463,7 +1418,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
                                     !isBlocked;
                   
                   return (
-                    <tr key={variable.id_sim} className="border-b hover:bg-muted/50 transition-colors">
+                    <tr key={variable.uniqueId} className="border-b hover:bg-muted/50 transition-colors">
                       <td className="px-4 py-1">
                         <div 
                           className="flex items-center gap-2"
@@ -1474,7 +1429,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
                               variant="ghost"
                               size="icon"
                               className="h-6 w-6 hover:bg-muted"
-                              onClick={() => toggleExpandedRow(variable.id_sim)}
+                              onClick={() => toggleExpandedRow(variable.uniqueId)}
                               title={isExpanded ? "Colapsar" : "Expandir"}
                             >
                               {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
