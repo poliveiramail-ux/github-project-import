@@ -508,77 +508,33 @@ export default function SimulationForm({ onMenuClick }: Props) {
         throw new Error('Nenhum dado encontrado na última versão');
       }
 
-      // First pass: Insert all records without parent_account_id
-      const oldIdToNewIdMap = new Map<string, string>();
-      
-      const variablesToInsert = lastSimData.map((record: any) => {
-        oldIdToNewIdMap.set(record.id_sim, ''); // Will be filled after insert
-        return {
-          version_id: versionId,
-          row_index: record.row_index,
-          account_num: record.account_num,
-          name: record.name,
-          calculation_type: record.calculation_type === 'AUTO' ? 'MANUAL' : (record.calculation_type || 'MANUAL'),
-          formula: record.formula || null,
-          value: record.value || 0,
-          value_orig: record.value_orig || 0,
-          month: record.month,
-          year: record.year,
-          id_lob: record.id_lob,
-          id_proj: selectedProject,
-          id_lang: record.id_lang,
-          value_type: record.value_type || 'number',
-          level: record.level,
-          parent_account_id: null // Will be set in second pass
-        };
-      });
+      // Copy all data
+      const variablesToInsert = lastSimData.map((record: any) => ({
+        version_id: versionId,
+        row_index: record.row_index,
+        account_num: record.account_num,
+        name: record.name,
+        calculation_type: record.calculation_type === 'AUTO' ? 'MANUAL' : (record.calculation_type || 'MANUAL'),
+        formula: record.formula || null,
+        value: record.value || 0,
+        value_orig: record.value_orig || 0,
+        month: record.month,
+        year: record.year,
+        id_lob: record.id_lob,
+        id_proj: selectedProject,
+        id_lang: record.id_lang,
+        value_type: record.value_type || 'number',
+        level: record.level,
+        parent_account_id: record.parent_account_id
+      }));
 
-      const { data: insertedVars, error: varsError } = await (supabase as any)
+      const { error: varsError } = await (supabase as any)
         .from('simulation')
-        .insert(variablesToInsert)
-        .select('id_sim, account_num, month, year, id_lob, id_lang');
+        .insert(variablesToInsert);
 
       if (varsError) {
         console.error('Error inserting variables:', varsError);
         throw varsError;
-      }
-
-      // Build mapping from old IDs to new IDs
-      for (let i = 0; i < lastSimData.length; i++) {
-        const oldRecord = lastSimData[i];
-        const newRecord = insertedVars?.find((nv: any) => 
-          nv.account_num === oldRecord.account_num &&
-          nv.month === oldRecord.month &&
-          nv.year === oldRecord.year &&
-          nv.id_lob === oldRecord.id_lob &&
-          nv.id_lang === oldRecord.id_lang
-        );
-        if (newRecord) {
-          oldIdToNewIdMap.set(oldRecord.id_sim, newRecord.id_sim);
-        }
-      }
-
-      // Second pass: Update parent_account_id relationships
-      const updates: Promise<any>[] = [];
-      for (const oldRecord of lastSimData) {
-        if (oldRecord.parent_account_id) {
-          const newId = oldIdToNewIdMap.get(oldRecord.id_sim);
-          const newParentId = oldIdToNewIdMap.get(oldRecord.parent_account_id);
-          
-          if (newId && newParentId) {
-            updates.push(
-              (supabase as any)
-                .from('simulation')
-                .update({ parent_account_id: newParentId })
-                .eq('id_sim', newId)
-            );
-          }
-        }
-      }
-
-      // Execute all updates in parallel
-      if (updates.length > 0) {
-        await Promise.all(updates);
       }
 
       loadVersions(selectedProject);
@@ -658,7 +614,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
             id_lang: configVar.id_lang,
             value_type: valueType,
             level: configVar.level,
-            parent_account_id: null // Will be set in second pass
+            parent_account_id: configVar.parent_account_id
           };
           
           variablesToInsert.push(recordData);
