@@ -239,55 +239,70 @@ export default function SimulationForm({ onMenuClick }: Props) {
       if (langToUse) activeFilters.push(`Língua: ${langToUse}`);
       if (lobToUse) activeFilters.push(`LOB: ${lobToUse}`);
       
-      // Step 1: Find records that match the filters
-      const matchingRecords = new Set<string>();
+      // Step 1: Find account_nums that match the filters
+      const matchingAccountNums = new Set<string>();
+      const accountNumToSimIds = new Map<string, Set<string>>();
+      
       allData?.forEach((v: any) => {
+        // Group all sim records by account_num
+        if (!accountNumToSimIds.has(v.account_num)) {
+          accountNumToSimIds.set(v.account_num, new Set());
+        }
+        accountNumToSimIds.get(v.account_num)!.add(v.id_sim);
+        
+        // Check if this account matches filters
         const langMatch = !langToUse || v.id_lang === langToUse;
         const lobMatch = !lobToUse || v.id_lob === lobToUse;
         
         if (langMatch && lobMatch) {
-          matchingRecords.add(v.id_sim);
-          console.log(`✅ MATCH: ${v.account_num}`, { id_lang: v.id_lang, id_lob: v.id_lob });
+          matchingAccountNums.add(v.account_num);
         }
       });
       
-      console.log('✅ Records matching filters:', matchingRecords.size);
+      console.log('✅ Account numbers matching filters:', matchingAccountNums.size);
       
-      // Step 2: Build parent map for quick lookup
-      const parentMap = new Map<string, string>();
-      allData?.forEach((v: any) => {
-        if (v.parent_account_id) {
-          // Find parent's id_sim using parent_account_id (which references id_sim_cfg_var)
-          const parent = allData.find((p: any) => p.id_sim_cfg_var === v.parent_account_id);
-          if (parent) {
-            parentMap.set(v.id_sim, parent.id_sim);
+      // Step 2: Include all ancestor account_nums
+      const accountNumsToInclude = new Set<string>(matchingAccountNums);
+      
+      // Helper function to get parent account_num from account_num
+      const getParentAccountNum = (accountNum: string): string | null => {
+        const parts = accountNum.split('.');
+        if (parts.length <= 1) return null; // Root level
+        parts.pop(); // Remove last part
+        return parts.join('.');
+      };
+      
+      matchingAccountNums.forEach((accountNum) => {
+        let currentAccountNum: string | null = accountNum;
+        while (currentAccountNum) {
+          const parentAccountNum = getParentAccountNum(currentAccountNum);
+          if (parentAccountNum && !accountNumsToInclude.has(parentAccountNum)) {
+            accountNumsToInclude.add(parentAccountNum);
+            console.log(`✅ Including ancestor: ${parentAccountNum} (parent of ${currentAccountNum})`);
           }
+          currentAccountNum = parentAccountNum;
         }
       });
       
-      // Step 3: Include all ancestors of matching records
-      const recordsToInclude = new Set<string>(matchingRecords);
-      matchingRecords.forEach((recordId) => {
-        let currentId: string | undefined = recordId;
-        while (currentId) {
-          const parentId = parentMap.get(currentId);
-          if (parentId && !recordsToInclude.has(parentId)) {
-            recordsToInclude.add(parentId);
-            const parentRec = allData?.find((r: any) => r.id_sim === parentId);
-            console.log(`✅ Including ancestor: ${parentRec?.account_num} (parent of ${currentId})`);
-          }
-          currentId = parentId;
+      console.log('✅ Total account numbers to show (including ancestors):', accountNumsToInclude.size);
+      
+      // Step 3: Include all sim records for these account_nums
+      const simIdsToInclude = new Set<string>();
+      accountNumsToInclude.forEach((accountNum) => {
+        const simIds = accountNumToSimIds.get(accountNum);
+        if (simIds) {
+          simIds.forEach(id => simIdsToInclude.add(id));
         }
       });
       
-      console.log('✅ Total records to show (including ancestors):', recordsToInclude.size);
+      console.log('✅ Total sim records to show:', simIdsToInclude.size);
       
       // Step 4: Filter data
       const included: any[] = [];
       const excluded: any[] = [];
       
       allData?.forEach((v: any) => {
-        if (recordsToInclude.has(v.id_sim)) {
+        if (simIdsToInclude.has(v.id_sim)) {
           included.push(v);
         } else {
           excluded.push(v);
