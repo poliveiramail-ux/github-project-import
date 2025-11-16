@@ -1163,6 +1163,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
       id_sim_cfg_var: v.id_sim_cfg_var
     })));
     
+    console.log('All cfg var IDs (first 10):', Array.from(allCfgVarIds).slice(0, 10));
+    
     // Identify root variables (where parent_account_id is null or doesn't exist in config vars)
     const rootVars: Variable[] = [];
     uniqueVars.forEach(variable => {
@@ -1170,6 +1172,13 @@ export default function SimulationForm({ onMenuClick }: Props) {
       // 1. parent_account_id is null/undefined, OR
       // 2. parent_account_id doesn't correspond to any id_sim_cfg_var in our variables
       const isRoot = !variable.parent_account_id || !allCfgVarIds.has(variable.parent_account_id);
+      
+      if (!variable.parent_account_id) {
+        console.log(`${variable.account_code} is root: no parent_account_id`);
+      } else if (!allCfgVarIds.has(variable.parent_account_id)) {
+        console.log(`${variable.account_code} is root: parent ${variable.parent_account_id} not found in cfg vars`);
+      }
+      
       if (isRoot) {
         rootVars.push(variable);
       }
