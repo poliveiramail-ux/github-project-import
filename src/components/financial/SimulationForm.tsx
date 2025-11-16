@@ -232,62 +232,75 @@ export default function SimulationForm({ onMenuClick }: Props) {
     let data = allData;
     const activeFilters: string[] = [];
     
-    if (langToUse) {
-      console.log('🔍 Starting filter with language:', langToUse);
-      activeFilters.push(`Língua: ${langToUse}`);
+    // Smart filter: include records matching filters AND their ancestors
+    if (langToUse || lobToUse) {
+      console.log('🔍 Starting smart filter - LANG:', langToUse, 'LOB:', lobToUse);
       
-      // Separate included and excluded records
-      const included: any[] = [];
-      const excluded: any[] = [];
+      if (langToUse) activeFilters.push(`Língua: ${langToUse}`);
+      if (lobToUse) activeFilters.push(`LOB: ${lobToUse}`);
       
-      // Filter to show variables that match the language OR have null language (parent nodes)
+      // Step 1: Find records that match the filters
+      const matchingRecords = new Set<string>();
       allData?.forEach((v: any) => {
-        const matches = v.id_lang === langToUse || v.id_lang === null;
+        const langMatch = !langToUse || v.id_lang === langToUse;
+        const lobMatch = !lobToUse || v.id_lob === lobToUse;
         
-        if (matches) {
-          included.push(v);
-        } else {
-          excluded.push(v);
-          // Log specifically excluded records
-          console.log(`❌ EXCLUDED (lang): ${v.account_num}`, {
-            id_lang: v.id_lang,
-            name: v.name,
-            expected: langToUse
-          });
+        if (langMatch && lobMatch) {
+          matchingRecords.add(v.id_sim);
+          console.log(`✅ MATCH: ${v.account_num}`, { id_lang: v.id_lang, id_lob: v.id_lob });
         }
       });
       
-      console.log('✅ INCLUDED after lang filter:', included.length, 'records');
-      console.log('❌ EXCLUDED by lang:', excluded.length, 'records');
+      console.log('✅ Records matching filters:', matchingRecords.size);
       
-      data = included;
-    }
-    
-    if (lobToUse) {
-      console.log('🔍 Starting filter with LOB:', lobToUse);
-      activeFilters.push(`LOB: ${lobToUse}`);
+      // Step 2: Build parent map for quick lookup
+      const parentMap = new Map<string, string>();
+      allData?.forEach((v: any) => {
+        if (v.parent_account_id) {
+          // Find parent's id_sim using parent_account_id (which references id_sim_cfg_var)
+          const parent = allData.find((p: any) => p.id_sim_cfg_var === v.parent_account_id);
+          if (parent) {
+            parentMap.set(v.id_sim, parent.id_sim);
+          }
+        }
+      });
       
+      // Step 3: Include all ancestors of matching records
+      const recordsToInclude = new Set<string>(matchingRecords);
+      matchingRecords.forEach((recordId) => {
+        let currentId: string | undefined = recordId;
+        while (currentId) {
+          const parentId = parentMap.get(currentId);
+          if (parentId && !recordsToInclude.has(parentId)) {
+            recordsToInclude.add(parentId);
+            const parentRec = allData?.find((r: any) => r.id_sim === parentId);
+            console.log(`✅ Including ancestor: ${parentRec?.account_num} (parent of ${currentId})`);
+          }
+          currentId = parentId;
+        }
+      });
+      
+      console.log('✅ Total records to show (including ancestors):', recordsToInclude.size);
+      
+      // Step 4: Filter data
       const included: any[] = [];
       const excluded: any[] = [];
       
-      // Filter to show variables that match the LOB OR have null LOB (parent nodes)
-      data?.forEach((v: any) => {
-        const matches = v.id_lob === lobToUse || v.id_lob === null;
-        
-        if (matches) {
+      allData?.forEach((v: any) => {
+        if (recordsToInclude.has(v.id_sim)) {
           included.push(v);
         } else {
           excluded.push(v);
-          console.log(`❌ EXCLUDED (lob): ${v.account_num}`, {
+          console.log(`❌ EXCLUDED: ${v.account_num}`, {
+            id_lang: v.id_lang,
             id_lob: v.id_lob,
-            name: v.name,
-            expected: lobToUse
+            name: v.name
           });
         }
       });
       
-      console.log('✅ INCLUDED after LOB filter:', included.length, 'records');
-      console.log('❌ EXCLUDED by LOB:', excluded.length, 'records');
+      console.log('✅ INCLUDED after smart filter:', included.length, 'records');
+      console.log('❌ EXCLUDED:', excluded.length, 'records');
       
       data = included;
     }
