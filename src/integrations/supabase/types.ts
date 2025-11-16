@@ -125,7 +125,7 @@ export type Database = {
       }
       simulation: {
         Row: {
-          account_num: string | null
+          account_num: string
           calculation_type: string | null
           created_at: string | null
           formula: string | null
@@ -135,7 +135,7 @@ export type Database = {
           id_sim: string
           id_sim_ver: string
           level: string | null
-          month: number | null
+          month: number
           name: string
           parent_account_id: string
           row_index: number
@@ -143,10 +143,10 @@ export type Database = {
           value_orig: number | null
           value_type: string | null
           version_id: string
-          year: number | null
+          year: number
         }
         Insert: {
-          account_num?: string | null
+          account_num: string
           calculation_type?: string | null
           created_at?: string | null
           formula?: string | null
@@ -156,7 +156,7 @@ export type Database = {
           id_sim?: string
           id_sim_ver?: string
           level?: string | null
-          month?: number | null
+          month: number
           name: string
           parent_account_id: string
           row_index: number
@@ -164,10 +164,10 @@ export type Database = {
           value_orig?: number | null
           value_type?: string | null
           version_id: string
-          year?: number | null
+          year: number
         }
         Update: {
-          account_num?: string | null
+          account_num?: string
           calculation_type?: string | null
           created_at?: string | null
           formula?: string | null
@@ -177,7 +177,7 @@ export type Database = {
           id_sim?: string
           id_sim_ver?: string
           level?: string | null
-          month?: number | null
+          month?: number
           name?: string
           parent_account_id?: string
           row_index?: number
@@ -185,26 +185,12 @@ export type Database = {
           value_orig?: number | null
           value_type?: string | null
           version_id?: string
-          year?: number | null
+          year?: number
         }
         Relationships: [
           {
-            foreignKeyName: "simulation_id_lob_fkey"
-            columns: ["id_lob"]
-            isOneToOne: false
-            referencedRelation: "lob"
-            referencedColumns: ["id_lob"]
-          },
-          {
-            foreignKeyName: "simulation_parent_account_id_fkey"
-            columns: ["parent_account_id"]
-            isOneToOne: false
-            referencedRelation: "simulation_configs_variables"
-            referencedColumns: ["id_sim_cfg_var"]
-          },
-          {
-            foreignKeyName: "simulation_version_id_fkey"
-            columns: ["version_id"]
+            foreignKeyName: "simulation_id_sim_ver_fkey"
+            columns: ["id_sim_ver"]
             isOneToOne: false
             referencedRelation: "simulation_versions"
             referencedColumns: ["id_sim_ver"]
@@ -499,6 +485,13 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "simulation_versions_id_prj_fkey"
+            columns: ["id_prj"]
+            isOneToOne: false
+            referencedRelation: "project"
+            referencedColumns: ["id_prj"]
+          },
+          {
+            foreignKeyName: "simulation_versions_id_prj_fkey1"
             columns: ["id_prj"]
             isOneToOne: false
             referencedRelation: "project"
