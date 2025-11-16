@@ -270,9 +270,9 @@ export default function SimulationForm({ onMenuClick }: Props) {
       const included: any[] = [];
       const excluded: any[] = [];
       
-      // Filter to show variables that match the LOB OR have null LOB (parent nodes)
+      // Filter to show ONLY variables that match the LOB (exclude parent nodes)
       data?.forEach((v: any) => {
-        const matches = v.id_lob === lobToUse || v.id_lob === null;
+        const matches = v.id_lob === lobToUse;
         
         if (matches) {
           included.push(v);
