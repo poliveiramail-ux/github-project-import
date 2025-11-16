@@ -510,6 +510,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
 
       // Copy all data
       const variablesToInsert = lastSimData.map((record: any) => ({
+        id_sim_ver: versionId,
         version_id: versionId,
         row_index: record.row_index,
         account_num: record.account_num,
@@ -599,6 +600,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
         monthsToCreate.forEach((month) => {
           const valueType = configVar.value_type === 'percentage' ? 'percentage' : 'number';
           const recordData = {
+            id_sim_ver: versionId,
             version_id: versionId,
             row_index: (index * 3) + month,
             account_num: configVar.account_num,
