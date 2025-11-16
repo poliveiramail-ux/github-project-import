@@ -200,7 +200,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
       configVarsQuery = configVarsQuery.or(`id_lang.eq.${langToUse},id_lang.is.null`);
     }
     if (lobToUse) {
-      configVarsQuery = configVarsQuery.eq('id_lob', lobToUse);
+      configVarsQuery = configVarsQuery.or(`id_lob.eq.${lobToUse},id_lob.is.null`);
     }
     
     const { data: configVars } = await configVarsQuery;
