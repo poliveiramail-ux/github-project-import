@@ -270,7 +270,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
       const included: any[] = [];
       const excluded: any[] = [];
       
-      // Filter to show variables that match the LOB OR have null LOB (parent nodes)
+      // Filter to show variables that match the LOB
       data?.forEach((v: any) => {
         const matches = v.id_lob === lobToUse || v.id_lob === null;
         
@@ -278,11 +278,6 @@ export default function SimulationForm({ onMenuClick }: Props) {
           included.push(v);
         } else {
           excluded.push(v);
-          console.log(`❌ EXCLUDED (lob): ${v.account_num}`, {
-            id_lob: v.id_lob,
-            name: v.name,
-            expected: lobToUse
-          });
         }
       });
       
@@ -290,6 +285,30 @@ export default function SimulationForm({ onMenuClick }: Props) {
       console.log('❌ EXCLUDED by LOB:', excluded.length, 'records');
       
       data = included;
+    }
+    
+    // Include direct parents of filtered records even if they don't match filters
+    if ((langToUse || lobToUse) && data && allData) {
+      console.log('🔍 Adding direct parents of filtered records');
+      const dataIds = new Set(data.map((v: any) => v.parent_account_id));
+      const includedIds = new Set(data.map((v: any) => v.id_sim));
+      
+      // Find and add missing parents
+      const parentsToAdd: any[] = [];
+      dataIds.forEach(parentId => {
+        if (parentId && !includedIds.has(parentId)) {
+          const parent = allData.find((v: any) => v.id_sim === parentId);
+          if (parent) {
+            parentsToAdd.push(parent);
+            includedIds.add(parent.id_sim);
+          }
+        }
+      });
+      
+      if (parentsToAdd.length > 0) {
+        console.log('➕ Added', parentsToAdd.length, 'parent records');
+        data = [...data, ...parentsToAdd];
+      }
     }
     
     if (data) {
