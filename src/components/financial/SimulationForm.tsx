@@ -45,6 +45,7 @@ interface Variable {
   id_lang: string;
   level: number;
   parent_account_id?: string | null;
+  id_sim_cfg_var: string;
   value?: number;
   value_orig?: number;
 }
@@ -352,16 +353,16 @@ export default function SimulationForm({ onMenuClick }: Props) {
     if ((langToUse || lobToUse) && data && allData) {
       console.log('🔍 Adding direct parents of filtered records');
       const dataIds = new Set(data.map((v: any) => v.parent_account_id));
-      const includedIds = new Set(data.map((v: any) => v.id_sim));
+      const includedIds = new Set(data.map((v: any) => v.id_sim_cfg_var));
       
       // Find and add missing parents
       const parentsToAdd: any[] = [];
       dataIds.forEach(parentId => {
         if (parentId && !includedIds.has(parentId)) {
-          const parent = allData.find((v: any) => v.id_sim === parentId);
+          const parent = allData.find((v: any) => v.id_sim_cfg_var === parentId);
           if (parent) {
             parentsToAdd.push(parent);
-            includedIds.add(parent.id_sim);
+            includedIds.add(parent.id_sim_cfg_var);
           }
         }
       });
@@ -383,6 +384,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
         id_lang: v.id_lang,
         level: parseInt(v.level || '0', 10),
         parent_account_id: v.parent_account_id || null,
+        id_sim_cfg_var: v.id_sim_cfg_var,
         value: v.value !== undefined ? v.value : 0,
         value_orig: v.value_orig !== undefined ? v.value_orig : 0
       })) as Variable[];
@@ -1152,22 +1154,22 @@ export default function SimulationForm({ onMenuClick }: Props) {
     
     const uniqueVars = Array.from(uniqueVarsMap.values());
     
-    // Create a set of all sim IDs for quick lookup
-    const allSimIds = new Set(uniqueVars.map(v => v.id_sim));
+    // Create a set of all config var IDs for quick lookup
+    const allCfgVarIds = new Set(uniqueVars.map(v => v.id_sim_cfg_var));
     
     console.log('Sample parent_account_id values:', uniqueVars.slice(0, 10).map(v => ({
       code: v.account_code,
       parent_id: v.parent_account_id,
-      id_sim: v.id_sim
+      id_sim_cfg_var: v.id_sim_cfg_var
     })));
     
-    // Identify root variables (where parent_account_id is null or doesn't exist in simulation)
+    // Identify root variables (where parent_account_id is null or doesn't exist in config vars)
     const rootVars: Variable[] = [];
     uniqueVars.forEach(variable => {
       // A variable is root if:
       // 1. parent_account_id is null/undefined, OR
-      // 2. parent_account_id doesn't correspond to any id_sim in our variables
-      const isRoot = !variable.parent_account_id || !allSimIds.has(variable.parent_account_id);
+      // 2. parent_account_id doesn't correspond to any id_sim_cfg_var in our variables
+      const isRoot = !variable.parent_account_id || !allCfgVarIds.has(variable.parent_account_id);
       if (isRoot) {
         rootVars.push(variable);
       }
@@ -1199,9 +1201,9 @@ export default function SimulationForm({ onMenuClick }: Props) {
       
       // If this variable is expanded, add its children
       if (expandedRows.has(variable.id_sim)) {
-        // Find all children (variables whose parent_account_id equals this variable's id_sim)
+        // Find all children (variables whose parent_account_id equals this variable's id_sim_cfg_var)
         const children = uniqueVars.filter(v => 
-          v.parent_account_id === variable.id_sim && 
+          v.parent_account_id === variable.id_sim_cfg_var && 
           !visited.has(v.id_sim) // Skip already visited children
         );
         
