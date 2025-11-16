@@ -222,7 +222,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
     const { data: allData } = await (supabase as any)
       .from('simulation')
       .select('*')
-      .eq('version_id', versionId)
+      .eq('id_sim_ver', versionId)
       .eq('id_proj', selectedProject)
       .order('account_num');
     
@@ -501,7 +501,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
       const { data: lastSimData } = await (supabase as any)
         .from('simulation')
         .select('*')
-        .eq('version_id', lastVersionId)
+        .eq('id_sim_ver', lastVersionId)
         .order('account_num');
 
       if (!lastSimData || lastSimData.length === 0) {
