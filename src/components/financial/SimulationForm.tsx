@@ -1154,13 +1154,20 @@ export default function SimulationForm({ onMenuClick }: Props) {
     // Create a set of all sim IDs for quick lookup
     const allSimIds = new Set(uniqueVars.map(v => v.id_sim));
     
+    console.log('Sample parent_account_id values:', uniqueVars.slice(0, 10).map(v => ({
+      code: v.account_code,
+      parent_id: v.parent_account_id,
+      id_sim: v.id_sim
+    })));
+    
     // Identify root variables (where parent_account_id is null or doesn't exist in simulation)
     const rootVars: Variable[] = [];
     uniqueVars.forEach(variable => {
       // A variable is root if:
       // 1. parent_account_id is null/undefined, OR
       // 2. parent_account_id doesn't correspond to any id_sim in our variables
-      if (!variable.parent_account_id || !allSimIds.has(variable.parent_account_id)) {
+      const isRoot = !variable.parent_account_id || !allSimIds.has(variable.parent_account_id);
+      if (isRoot) {
         rootVars.push(variable);
       }
     });
