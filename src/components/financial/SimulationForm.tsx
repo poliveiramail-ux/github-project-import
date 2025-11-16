@@ -99,8 +99,10 @@ export default function SimulationForm({ onMenuClick }: Props) {
 
   useEffect(() => {
     if (selectedProject) {
-      loadLanguages(selectedProject);
+      loadVersions(selectedProject);
     } else {
+      setVersions([]);
+      setCurrentVersionId(null);
       setLanguages([]);
       setSelectedLanguage('');
       setLobs([]);
@@ -109,13 +111,24 @@ export default function SimulationForm({ onMenuClick }: Props) {
   }, [selectedProject]);
 
   useEffect(() => {
-    if (selectedLanguage) {
-      loadLobs(selectedLanguage);
+    if (selectedProject && currentVersionId) {
+      loadLanguages(selectedProject, currentVersionId);
+    } else {
+      setLanguages([]);
+      setSelectedLanguage('');
+      setLobs([]);
+      setSelectedLob('');
+    }
+  }, [selectedProject, currentVersionId]);
+
+  useEffect(() => {
+    if (selectedProject && currentVersionId && selectedLanguage) {
+      loadLobs(selectedProject, currentVersionId, selectedLanguage);
     } else {
       setLobs([]);
       setSelectedLob('');
     }
-  }, [selectedLanguage]);
+  }, [selectedProject, currentVersionId, selectedLanguage]);
 
   const loadProjects = async () => {
     const { data } = await supabase.from('project').select('id_prj, desc_prj').order('id_prj');
@@ -123,22 +136,45 @@ export default function SimulationForm({ onMenuClick }: Props) {
     setLoading(false);
   };
 
-  const loadLanguages = async (projectId: string) => {
-    const { data } = await supabase
-      .from('lang')
-      .select('id_lang, desc_lang')
-      .eq('id_prj', projectId)
-      .order('id_lang');
-    setLanguages((data || []).map(l => ({ id_lang: l.id_lang, desc_lang: l.desc_lang })));
+  const loadLanguages = async (projectId: string, versionId: string) => {
+    const { data } = await (supabase as any)
+      .from('simulation')
+      .select('id_lang')
+      .eq('id_proj', projectId)
+      .eq('id_sim_ver', versionId)
+      .not('id_lang', 'is', null);
+    
+    if (data) {
+      const uniqueLangs = Array.from(
+        new Set(data.map((item: any) => item.id_lang as string).filter(Boolean))
+      ) as string[];
+      
+      setLanguages(uniqueLangs.map((lang: string) => ({
+        id_lang: lang,
+        desc_lang: lang
+      })));
+    }
   };
 
-  const loadLobs = async (languageId: string) => {
-    const { data } = await supabase
-      .from('lob')
-      .select('id_lob, name')
+  const loadLobs = async (projectId: string, versionId: string, languageId: string) => {
+    const { data } = await (supabase as any)
+      .from('simulation')
+      .select('id_lob')
+      .eq('id_proj', projectId)
+      .eq('id_sim_ver', versionId)
       .eq('id_lang', languageId)
-      .order('name');
-    setLobs((data || []).map(l => ({ id_lob: l.id_lob, name: l.name })));
+      .not('id_lob', 'is', null);
+    
+    if (data) {
+      const uniqueLobs = Array.from(
+        new Set(data.map((item: any) => item.id_lob as string).filter(Boolean))
+      ) as string[];
+      
+      setLobs(uniqueLobs.map((lob: string) => ({
+        id_lob: lob,
+        name: lob
+      })));
+    }
   };
 
   const loadVersions = async (projectId: string) => {
@@ -148,26 +184,34 @@ export default function SimulationForm({ onMenuClick }: Props) {
     }
 
     const { data } = await (supabase as any)
-      .from('simulation_versions')
-      .select('*')
-      .eq('id_prj', projectId)
-      .order('created_at', { ascending: false });
+      .from('simulation')
+      .select('id_sim_ver, version_id')
+      .eq('id_proj', projectId);
     
-    const mappedData = (data || []).map((v: any) => ({
-      id: v.id_sim_ver,
-      name: v.name,
-      id_prj: v.id_prj,
-      created_at: v.created_at
-    }));
-    setVersions(mappedData);
-    
-    if (mappedData && mappedData.length > 0) {
-      loadVersion(mappedData[0].id);
-    } else {
-      setVariables([]);
-      setVariableValues(new Map());
-      setPeriods([]);
-      setCurrentVersionId(null);
+    if (data) {
+      // Get unique versions
+      const uniqueVersions = Array.from(
+        new Map(data.map((item: any) => [item.id_sim_ver, item])).values()
+      );
+      
+      const mappedData = uniqueVersions.map((item: any, index: number) => ({
+        id: item.id_sim_ver,
+        name: `Version ${index + 1}`,
+        id_prj: projectId,
+        id_lang: '',
+        created_at: ''
+      }));
+      
+      setVersions(mappedData);
+      
+      if (mappedData && mappedData.length > 0) {
+        setCurrentVersionId(mappedData[0].id);
+      } else {
+        setVariables([]);
+        setVariableValues(new Map());
+        setPeriods([]);
+        setCurrentVersionId(null);
+      }
     }
   };
 
