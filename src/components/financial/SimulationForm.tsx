@@ -410,6 +410,44 @@ export default function SimulationForm({ onMenuClick }: Props) {
       setSimToConfigMap(simToConfigMapNew);
       console.log('Maps created:', configToSimMap.size, 'mappings');
       
+      // Fix parent_account_id if they point to id_sim instead of id_sim_cfg_var
+      const fixParentIds = async () => {
+        const updates: any[] = [];
+        
+        vars.forEach(v => {
+          if (v.parent_account_id && simToConfigMapNew.has(v.parent_account_id)) {
+            // parent_account_id is an id_sim, convert to id_sim_cfg_var
+            const correctParentId = simToConfigMapNew.get(v.parent_account_id);
+            if (correctParentId !== v.parent_account_id) {
+              updates.push({
+                id_sim: v.id_sim,
+                new_parent: correctParentId
+              });
+            }
+          }
+        });
+        
+        if (updates.length > 0) {
+          console.log(`Fixing ${updates.length} parent_account_id references...`);
+          
+          // Update in batches
+          for (const update of updates) {
+            await (supabase as any)
+              .from('simulation')
+              .update({ parent_account_id: update.new_parent })
+              .eq('id_sim', update.id_sim);
+          }
+          
+          console.log('Parent IDs fixed successfully');
+          
+          // Reload the data with corrected parent_account_id
+          loadVersion(versionId, langToUse, lobToUse);
+        }
+      };
+      
+      fixParentIds();
+      
+      
       // Extract unique periods and sort them
       const uniquePeriods = new Map<string, MonthYear>();
       vars.forEach(v => {
@@ -594,7 +632,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
         id_lang: record.id_lang,
         value_type: record.value_type || 'number',
         level: record.level,
-        parent_account_id: record.parent_account_id
+        parent_account_id: record.parent_account_id,
+        id_sim_cfg_var: record.id_sim_cfg_var
       }));
 
       const { error: varsError } = await (supabase as any)
