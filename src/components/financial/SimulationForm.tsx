@@ -1165,12 +1165,16 @@ export default function SimulationForm({ onMenuClick }: Props) {
       }
     });
     
+    console.log('Root variables found:', rootVars.length);
+    
     // Sort roots by account_num
     rootVars.sort((a, b) => {
       const aNum = a.account_code || '';
       const bNum = b.account_code || '';
       return aNum.localeCompare(bNum, undefined, { numeric: true });
     });
+    
+    console.log('Root variables sorted:', rootVars.map(v => `${v.account_code} - ${v.name}`));
     
     // Build visible list hierarchically
     const visible: Variable[] = [];
@@ -1193,12 +1197,16 @@ export default function SimulationForm({ onMenuClick }: Props) {
           !visited.has(v.id_sim) // Skip already visited children
         );
         
+        console.log(`Children of ${variable.account_code} (${variable.name}):`, children.length);
+        
         // Sort children by account_num
         children.sort((a, b) => {
           const aNum = a.account_code || '';
           const bNum = b.account_code || '';
           return aNum.localeCompare(bNum, undefined, { numeric: true });
         });
+        
+        console.log(`Children sorted:`, children.map(c => `${c.account_code} - ${c.name}`));
         
         // Recursively add each child
         children.forEach(child => addVariableAndChildren(child));
@@ -1207,6 +1215,9 @@ export default function SimulationForm({ onMenuClick }: Props) {
     
     // Start with root variables
     rootVars.forEach(root => addVariableAndChildren(root));
+    
+    console.log('Total visible variables after hierarchy:', visible.length);
+    console.log('Visible variables order:', visible.map(v => `${v.account_code} - ${v.name}`));
     
     return visible;
   };
