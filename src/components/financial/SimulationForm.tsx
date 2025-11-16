@@ -255,7 +255,6 @@ export default function SimulationForm({ onMenuClick }: Props) {
 
     const langToUse = languageFilter !== undefined ? languageFilter : selectedLanguage;
     const lobToUse = lobFilter !== undefined ? lobFilter : selectedLob;
-    console.log('Loading version:', { versionId, selectedProject, langToUse, lobToUse });
 
     // Load blocked variables and config structure from config
     let configVarsQuery = (supabase as any)
@@ -294,14 +293,11 @@ export default function SimulationForm({ onMenuClick }: Props) {
       .eq('id_proj', selectedProject)
       .order('account_num');
     
-    console.log('All data loaded from DB:', allData?.length, 'records');
-    
     // Filter data based on language and LOB selection
     let data = allData;
     const activeFilters: string[] = [];
     
     if (langToUse) {
-      console.log('🔍 Starting filter with language:', langToUse);
       activeFilters.push(`Língua: ${langToUse}`);
       
       // Separate included and excluded records
@@ -316,23 +312,13 @@ export default function SimulationForm({ onMenuClick }: Props) {
           included.push(v);
         } else {
           excluded.push(v);
-          // Log specifically excluded records
-          console.log(`❌ EXCLUDED (lang): ${v.account_num}`, {
-            id_lang: v.id_lang,
-            name: v.name,
-            expected: langToUse
-          });
         }
       });
-      
-      console.log('✅ INCLUDED after lang filter:', included.length, 'records');
-      console.log('❌ EXCLUDED by lang:', excluded.length, 'records');
       
       data = included;
     }
     
     if (lobToUse) {
-      console.log('🔍 Starting filter with LOB:', lobToUse);
       activeFilters.push(`LOB: ${lobToUse}`);
       
       const included: any[] = [];
@@ -349,15 +335,11 @@ export default function SimulationForm({ onMenuClick }: Props) {
         }
       });
       
-      console.log('✅ INCLUDED after LOB filter:', included.length, 'records');
-      console.log('❌ EXCLUDED by LOB:', excluded.length, 'records');
-      
       data = included;
     }
     
     // Include direct parents of filtered records even if they don't match filters
     if ((langToUse || lobToUse) && data && allData) {
-      console.log('🔍 Adding direct parents of filtered records');
       const dataIds = new Set(data.map((v: any) => v.parent_account_id));
       const includedIds = new Set(data.map((v: any) => v.id_sim_cfg_var));
       
@@ -374,7 +356,6 @@ export default function SimulationForm({ onMenuClick }: Props) {
       });
       
       if (parentsToAdd.length > 0) {
-        console.log('➕ Added', parentsToAdd.length, 'parent records');
         data = [...data, ...parentsToAdd];
       }
     }
@@ -398,7 +379,6 @@ export default function SimulationForm({ onMenuClick }: Props) {
       })) as Variable[];
       
       setVariables(vars);
-      console.log('Variables mapped successfully:', vars.length);
       
       
       // Extract unique periods and sort them
@@ -428,7 +408,6 @@ export default function SimulationForm({ onMenuClick }: Props) {
         if (v.calculation_type === 'FORMULA' && !v.formula) {
           const configVar = configVars?.find((cv: any) => cv.account_num === v.account_code);
           if (configVar?.formula) {
-            console.log(`Fixing missing formula for ${v.account_code}: ${configVar.formula}`);
             formulaFixes.push(
               (supabase as any)
                 .from('simulation')
@@ -448,15 +427,11 @@ export default function SimulationForm({ onMenuClick }: Props) {
       
       if (formulaFixes.length > 0) {
         await Promise.all(formulaFixes);
-        console.log(`Fixed ${formulaFixes.length} missing formulas`);
       }
       
       // variableValues Map will only contain user edits, not initial DB values
       // getValue will read from variables array for DB values
     }
-    
-    console.log('Setting version:', versionId);
-    console.log('Total variables loaded:', data?.length);
     
     setCurrentVersionId(versionId);
     
@@ -1014,7 +989,6 @@ export default function SimulationForm({ onMenuClick }: Props) {
     // Check if user has edited this value in the Map first
     if (variableValues.has(key)) {
       const editedValue = variableValues.get(key) || 0;
-      console.log(`getValue: Using edited value for ${variable.account_code}: ${editedValue}`);
       return editedValue;
     }
     
@@ -1030,7 +1004,6 @@ export default function SimulationForm({ onMenuClick }: Props) {
     
     if (matchingVar?.calculation_type === 'FORMULA' && matchingVar.formula) {
       const result = evaluateFormula(matchingVar.formula, year, month, matchingVar.account_code);
-      console.log(`getValue: Calculated formula for ${variable.account_code} = ${result}`);
       return result;
     }
     
@@ -1052,11 +1025,9 @@ export default function SimulationForm({ onMenuClick }: Props) {
 
   const updateValue = (accountCode: string, year: number, month: number, language: string, lob: string, value: string) => {
     const key = `${accountCode}-${year}-${month}-${language}-${lob}`;
-    console.log(`Updating value for ${accountCode} (${year}/${month}): ${value}`);
     setVariableValues(prev => {
       const newMap = new Map(prev);
       newMap.set(key, parseFloat(value) || 0);
-      console.log(`New map size: ${newMap.size}`);
       return newMap;
     });
   };
@@ -1081,7 +1052,6 @@ export default function SimulationForm({ onMenuClick }: Props) {
       } else {
         newSet.add(varId);
       }
-      console.log('Toggled expansion for:', varId, 'New size:', newSet.size);
       return newSet;
     });
   };
@@ -1100,14 +1070,6 @@ export default function SimulationForm({ onMenuClick }: Props) {
     // Create a set of all config var IDs for quick lookup
     const allCfgVarIds = new Set(uniqueVars.map(v => v.id_sim_cfg_var));
     
-    console.log('Sample parent_account_id values:', uniqueVars.slice(0, 10).map(v => ({
-      code: v.account_code,
-      parent_id: v.parent_account_id,
-      id_sim_cfg_var: v.id_sim_cfg_var
-    })));
-    
-    console.log('All cfg var IDs (first 10):', Array.from(allCfgVarIds).slice(0, 10));
-    
     // Identify root variables (where parent_account_id is null or doesn't exist in config vars)
     const rootVars: Variable[] = [];
     uniqueVars.forEach(variable => {
@@ -1119,20 +1081,10 @@ export default function SimulationForm({ onMenuClick }: Props) {
                      variable.parent_account_id === variable.id_sim_cfg_var ||
                      !allCfgVarIds.has(variable.parent_account_id);
       
-      if (!variable.parent_account_id) {
-        console.log(`${variable.account_code} is root: no parent_account_id`);
-      } else if (variable.parent_account_id === variable.id_sim_cfg_var) {
-        console.log(`${variable.account_code} is root: self-reference`);
-      } else if (!allCfgVarIds.has(variable.parent_account_id)) {
-        console.log(`${variable.account_code} is root: parent ${variable.parent_account_id} not found in cfg vars`);
-      }
-      
       if (isRoot) {
         rootVars.push(variable);
       }
     });
-    
-    console.log('Root variables found:', rootVars.length);
     
     // Sort roots by account_num
     rootVars.sort((a, b) => {
@@ -1140,8 +1092,6 @@ export default function SimulationForm({ onMenuClick }: Props) {
       const bNum = b.account_code || '';
       return aNum.localeCompare(bNum, undefined, { numeric: true });
     });
-    
-    console.log('Root variables sorted:', rootVars.map(v => `${v.account_code} - ${v.name}`));
     
     // Build visible list hierarchically
     const visible: Variable[] = [];
@@ -1164,16 +1114,12 @@ export default function SimulationForm({ onMenuClick }: Props) {
           !visited.has(v.uniqueId) // Skip already visited children
         );
         
-        console.log(`Children of ${variable.account_code} (${variable.name}):`, children.length);
-        
         // Sort children by account_num
         children.sort((a, b) => {
           const aNum = a.account_code || '';
           const bNum = b.account_code || '';
           return aNum.localeCompare(bNum, undefined, { numeric: true });
         });
-        
-        console.log(`Children sorted:`, children.map(c => `${c.account_code} - ${c.name}`));
         
         // Recursively add each child
         children.forEach(child => addVariableAndChildren(child));
@@ -1182,9 +1128,6 @@ export default function SimulationForm({ onMenuClick }: Props) {
     
     // Start with root variables
     rootVars.forEach(root => addVariableAndChildren(root));
-    
-    console.log('Total visible variables after hierarchy:', visible.length);
-    console.log('Visible variables order:', visible.map(v => `${v.account_code} - ${v.name}`));
     
     return visible;
   };
