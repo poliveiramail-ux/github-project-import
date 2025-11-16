@@ -659,8 +659,6 @@ export default function SimulationForm({ onMenuClick }: Props) {
       const monthsToCreate = [1, 2, 3]; // Jan, Feb, Mar
       const yearToUse = new Date().getFullYear();
 
-      // Store config var ID temporarily for parent mapping
-      const tempConfigMapping: any[] = [];
       configVars.forEach((configVar: any, index: number) => {
         monthsToCreate.forEach((month) => {
           const valueType = configVar.value_type === 'percentage' ? 'percentage' : 'number';
@@ -686,10 +684,6 @@ export default function SimulationForm({ onMenuClick }: Props) {
           };
           
           variablesToInsert.push(recordData);
-          tempConfigMapping.push({
-            ...recordData,
-            _config_id: configVar.id_sim_cfg_var
-          });
         });
       });
 
@@ -698,58 +692,13 @@ export default function SimulationForm({ onMenuClick }: Props) {
       }
 
       // Insert all variables
-      const { data: insertedVars, error: varsError } = await (supabase as any)
+      const { error: varsError } = await (supabase as any)
         .from('simulation')
-        .insert(variablesToInsert)
-        .select('id_sim, account_num, month, year, id_lob, id_lang');
+        .insert(variablesToInsert);
 
       if (varsError) {
         console.error('Error inserting variables:', varsError);
         throw varsError;
-      }
-
-      // Second pass: Update parent_account_id relationships
-      const updates: Promise<any>[] = [];
-      
-      for (const insertedVar of insertedVars || []) {
-        // Find the temp mapping for this inserted var
-        const tempMapping = tempConfigMapping.find((tm: any) => 
-          tm.account_num === insertedVar.account_num &&
-          tm.month === insertedVar.month &&
-          tm.year === insertedVar.year &&
-          tm.id_lob === insertedVar.id_lob &&
-          tm.id_lang === insertedVar.id_lang
-        );
-        
-        if (tempMapping && tempMapping.parent_account_id) {
-          // Find the parent config var
-          const parentConfigVar = configVars.find((cv: any) => cv.id_sim_cfg_var === tempMapping.parent_account_id);
-          
-          if (parentConfigVar) {
-            // Find the corresponding parent simulation var (same account_num, month, year, lob, lang)
-            const parentSimVar = insertedVars.find((sv: any) => 
-              sv.account_num === parentConfigVar.account_num &&
-              sv.month === insertedVar.month &&
-              sv.year === insertedVar.year &&
-              sv.id_lob === insertedVar.id_lob &&
-              sv.id_lang === insertedVar.id_lang
-            );
-
-            if (parentSimVar) {
-              updates.push(
-                (supabase as any)
-                  .from('simulation')
-                  .update({ parent_account_id: parentSimVar.id_sim })
-                  .eq('id_sim', insertedVar.id_sim)
-              );
-            }
-          }
-        }
-      }
-
-      // Execute all updates in parallel
-      if (updates.length > 0) {
-        await Promise.all(updates);
       }
 
       loadVersions(selectedProject);
