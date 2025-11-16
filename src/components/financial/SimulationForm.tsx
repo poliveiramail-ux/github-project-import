@@ -682,7 +682,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
             id_lang: configVar.id_lang,
             value_type: valueType,
             level: configVar.level,
-            parent_account_id: configVar.parent_account_id
+            parent_account_id: configVar.parent_account_id,
+            id_sim_cfg_var: configVar.id_sim_cfg_var
           };
           
           variablesToInsert.push(recordData);

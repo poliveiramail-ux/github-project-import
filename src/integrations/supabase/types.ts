@@ -133,6 +133,7 @@ export type Database = {
           id_lob: string | null
           id_proj: string
           id_sim: string
+          id_sim_cfg_var: string
           id_sim_ver: string
           level: string | null
           month: number
@@ -154,6 +155,7 @@ export type Database = {
           id_lob?: string | null
           id_proj: string
           id_sim?: string
+          id_sim_cfg_var?: string
           id_sim_ver?: string
           level?: string | null
           month: number
@@ -175,6 +177,7 @@ export type Database = {
           id_lob?: string | null
           id_proj?: string
           id_sim?: string
+          id_sim_cfg_var?: string
           id_sim_ver?: string
           level?: string | null
           month?: number
