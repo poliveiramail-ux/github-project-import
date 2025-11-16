@@ -130,12 +130,6 @@ export default function SimulationForm({ onMenuClick }: Props) {
     }
   }, [selectedProject, currentVersionId, selectedLanguage]);
 
-  useEffect(() => {
-    if (currentVersionId && selectedProject) {
-      loadVersion(currentVersionId, selectedLanguage, selectedLob);
-    }
-  }, [currentVersionId, selectedLanguage, selectedLob, selectedProject]);
-
   const loadProjects = async () => {
     const { data } = await supabase.from('project').select('id_prj, desc_prj').order('id_prj');
     setProjects((data || []).map(p => ({ id_prj: p.id_prj, desc_prj: p.desc_prj })));
@@ -217,16 +211,17 @@ export default function SimulationForm({ onMenuClick }: Props) {
           created_at: v.created_at
         }));
         
-        setVersions(mappedData);
-        
-        if (mappedData.length > 0) {
-          setCurrentVersionId(mappedData[0].id);
-        } else {
-          setVariables([]);
-          setVariableValues(new Map());
-          setPeriods([]);
-          setCurrentVersionId(null);
-        }
+      setVersions(mappedData);
+      
+      if (mappedData.length > 0) {
+        setCurrentVersionId(mappedData[0].id);
+        loadVersion(mappedData[0].id, '', '');
+      } else {
+        setVariables([]);
+        setVariableValues(new Map());
+        setPeriods([]);
+        setCurrentVersionId(null);
+      }
       }
     } else {
       setVersions([]);
@@ -497,6 +492,11 @@ export default function SimulationForm({ onMenuClick }: Props) {
     if (currentVersionId) {
       loadVersion(currentVersionId, selectedLanguage, actualLob);
     }
+  };
+
+  const handleVersionChange = (versionId: string) => {
+    setCurrentVersionId(versionId);
+    loadVersion(versionId, selectedLanguage, selectedLob);
   };
 
   const handleClearSelections = () => {
@@ -1314,7 +1314,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
 
             <div>
               <Label>Versão</Label>
-              <Select value={currentVersionId || ''} onValueChange={loadVersion} disabled={!selectedProject}>
+              <Select value={currentVersionId || ''} onValueChange={handleVersionChange} disabled={!selectedProject}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione uma versão" />
                 </SelectTrigger>
