@@ -420,17 +420,48 @@ export default function SimulationForm({ onMenuClick }: Props) {
       
       // variableValues Map will only contain user edits, not initial DB values
       // getValue will read from variables array for DB values
+      
+      // Se há filtro ativo (LOB ou Language), expandir todos os pais automaticamente
+      if (lobToUse || langToUse) {
+        console.log('Filter active - expanding all parent nodes');
+        const expansionSet = new Set<string>();
+        
+        // Create a map of all variables by id_sim for quick lookup
+        const varMap = new Map<string, any>();
+        vars.forEach((v: Variable) => {
+          varMap.set(v.id_sim, v);
+        });
+        
+        // For each variable, add all its parents to expansion set
+        vars.forEach((v: Variable) => {
+          let current = v;
+          while (current.parent_account_id) {
+            // Find parent sim_id from the config parent_account_id
+            const parentSimId = Array.from(simToConfigMapNew.entries())
+              .find(([simId, configId]) => configId === current.parent_account_id)?.[0];
+            
+            if (parentSimId && varMap.has(parentSimId)) {
+              expansionSet.add(parentSimId);
+              current = varMap.get(parentSimId);
+            } else {
+              break;
+            }
+          }
+        });
+        
+        console.log('Auto-expanded', expansionSet.size, 'parent nodes');
+        setExpandedRows(expansionSet);
+      } else {
+        // Sem filtro, iniciar com todas as variáveis colapsadas
+        console.log('No filter - resetting expanded rows to empty set');
+        setExpandedRows(new Set());
+      }
     }
     
     console.log('Setting version:', versionId);
     console.log('Total variables loaded:', data?.length);
     
     setCurrentVersionId(versionId);
-    
-    // Iniciar com todas as variáveis colapsadas (set vazio)
-    // As variáveis raiz serão visíveis por terem parent_account_id null
-    console.log('Resetting expanded rows to empty set');
-    setExpandedRows(new Set());
   };
 
   const handleProjectChange = (projectId: string) => {
