@@ -1151,11 +1151,16 @@ export default function SimulationForm({ onMenuClick }: Props) {
     
     const uniqueVars = Array.from(uniqueVarsMap.values());
     
-    // Identify root variables (where parent_account_id equals own config ID)
+    // Create a set of all sim IDs for quick lookup
+    const allSimIds = new Set(uniqueVars.map(v => v.id_sim));
+    
+    // Identify root variables (where parent_account_id is null or doesn't exist in simulation)
     const rootVars: Variable[] = [];
     uniqueVars.forEach(variable => {
-      const thisConfigId = simToConfigMap.get(variable.id_sim);
-      if (variable.parent_account_id === thisConfigId) {
+      // A variable is root if:
+      // 1. parent_account_id is null/undefined, OR
+      // 2. parent_account_id doesn't correspond to any id_sim in our variables
+      if (!variable.parent_account_id || !allSimIds.has(variable.parent_account_id)) {
         rootVars.push(variable);
       }
     });
@@ -1182,25 +1187,21 @@ export default function SimulationForm({ onMenuClick }: Props) {
       
       // If this variable is expanded, add its children
       if (expandedRows.has(variable.id_sim)) {
-        // Get this variable's config ID
-        const thisConfigId = simToConfigMap.get(variable.id_sim);
-        if (thisConfigId) {
-          // Find all children (variables whose parent_account_id equals this config ID)
-          const children = uniqueVars.filter(v => 
-            v.parent_account_id === thisConfigId && 
-            !visited.has(v.id_sim) // Skip already visited children
-          );
-          
-          // Sort children by account_num
-          children.sort((a, b) => {
-            const aNum = a.account_code || '';
-            const bNum = b.account_code || '';
-            return aNum.localeCompare(bNum, undefined, { numeric: true });
-          });
-          
-          // Recursively add each child
-          children.forEach(child => addVariableAndChildren(child));
-        }
+        // Find all children (variables whose parent_account_id equals this variable's id_sim)
+        const children = uniqueVars.filter(v => 
+          v.parent_account_id === variable.id_sim && 
+          !visited.has(v.id_sim) // Skip already visited children
+        );
+        
+        // Sort children by account_num
+        children.sort((a, b) => {
+          const aNum = a.account_code || '';
+          const bNum = b.account_code || '';
+          return aNum.localeCompare(bNum, undefined, { numeric: true });
+        });
+        
+        // Recursively add each child
+        children.forEach(child => addVariableAndChildren(child));
       }
     };
     
