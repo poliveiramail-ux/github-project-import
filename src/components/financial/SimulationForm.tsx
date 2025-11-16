@@ -183,35 +183,51 @@ export default function SimulationForm({ onMenuClick }: Props) {
       return;
     }
 
-    const { data } = await (supabase as any)
+    // Get unique version IDs from simulation table
+    const { data: simData } = await (supabase as any)
       .from('simulation')
-      .select('id_sim_ver, version_id')
+      .select('id_sim_ver')
       .eq('id_proj', projectId);
     
-    if (data) {
-      // Get unique versions
-      const uniqueVersions = Array.from(
-        new Map(data.map((item: any) => [item.id_sim_ver, item])).values()
+    if (simData && simData.length > 0) {
+      // Get unique version IDs
+      const uniqueVersionIds = Array.from(
+        new Set(simData.map((item: any) => item.id_sim_ver))
       );
       
-      const mappedData = uniqueVersions.map((item: any, index: number) => ({
-        id: item.id_sim_ver,
-        name: `Version ${index + 1}`,
-        id_prj: projectId,
-        id_lang: '',
-        created_at: ''
-      }));
+      // Get version details from simulation_versions table
+      const { data: versionData } = await (supabase as any)
+        .from('simulation_versions')
+        .select('id_sim_ver, name, created_at, id_prj')
+        .in('id_sim_ver', uniqueVersionIds)
+        .order('created_at', { ascending: false });
       
-      setVersions(mappedData);
-      
-      if (mappedData && mappedData.length > 0) {
-        setCurrentVersionId(mappedData[0].id);
-      } else {
-        setVariables([]);
-        setVariableValues(new Map());
-        setPeriods([]);
-        setCurrentVersionId(null);
+      if (versionData) {
+        const mappedData = versionData.map((v: any) => ({
+          id: v.id_sim_ver,
+          name: v.name,
+          id_prj: v.id_prj,
+          id_lang: '',
+          created_at: v.created_at
+        }));
+        
+        setVersions(mappedData);
+        
+        if (mappedData.length > 0) {
+          setCurrentVersionId(mappedData[0].id);
+        } else {
+          setVariables([]);
+          setVariableValues(new Map());
+          setPeriods([]);
+          setCurrentVersionId(null);
+        }
       }
+    } else {
+      setVersions([]);
+      setVariables([]);
+      setVariableValues(new Map());
+      setPeriods([]);
+      setCurrentVersionId(null);
     }
   };
 
