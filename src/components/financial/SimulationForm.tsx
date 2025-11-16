@@ -264,74 +264,29 @@ export default function SimulationForm({ onMenuClick }: Props) {
     }
     
     if (lobToUse) {
-      console.log('🔍 Starting filter with LOB (minimal hierarchy):', lobToUse);
+      console.log('🔍 Starting filter with LOB:', lobToUse);
       activeFilters.push(`LOB: ${lobToUse}`);
       
-      // Build parent-child map for hierarchy
-      const parentMap = new Map<string, any>();
-      data?.forEach((v: any) => {
-        parentMap.set(v.id_sim, v);
-      });
-      
-      // Step 1: Find all records that match the LOB
-      const directMatches = new Set<string>();
-      data?.forEach((v: any) => {
-        if (v.id_lob === lobToUse) {
-          directMatches.add(v.id_sim);
-          console.log(`✅ DIRECT MATCH: ${v.account_num}`, { id_lob: v.id_lob, name: v.name });
-        }
-      });
-      
-      // Step 2: For each direct match, find all parent nodes recursively
-      const requiredNodes = new Set<string>(directMatches);
-      
-      const addParentsRecursively = (nodeId: string) => {
-        const node = parentMap.get(nodeId);
-        if (node && node.parent_account_id) {
-          // Find parent in the parentMap
-          const parent = Array.from(parentMap.values()).find(
-            (v: any) => v.id_sim === node.parent_account_id
-          );
-          
-          if (parent) {
-            if (!requiredNodes.has(parent.id_sim)) {
-              requiredNodes.add(parent.id_sim);
-              console.log(`📁 ADDED PARENT: ${parent.account_num}`, { 
-                id_lob: parent.id_lob, 
-                name: parent.name,
-                reason: `parent of ${node.account_num}` 
-              });
-              // Recursively add this parent's parents
-              addParentsRecursively(parent.id_sim);
-            }
-          }
-        }
-      };
-      
-      // Add all parents for each direct match
-      directMatches.forEach(nodeId => {
-        addParentsRecursively(nodeId);
-      });
-      
-      // Step 3: Filter data to only include required nodes
       const included: any[] = [];
       const excluded: any[] = [];
       
+      // Filter to show variables that match the LOB OR have null LOB (parent nodes)
       data?.forEach((v: any) => {
-        if (requiredNodes.has(v.id_sim)) {
+        const matches = v.id_lob === lobToUse || v.id_lob === null;
+        
+        if (matches) {
           included.push(v);
         } else {
           excluded.push(v);
-          console.log(`❌ EXCLUDED (not required): ${v.account_num}`, {
+          console.log(`❌ EXCLUDED (lob): ${v.account_num}`, {
             id_lob: v.id_lob,
-            name: v.name
+            name: v.name,
+            expected: lobToUse
           });
         }
       });
       
       console.log('✅ INCLUDED after LOB filter:', included.length, 'records');
-      console.log('  - Direct matches:', directMatches.size);
-      console.log('  - Parent nodes:', requiredNodes.size - directMatches.size);
       console.log('❌ EXCLUDED by LOB:', excluded.length, 'records');
       
       data = included;
@@ -420,48 +375,17 @@ export default function SimulationForm({ onMenuClick }: Props) {
       
       // variableValues Map will only contain user edits, not initial DB values
       // getValue will read from variables array for DB values
-      
-      // Se há filtro ativo (LOB ou Language), expandir todos os pais automaticamente
-      if (lobToUse || langToUse) {
-        console.log('Filter active - expanding all parent nodes');
-        const expansionSet = new Set<string>();
-        
-        // Create a map of all variables by id_sim for quick lookup
-        const varMap = new Map<string, any>();
-        vars.forEach((v: Variable) => {
-          varMap.set(v.id_sim, v);
-        });
-        
-        // For each variable, add all its parents to expansion set
-        vars.forEach((v: Variable) => {
-          let current = v;
-          while (current.parent_account_id) {
-            // Find parent sim_id from the config parent_account_id
-            const parentSimId = Array.from(simToConfigMapNew.entries())
-              .find(([simId, configId]) => configId === current.parent_account_id)?.[0];
-            
-            if (parentSimId && varMap.has(parentSimId)) {
-              expansionSet.add(parentSimId);
-              current = varMap.get(parentSimId);
-            } else {
-              break;
-            }
-          }
-        });
-        
-        console.log('Auto-expanded', expansionSet.size, 'parent nodes');
-        setExpandedRows(expansionSet);
-      } else {
-        // Sem filtro, iniciar com todas as variáveis colapsadas
-        console.log('No filter - resetting expanded rows to empty set');
-        setExpandedRows(new Set());
-      }
     }
     
     console.log('Setting version:', versionId);
     console.log('Total variables loaded:', data?.length);
     
     setCurrentVersionId(versionId);
+    
+    // Iniciar com todas as variáveis colapsadas (set vazio)
+    // As variáveis raiz serão visíveis por terem parent_account_id null
+    console.log('Resetting expanded rows to empty set');
+    setExpandedRows(new Set());
   };
 
   const handleProjectChange = (projectId: string) => {
