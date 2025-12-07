@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, Edit3, Trash2, ArrowUpDown, ChevronRight, ChevronDown, HelpCircle, AlertCircle, FunctionSquare } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { ArrowLeft, Plus, Edit3, Trash2, ArrowUpDown, ChevronRight, ChevronDown, HelpCircle, AlertCircle, FunctionSquare, FileSpreadsheet } from 'lucide-react';
 import FormulaHelp from './FormulaHelp';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -35,6 +35,7 @@ interface ConfigVariable {
   account_num: string;
   parent_account_id?: string | null;
   level?: number;
+  page_name?: string;
 }
 
 interface Props {
@@ -55,7 +56,18 @@ export default function ConfigurationForm({ onBack }: Props) {
   const [expandedVars, setExpandedVars] = useState(new Set<string>());
   const [justSaved, setJustSaved] = useState(false);
   const [showFormulaHelp, setShowFormulaHelp] = useState(false);
+  const [newPageName, setNewPageName] = useState('');
   const { toast } = useToast();
+
+  // Get unique page names from variables
+  const pageNames = useMemo(() => {
+    const pages = new Set<string>();
+    pages.add('Main'); // Always include Main
+    variables.forEach(v => {
+      if (v.page_name) pages.add(v.page_name);
+    });
+    return Array.from(pages).sort();
+  }, [variables]);
 
   useEffect(() => {
     loadConfigs();
@@ -200,7 +212,8 @@ export default function ConfigurationForm({ onBack }: Props) {
       id_lang: (v as any).id_lang || null,
       account_num: (v as any).account_num || '',
       parent_account_id: (v as any).parent_account_id || null,
-      level: parseInt((v as any).level || '0', 10)
+      level: parseInt((v as any).level || '0', 10),
+      page_name: (v as any).page_name || 'Main'
     }));
 
     console.log('🗺️ Mapped variables:', mappedVars);
@@ -337,7 +350,8 @@ export default function ConfigurationForm({ onBack }: Props) {
           blocked: editingVar.blocked || false,
           value_type: editingVar.value_type || 'number',
           parent_account_id: editingVar.parent_account_id || null,
-          level: calculatedLevel
+          level: calculatedLevel,
+          page_name: editingVar.page_name || 'Main'
         })
         .eq('id_sim_cfg_var', editingVar.id_sim_cfg_var);
       
@@ -362,7 +376,8 @@ export default function ConfigurationForm({ onBack }: Props) {
           row_index: variables.length + 1,
           id_proj: selectedProjectId,
           parent_account_id: editingVar.parent_account_id || null,
-          level: calculatedLevel
+          level: calculatedLevel,
+          page_name: editingVar.page_name || 'Main'
         }]);
       
       if (error) {
@@ -704,6 +719,51 @@ export default function ConfigurationForm({ onBack }: Props) {
                           </SelectContent>
                         </Select>
                       </div>
+                      <div className="mb-3">
+                        <Label className="flex items-center gap-2">
+                          <FileSpreadsheet className="h-4 w-4" />
+                          Página (Sheet)
+                        </Label>
+                        <div className="flex gap-2">
+                          <Select
+                            value={editingVar.page_name || 'Main'}
+                            onValueChange={(value) => setEditingVar({ ...editingVar, page_name: value })}
+                          >
+                            <SelectTrigger className="flex-1">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-background z-50">
+                              {pageNames.map((page) => (
+                                <SelectItem key={page} value={page}>
+                                  {page}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <div className="flex gap-1">
+                            <Input
+                              value={newPageName}
+                              onChange={(e) => setNewPageName(e.target.value)}
+                              placeholder="Nova página..."
+                              className="w-32"
+                            />
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="outline"
+                              onClick={() => {
+                                if (newPageName.trim()) {
+                                  setEditingVar({ ...editingVar, page_name: newPageName.trim() });
+                                  setNewPageName('');
+                                }
+                              }}
+                              disabled={!newPageName.trim()}
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
                       <div className="mb-3 flex items-center space-x-2">
                         <Checkbox
                           id="blocked"
@@ -811,6 +871,12 @@ export default function ConfigurationForm({ onBack }: Props) {
                             )}
                             <span className="text-sm font-mono text-muted-foreground">{variable.account_num}</span>
                            <span className="flex-1">{variable.name}</span>
+                           {variable.page_name && variable.page_name !== 'Main' && (
+                             <span className="text-xs bg-purple-100 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded flex items-center gap-1" title={`Página: ${variable.page_name}`}>
+                               <FileSpreadsheet className="h-3 w-3" />
+                               {variable.page_name}
+                             </span>
+                           )}
                            {variable.blocked && <span className="text-xs" title="Bloqueada">🔒</span>}
                            {variable.calculation_type === 'FORMULA' && (
                              <div className="flex items-center gap-1">
