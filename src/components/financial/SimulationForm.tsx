@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Menu, Plus, Save, CheckCircle, XCircle, Lock, ChevronDown, ChevronRight, Loader2, X, FunctionSquare } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Menu, Plus, Save, CheckCircle, XCircle, Lock, ChevronDown, ChevronRight, Loader2, X, FunctionSquare, FileSpreadsheet } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -49,6 +49,7 @@ interface Variable {
   value?: number;
   value_orig?: number;
   row_index: number;
+  page_name?: string;
 }
 
 interface VariableValue {
@@ -98,7 +99,17 @@ export default function SimulationForm({ onMenuClick }: Props) {
   const [blockedVariables, setBlockedVariables] = useState<Set<string>>(new Set());
   const [configVarMap, setConfigVarMap] = useState<Map<string, string>>(new Map()); // config_id -> sim_id
   const [simToConfigMap, setSimToConfigMap] = useState<Map<string, string>>(new Map()); // sim_id -> config_id
+  const [activePage, setActivePage] = useState<string>('Main');
   const { toast } = useToast();
+
+  // Get unique page names from variables
+  const pageNames = useMemo(() => {
+    const pages = new Set<string>();
+    variables.forEach(v => {
+      pages.add(v.page_name || 'Main');
+    });
+    return Array.from(pages).sort();
+  }, [variables]);
 
   useEffect(() => {
     loadProjects();
@@ -373,7 +384,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
         id_sim_cfg_var: v.id_sim_cfg_var,
         row_index: v.row_index || 0,
         value: v.value !== undefined ? v.value : 0,
-        value_orig: v.value_orig !== undefined ? v.value_orig : 0
+        value_orig: v.value_orig !== undefined ? v.value_orig : 0,
+        page_name: v.page_name || 'Main'
       })) as Variable[];
       
       setVariables(vars);
@@ -1055,9 +1067,12 @@ export default function SimulationForm({ onMenuClick }: Props) {
   };
 
   const getVisibleVariables = () => {
+    // Filter variables by active page first
+    const pageFilteredVars = variables.filter(v => (v.page_name || 'Main') === activePage);
+    
     // Get unique variables by account_code  
     const uniqueVarsMap = new Map<string, Variable>();
-    variables.forEach(v => {
+    pageFilteredVars.forEach(v => {
       if (!uniqueVarsMap.has(v.account_code)) {
         uniqueVarsMap.set(v.account_code, v);
       }
@@ -1286,8 +1301,30 @@ export default function SimulationForm({ onMenuClick }: Props) {
         </div>
       </div>
 
+      {/* Page Tabs */}
+      <div className="container mx-auto px-6 pt-4">
+        {pageNames.length > 1 && (
+          <div className="flex items-center gap-1 border-b overflow-x-auto pb-0">
+            {pageNames.map(pageName => (
+              <button
+                key={pageName}
+                onClick={() => setActivePage(pageName)}
+                className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap ${
+                  activePage === pageName
+                    ? 'border-primary text-primary bg-background'
+                    : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                }`}
+              >
+                <FileSpreadsheet className="h-4 w-4" />
+                {pageName}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Tabela */}
-      <div className="container mx-auto p-6">
+      <div className="container mx-auto p-6 pt-4">
         {currentVersionId ? (
           <Card className="overflow-x-auto">
             <table className="w-full border-collapse">

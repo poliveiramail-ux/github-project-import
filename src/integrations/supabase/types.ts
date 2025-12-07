@@ -137,6 +137,7 @@ export type Database = {
           level: string | null
           month: number
           name: string
+          page_name: string | null
           parent_account_id: string
           row_index: number
           value: number | null
@@ -158,6 +159,7 @@ export type Database = {
           level?: string | null
           month: number
           name: string
+          page_name?: string | null
           parent_account_id: string
           row_index: number
           value?: number | null
@@ -179,6 +181,7 @@ export type Database = {
           level?: string | null
           month?: number
           name?: string
+          page_name?: string | null
           parent_account_id?: string
           row_index?: number
           value?: number | null
@@ -252,6 +255,7 @@ export type Database = {
           id_sim_cfg_var: string
           level: number
           name: string
+          page_name: string | null
           parent_account_id: string | null
           row_index: number
           value_type: string | null
@@ -269,6 +273,7 @@ export type Database = {
           id_sim_cfg_var?: string
           level?: number
           name: string
+          page_name?: string | null
           parent_account_id?: string | null
           row_index?: number
           value_type?: string | null
@@ -286,6 +291,7 @@ export type Database = {
           id_sim_cfg_var?: string
           level?: number
           name?: string
+          page_name?: string | null
           parent_account_id?: string | null
           row_index?: number
           value_type?: string | null
@@ -335,6 +341,7 @@ export type Database = {
           id_sim_cfg_var: string
           level: number
           name: string
+          page_name: string | null
           parent_account_id: string | null
           row_index: number
           value_type: string | null
@@ -352,6 +359,7 @@ export type Database = {
           id_sim_cfg_var?: string
           level?: number
           name: string
+          page_name?: string | null
           parent_account_id?: string | null
           row_index?: number
           value_type?: string | null
@@ -369,6 +377,7 @@ export type Database = {
           id_sim_cfg_var?: string
           level?: number
           name?: string
+          page_name?: string | null
           parent_account_id?: string | null
           row_index?: number
           value_type?: string | null
