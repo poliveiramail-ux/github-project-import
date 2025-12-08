@@ -576,7 +576,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
         value_type: record.value_type || 'number',
         level: record.level,
         parent_account_id: record.parent_account_id,
-        id_sim_cfg_var: record.id_sim_cfg_var
+        id_sim_cfg_var: record.id_sim_cfg_var,
+        page_name: record.page_name || 'Main'
       }));
 
       const { error: varsError } = await (supabase as any)
@@ -665,7 +666,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
             value_type: valueType,
             level: configVar.level,
             parent_account_id: configVar.parent_account_id,
-            id_sim_cfg_var: configVar.id_sim_cfg_var
+            id_sim_cfg_var: configVar.id_sim_cfg_var,
+            page_name: configVar.page_name || 'Main'
           };
           
           variablesToInsert.push(recordData);
