@@ -1372,9 +1372,6 @@ export default function SimulationForm({ onMenuClick }: Props) {
                             <div className="w-6" />
                           )}
                           
-                          <span className="font-mono text-xs text-muted-foreground">
-                            {variable.account_code}
-                          </span>
                           <span className={isParent ? 'font-semibold text-sm' : 'text-sm'}>
                             {variable.name}
                           </span>
