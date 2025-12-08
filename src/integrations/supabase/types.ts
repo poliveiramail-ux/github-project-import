@@ -128,6 +128,7 @@ export type Database = {
           account_num: string
           calculation_type: string | null
           created_at: string | null
+          data_origin: string | null
           formula: string | null
           id_lang: string | null
           id_lob: string | null
@@ -150,6 +151,7 @@ export type Database = {
           account_num: string
           calculation_type?: string | null
           created_at?: string | null
+          data_origin?: string | null
           formula?: string | null
           id_lang?: string | null
           id_lob?: string | null
@@ -172,6 +174,7 @@ export type Database = {
           account_num?: string
           calculation_type?: string | null
           created_at?: string | null
+          data_origin?: string | null
           formula?: string | null
           id_lang?: string | null
           id_lob?: string | null
@@ -247,6 +250,7 @@ export type Database = {
           blocked: boolean | null
           calculation_type: string | null
           created_at: string | null
+          data_origin: string | null
           formula: string | null
           id_lang: string | null
           id_lob: string | null
@@ -265,6 +269,7 @@ export type Database = {
           blocked?: boolean | null
           calculation_type?: string | null
           created_at?: string | null
+          data_origin?: string | null
           formula?: string | null
           id_lang?: string | null
           id_lob?: string | null
@@ -283,6 +288,7 @@ export type Database = {
           blocked?: boolean | null
           calculation_type?: string | null
           created_at?: string | null
+          data_origin?: string | null
           formula?: string | null
           id_lang?: string | null
           id_lob?: string | null
@@ -333,6 +339,7 @@ export type Database = {
           blocked: boolean | null
           calculation_type: string | null
           created_at: string | null
+          data_origin: string | null
           formula: string | null
           id_lang: string | null
           id_lob: string | null
@@ -351,6 +358,7 @@ export type Database = {
           blocked?: boolean | null
           calculation_type?: string | null
           created_at?: string | null
+          data_origin?: string | null
           formula?: string | null
           id_lang?: string | null
           id_lob?: string | null
@@ -369,6 +377,7 @@ export type Database = {
           blocked?: boolean | null
           calculation_type?: string | null
           created_at?: string | null
+          data_origin?: string | null
           formula?: string | null
           id_lang?: string | null
           id_lob?: string | null

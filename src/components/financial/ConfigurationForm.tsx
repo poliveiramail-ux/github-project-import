@@ -36,6 +36,7 @@ interface ConfigVariable {
   parent_account_id?: string | null;
   level?: number;
   page_name?: string;
+  data_origin?: string | null;
 }
 
 interface Props {
@@ -213,7 +214,8 @@ export default function ConfigurationForm({ onBack }: Props) {
       account_num: (v as any).account_num || '',
       parent_account_id: (v as any).parent_account_id || null,
       level: parseInt((v as any).level || '0', 10),
-      page_name: (v as any).page_name || 'Main'
+      page_name: (v as any).page_name || 'Main',
+      data_origin: (v as any).data_origin || null
     }));
 
     console.log('🗺️ Mapped variables:', mappedVars);
@@ -351,7 +353,8 @@ export default function ConfigurationForm({ onBack }: Props) {
           value_type: editingVar.value_type || 'number',
           parent_account_id: editingVar.parent_account_id || null,
           level: calculatedLevel,
-          page_name: editingVar.page_name || 'Main'
+          page_name: editingVar.page_name || 'Main',
+          data_origin: editingVar.data_origin || null
         })
         .eq('id_sim_cfg_var', editingVar.id_sim_cfg_var);
       
@@ -377,7 +380,8 @@ export default function ConfigurationForm({ onBack }: Props) {
           id_proj: selectedProjectId,
           parent_account_id: editingVar.parent_account_id || null,
           level: calculatedLevel,
-          page_name: editingVar.page_name || 'Main'
+          page_name: editingVar.page_name || 'Main',
+          data_origin: editingVar.data_origin || null
         }]);
       
       if (error) {
@@ -763,6 +767,14 @@ export default function ConfigurationForm({ onBack }: Props) {
                             </Button>
                           </div>
                         </div>
+                      </div>
+                      <div className="mb-3">
+                        <Label>Origem dos Dados</Label>
+                        <Input
+                          value={editingVar.data_origin || ''}
+                          onChange={(e) => setEditingVar({ ...editingVar, data_origin: e.target.value })}
+                          placeholder="Ex: SAP, Excel, Manual, API externa..."
+                        />
                       </div>
                       <div className="mb-3 flex items-center space-x-2">
                         <Checkbox
