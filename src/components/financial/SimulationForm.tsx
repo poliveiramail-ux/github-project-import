@@ -266,6 +266,12 @@ export default function SimulationForm({ onMenuClick }: Props) {
 
     const langToUse = languageFilter !== undefined ? languageFilter : selectedLanguage;
     const lobToUse = lobFilter !== undefined ? lobFilter : selectedLob;
+    
+    // Check if we're in RollUp mode
+    const isLangRollUp = langToUse === 'ROLLUP';
+    const isLobRollUp = lobToUse === 'ROLLUP';
+    const isLangDrillDown = langToUse === 'DRILLDOWN' || langToUse === '';
+    const isLobDrillDown = lobToUse === 'DRILLDOWN' || lobToUse === '';
 
     // Load blocked variables and config structure from config
     let configVarsQuery = (supabase as any)
@@ -273,11 +279,11 @@ export default function SimulationForm({ onMenuClick }: Props) {
       .select('id_sim_cfg_var, account_num, blocked, parent_account_id, id_lang, id_lob')
       .eq('id_proj', selectedProject);
     
-    // Apply same filters as simulation data
-    if (langToUse) {
+    // Apply same filters as simulation data (only for specific language/lob selections)
+    if (langToUse && !isLangRollUp && !isLangDrillDown) {
       configVarsQuery = configVarsQuery.or(`id_lang.eq.${langToUse},id_lang.is.null`);
     }
-    if (lobToUse) {
+    if (lobToUse && !isLobRollUp && !isLobDrillDown) {
       configVarsQuery = configVarsQuery.or(`id_lob.eq.${lobToUse},id_lob.is.null`);
     }
     
@@ -308,7 +314,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
     let data = allData;
     const activeFilters: string[] = [];
     
-    if (langToUse) {
+    // Handle language filter (only if it's a specific language, not DrillDown or RollUp)
+    if (langToUse && !isLangRollUp && !isLangDrillDown) {
       activeFilters.push(`Língua: ${langToUse}`);
       
       // Separate included and excluded records
@@ -328,7 +335,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
       data = included;
     }
     
-    if (lobToUse) {
+    // Handle LOB filter (only if it's a specific LOB, not DrillDown or RollUp)
+    if (lobToUse && !isLobRollUp && !isLobDrillDown) {
       activeFilters.push(`LOB: ${lobToUse}`);
       
       const included: any[] = [];
@@ -348,24 +356,26 @@ export default function SimulationForm({ onMenuClick }: Props) {
     }
     
     // Include direct parents of filtered records even if they don't match filters
-    if ((langToUse || lobToUse) && data && allData) {
-      const dataIds = new Set(data.map((v: any) => v.parent_account_id));
-      const includedIds = new Set(data.map((v: any) => v.id_sim_cfg_var));
-      
-      // Find and add missing parents
-      const parentsToAdd: any[] = [];
-      dataIds.forEach(parentId => {
-        if (parentId && !includedIds.has(parentId)) {
-          const parent = allData.find((v: any) => v.id_sim_cfg_var === parentId);
-          if (parent) {
-            parentsToAdd.push(parent);
-            includedIds.add(parent.id_sim_cfg_var);
+    if ((langToUse && !isLangRollUp && !isLangDrillDown) || (lobToUse && !isLobRollUp && !isLobDrillDown)) {
+      if (data && allData) {
+        const dataIds = new Set(data.map((v: any) => v.parent_account_id));
+        const includedIds = new Set(data.map((v: any) => v.id_sim_cfg_var));
+        
+        // Find and add missing parents
+        const parentsToAdd: any[] = [];
+        dataIds.forEach(parentId => {
+          if (parentId && !includedIds.has(parentId)) {
+            const parent = allData.find((v: any) => v.id_sim_cfg_var === parentId);
+            if (parent) {
+              parentsToAdd.push(parent);
+              includedIds.add(parent.id_sim_cfg_var);
+            }
           }
+        });
+        
+        if (parentsToAdd.length > 0) {
+          data = [...data, ...parentsToAdd];
         }
-      });
-      
-      if (parentsToAdd.length > 0) {
-        data = [...data, ...parentsToAdd];
       }
     }
     
@@ -462,7 +472,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
   };
 
   const handleLanguageChange = (languageId: string) => {
-    const actualLanguage = languageId === 'ALL' ? '' : languageId;
+    const actualLanguage = (languageId === 'DRILLDOWN' || languageId === 'ROLLUP') ? languageId : languageId;
     setSelectedLanguage(actualLanguage);
     if (currentVersionId) {
       loadVersion(currentVersionId, actualLanguage, selectedLob);
@@ -470,7 +480,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
   };
 
   const handleLobChange = (lobId: string) => {
-    const actualLob = lobId === 'ALL' ? '' : lobId;
+    const actualLob = (lobId === 'DRILLDOWN' || lobId === 'ROLLUP') ? lobId : lobId;
     setSelectedLob(actualLob);
     if (currentVersionId) {
       loadVersion(currentVersionId, selectedLanguage, actualLob);
@@ -996,6 +1006,30 @@ export default function SimulationForm({ onMenuClick }: Props) {
   };
 
   const getValue = (variable: Variable, year: number, month: number): number => {
+    // Check if we're in RollUp mode
+    const isLangRollUp = selectedLanguage === 'ROLLUP';
+    const isLobRollUp = selectedLob === 'ROLLUP';
+    
+    // If in RollUp mode, aggregate values by name
+    if (isLangRollUp || isLobRollUp) {
+      // Find all variables with the same name and period
+      const matchingVars = variables.filter(v => 
+        v.name === variable.name && 
+        v.year === year && 
+        v.month === month &&
+        // If only LOB is RollUp but Language is specific, filter by language
+        (!isLangRollUp && selectedLanguage && selectedLanguage !== 'DRILLDOWN' ? v.id_lang === selectedLanguage : true)
+      );
+      
+      // Sum up all matching values
+      return matchingVars.reduce((sum, v) => {
+        if (v.calculation_type === 'FORMULA' && v.formula) {
+          return sum + evaluateFormula(v.formula, year, month, v.account_code);
+        }
+        return sum + (v.value || 0);
+      }, 0);
+    }
+    
     const key = `${variable.account_code}-${year}-${month}-${variable.id_lang}-${variable.lob}`;
     
     // Check if user has edited this value in the Map first
@@ -1024,6 +1058,25 @@ export default function SimulationForm({ onMenuClick }: Props) {
   };
 
   const getOriginalValue = (variable: Variable, year: number, month: number): number => {
+    // Check if we're in RollUp mode
+    const isLangRollUp = selectedLanguage === 'ROLLUP';
+    const isLobRollUp = selectedLob === 'ROLLUP';
+    
+    // If in RollUp mode, aggregate original values by name
+    if (isLangRollUp || isLobRollUp) {
+      // Find all variables with the same name and period
+      const matchingVars = variables.filter(v => 
+        v.name === variable.name && 
+        v.year === year && 
+        v.month === month &&
+        // If only LOB is RollUp but Language is specific, filter by language
+        (!isLangRollUp && selectedLanguage && selectedLanguage !== 'DRILLDOWN' ? v.id_lang === selectedLanguage : true)
+      );
+      
+      // Sum up all matching original values
+      return matchingVars.reduce((sum, v) => sum + (v.value_orig || 0), 0);
+    }
+    
     // Find the original record to get value_orig
     const matchingVar = variables.find(v => 
       v.account_code === variable.account_code && 
@@ -1069,9 +1122,56 @@ export default function SimulationForm({ onMenuClick }: Props) {
   };
 
   const getVisibleVariables = () => {
+    // Check if we're in RollUp mode
+    const isLangRollUp = selectedLanguage === 'ROLLUP';
+    const isLobRollUp = selectedLob === 'ROLLUP';
+    
     // Filter variables by active page first
     const pageFilteredVars = variables.filter(v => (v.page_name || 'Main') === activePage);
     
+    // If RollUp mode is active, aggregate variables by name
+    if (isLangRollUp || isLobRollUp) {
+      // Group variables by name (and period for proper aggregation)
+      const aggregatedVarsMap = new Map<string, Variable>();
+      
+      pageFilteredVars.forEach(v => {
+        // Create a key based on name and period
+        // For language RollUp: aggregate all languages for same name/month/year
+        // For LOB RollUp: aggregate all LOBs for same name/month/year (within same language if selected)
+        const aggregateKey = `${v.name}_${v.month}_${v.year}`;
+        
+        if (!aggregatedVarsMap.has(aggregateKey)) {
+          // Create a copy of the variable for aggregation
+          const aggregatedVar: Variable = {
+            ...v,
+            uniqueId: `rollup_${v.name}_${v.month}_${v.year}`,
+            id_lang: isLangRollUp ? 'ROLLUP' : v.id_lang,
+            lob: isLobRollUp ? 'ROLLUP' : v.lob,
+          };
+          aggregatedVarsMap.set(aggregateKey, aggregatedVar);
+        }
+      });
+      
+      // Get unique variables by name for display
+      const uniqueByNameMap = new Map<string, Variable>();
+      Array.from(aggregatedVarsMap.values()).forEach(v => {
+        if (!uniqueByNameMap.has(v.name)) {
+          uniqueByNameMap.set(v.name, v);
+        }
+      });
+      
+      const uniqueVars = Array.from(uniqueByNameMap.values());
+      
+      // Sort by row_index or account_code
+      uniqueVars.sort((a, b) => {
+        if (a.row_index !== b.row_index) return a.row_index - b.row_index;
+        return (a.account_code || '').localeCompare(b.account_code || '', undefined, { numeric: true });
+      });
+      
+      return uniqueVars;
+    }
+    
+    // Normal DrillDown or specific filter behavior
     // Get unique variables by account_code  
     const uniqueVarsMap = new Map<string, Variable>();
     pageFilteredVars.forEach(v => {
@@ -1267,12 +1367,13 @@ export default function SimulationForm({ onMenuClick }: Props) {
 
             <div>
               <Label>Linguagem</Label>
-              <Select value={selectedLanguage || 'ALL'} onValueChange={handleLanguageChange} disabled={!currentVersionId}>
+              <Select value={selectedLanguage || 'DRILLDOWN'} onValueChange={handleLanguageChange} disabled={!currentVersionId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione uma linguagem" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ALL">Todos</SelectItem>
+                  <SelectItem value="DRILLDOWN">DrillDown</SelectItem>
+                  <SelectItem value="ROLLUP">RollUp</SelectItem>
                   {languages.map(l => (
                     <SelectItem key={l.id_lang} value={l.id_lang}>
                       {l.id_lang}{l.desc_lang ? ` - ${l.desc_lang}` : ''}
@@ -1284,12 +1385,13 @@ export default function SimulationForm({ onMenuClick }: Props) {
 
             <div>
               <Label>LOB</Label>
-              <Select value={selectedLob || 'ALL'} onValueChange={handleLobChange} disabled={!currentVersionId}>
+              <Select value={selectedLob || 'DRILLDOWN'} onValueChange={handleLobChange} disabled={!currentVersionId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione um LOB" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ALL">Todos</SelectItem>
+                  <SelectItem value="DRILLDOWN">DrillDown</SelectItem>
+                  <SelectItem value="ROLLUP">RollUp</SelectItem>
                   {lobs.map(l => (
                     <SelectItem key={l.id_lob} value={l.id_lob}>
                       {l.name}
