@@ -622,7 +622,8 @@ export default function ConfigurationForm({ onBack }: Props) {
                           row_index: 0, 
                           account_num: '',
                           id_lang: languages[0]?.id_lang || null,
-                          id_lob: null
+                          id_lob: null,
+                          rollup: true
                         })}
                       >
                         <Plus className="h-4 w-4 mr-1" />
