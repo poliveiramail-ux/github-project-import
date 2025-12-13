@@ -1268,14 +1268,19 @@ export default function SimulationForm({ onMenuClick }: Props) {
       if (simulationLevelValue) {
         const [levelType, levelId] = simulationLevelValue.split(':');
         
-        if (levelType === 'LANGUAGE' && levelId) {
+        if (levelType === 'PROJECT') {
+          // PROJECT level: show only records with id_lang = null AND id_lob = null
+          filteredVars = pageFilteredVars.filter(v => !v.id_lang && !v.lob);
+        } else if (levelType === 'LANGUAGE' && levelId) {
           // Filter by specific language
           filteredVars = pageFilteredVars.filter(v => v.id_lang === levelId);
         } else if (levelType === 'LOB' && levelId) {
           // Filter by specific LOB
           filteredVars = pageFilteredVars.filter(v => v.lob === levelId);
         }
-        // PROJECT level shows all variables (no additional filter)
+      } else {
+        // No level selected: show only records with id_lang = null AND id_lob = null (default to project level)
+        filteredVars = pageFilteredVars.filter(v => !v.id_lang && !v.lob);
       }
       
       // Get unique variables by account_code + language + lob combination
