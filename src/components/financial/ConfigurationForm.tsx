@@ -37,6 +37,7 @@ interface ConfigVariable {
   level?: number;
   page_name?: string;
   data_origin?: string | null;
+  rollup?: boolean;
 }
 
 interface Props {
@@ -354,7 +355,8 @@ export default function ConfigurationForm({ onBack }: Props) {
           parent_account_id: editingVar.parent_account_id || null,
           level: calculatedLevel,
           page_name: editingVar.page_name || 'Main',
-          data_origin: editingVar.data_origin || null
+          data_origin: editingVar.data_origin || null,
+          rollup: editingVar.rollup || false
         })
         .eq('id_sim_cfg_var', editingVar.id_sim_cfg_var);
       
@@ -381,7 +383,8 @@ export default function ConfigurationForm({ onBack }: Props) {
           parent_account_id: editingVar.parent_account_id || null,
           level: calculatedLevel,
           page_name: editingVar.page_name || 'Main',
-          data_origin: editingVar.data_origin || null
+          data_origin: editingVar.data_origin || null,
+          rollup: editingVar.rollup || false
         }]);
       
       if (error) {
@@ -784,6 +787,16 @@ export default function ConfigurationForm({ onBack }: Props) {
                         />
                         <Label htmlFor="blocked" className="cursor-pointer">
                           Bloqueada (não editável)
+                        </Label>
+                      </div>
+                      <div className="mb-3 flex items-center space-x-2">
+                        <Checkbox
+                          id="rollup"
+                          checked={editingVar.rollup || false}
+                          onCheckedChange={(checked) => setEditingVar({ ...editingVar, rollup: checked as boolean })}
+                        />
+                        <Label htmlFor="rollup" className="cursor-pointer">
+                          RollUp (agregação de valores)
                         </Label>
                       </div>
                       <div className="mb-3">
