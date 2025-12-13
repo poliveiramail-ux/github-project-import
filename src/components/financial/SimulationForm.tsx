@@ -177,13 +177,22 @@ export default function SimulationForm({ onMenuClick }: Props) {
   };
 
   const loadLobs = async (projectId: string, versionId: string, languageId: string) => {
-    const { data } = await (supabase as any)
+    // If language is DrillDown or empty, load LOBs from all languages
+    const isLangDrillDown = languageId === 'DRILLDOWN' || languageId === '';
+    
+    let query = (supabase as any)
       .from('simulation')
       .select('id_lob')
       .eq('id_proj', projectId)
       .eq('id_sim_ver', versionId)
-      .eq('id_lang', languageId)
       .not('id_lob', 'is', null);
+    
+    // Only filter by language if it's a specific language (not DrillDown)
+    if (!isLangDrillDown && languageId) {
+      query = query.eq('id_lang', languageId);
+    }
+    
+    const { data } = await query;
     
     if (data) {
       const uniqueLobs = Array.from(
