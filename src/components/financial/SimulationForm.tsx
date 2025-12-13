@@ -1172,6 +1172,14 @@ export default function SimulationForm({ onMenuClick }: Props) {
     // Variables without page_name are excluded
     const pageFilteredVars = variables.filter(v => v.page_name && v.page_name === activePage);
     
+    // Debug: log DE variables in the current page
+    const deVars = pageFilteredVars.filter(v => v.id_lang === 'DE');
+    if (deVars.length > 0) {
+      console.log('DE variables in page', activePage, ':', deVars.map(v => ({ name: v.name, lob: v.lob, id_lang: v.id_lang })));
+    } else {
+      console.log('No DE variables found in page', activePage, '- total vars in page:', pageFilteredVars.length);
+    }
+    
     // If RollUp mode is active, aggregate variables by name
     if (isLangRollUp || isLobRollUp) {
       // Check if we're in DrillDown mode for language (show each language separately)
