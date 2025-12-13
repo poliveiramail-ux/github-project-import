@@ -1101,11 +1101,14 @@ export default function SimulationForm({ onMenuClick }: Props) {
       }
       
       // Find all variables with the same name, period and same page (sheet) that have rollup = true
+      // Exclude variables with page_name = 'Simulation' from aggregation
       const matchingVars = variables.filter(v => {
         if (v.name !== variable.name) return false;
         if (v.year !== year) return false;
         if (v.month !== month) return false;
         if ((v.page_name || 'Main') !== (variable.page_name || 'Main')) return false;
+        // Exclude Simulation page variables from aggregation
+        if (v.page_name === 'Simulation') return false;
         // Only aggregate variables with rollup = true
         if (v.rollup === false) return false;
         
@@ -1184,6 +1187,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
         if (v.year !== year) return false;
         if (v.month !== month) return false;
         if ((v.page_name || 'Main') !== (variable.page_name || 'Main')) return false;
+        // Exclude Simulation page variables from aggregation
+        if (v.page_name === 'Simulation') return false;
         // Only aggregate variables with rollup = true
         if (v.rollup === false) return false;
         
