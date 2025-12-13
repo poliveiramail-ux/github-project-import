@@ -21,15 +21,15 @@ const MasterDataManager = ({ onBack }: Props) => {
           <Button variant="outline" size="icon" onClick={onBack}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="text-3xl font-bold">MasterDataManager</h1>
+          <h1 className="text-3xl font-bold">Master Data Manager</h1>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="all">Todos</TabsTrigger>
+            <TabsTrigger value="all">All</TabsTrigger>
             <TabsTrigger value="projects">Projects</TabsTrigger>
             <TabsTrigger value="languages">Languages</TabsTrigger>
-            <TabsTrigger value="programs">Lob&apos;s</TabsTrigger>
+            <TabsTrigger value="programs">LOBs</TabsTrigger>
           </TabsList>
 
           <TabsContent value="all" className="mt-6">

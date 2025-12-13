@@ -68,7 +68,7 @@ export default function VersionsManager({ onBack }: Props) {
   };
 
   const handleDelete = async (versionId: string, versionName: string) => {
-    if (!window.confirm(`Tem certeza que deseja eliminar a versão "${versionName}"?\n\nTodas as variáveis associadas serão eliminadas.`)) {
+    if (!window.confirm(`Are you sure you want to delete version "${versionName}"?\n\nAll associated variables will be deleted.`)) {
       return;
     }
 
@@ -78,12 +78,12 @@ export default function VersionsManager({ onBack }: Props) {
       .eq('id_sim_ver', versionId);
 
     if (error) {
-      toast({ title: 'Erro', description: 'Erro ao eliminar versão', variant: 'destructive' });
+      toast({ title: 'Error', description: 'Error deleting version', variant: 'destructive' });
       return;
     }
 
     loadVersions();
-    toast({ title: 'Sucesso', description: 'Versão eliminada' });
+    toast({ title: 'Success', description: 'Version deleted' });
   };
 
   return (
@@ -92,15 +92,15 @@ export default function VersionsManager({ onBack }: Props) {
         <Button variant="ghost" size="icon" onClick={onBack}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h2 className="text-3xl font-bold">VersionsManager</h2>
+        <h2 className="text-3xl font-bold">Versions Manager</h2>
       </div>
 
       <Card className="p-6 mb-6">
         <div>
-          <Label>Projeto</Label>
+          <Label>Project</Label>
           <Select value={selectedProject} onValueChange={setSelectedProject}>
             <SelectTrigger>
-              <SelectValue placeholder="Selecione um projeto" />
+              <SelectValue placeholder="Select a project" />
             </SelectTrigger>
             <SelectContent>
               {projects.map(p => (
@@ -116,7 +116,7 @@ export default function VersionsManager({ onBack }: Props) {
       {loading ? (
         <div className="text-center py-12">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-muted-foreground">A carregar versões...</p>
+          <p className="text-muted-foreground">Loading versions...</p>
         </div>
       ) : selectedProject ? (
         <Card>
@@ -125,11 +125,11 @@ export default function VersionsManager({ onBack }: Props) {
               <table className="w-full">
                 <thead className="bg-muted">
                   <tr>
-                    <th className="px-4 py-3 text-left font-semibold">Nome da Versão</th>
-                    <th className="px-4 py-3 text-left font-semibold">Data de Criação</th>
-                    <th className="px-4 py-3 text-left font-semibold">Projeto</th>
-                    <th className="px-4 py-3 text-left font-semibold">Idioma</th>
-                    <th className="px-4 py-3 text-right font-semibold">Ações</th>
+                    <th className="px-4 py-3 text-left font-semibold">Version Name</th>
+                    <th className="px-4 py-3 text-left font-semibold">Created Date</th>
+                    <th className="px-4 py-3 text-left font-semibold">Project</th>
+                    <th className="px-4 py-3 text-left font-semibold">Language</th>
+                    <th className="px-4 py-3 text-right font-semibold">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -140,7 +140,7 @@ export default function VersionsManager({ onBack }: Props) {
                       <tr key={version.id} className="border-t hover:bg-muted/50 transition-colors">
                         <td className="px-4 py-3 font-medium">{version.name}</td>
                         <td className="px-4 py-3">
-                          {new Date(version.created_at).toLocaleString('pt-PT')}
+                          {new Date(version.created_at).toLocaleString('en-US')}
                         </td>
                         <td className="px-4 py-3 font-mono text-sm">{project?.id_prj}</td>
                         <td className="px-4 py-3">{version.id_lang || '-'}</td>
@@ -161,13 +161,13 @@ export default function VersionsManager({ onBack }: Props) {
             </div>
           ) : (
             <div className="p-12 text-center text-muted-foreground">
-              Nenhuma versão encontrada para este projeto.
+              No versions found for this project.
             </div>
           )}
         </Card>
       ) : (
         <Card className="p-12 text-center text-muted-foreground">
-          Selecione um projeto para ver as versões.
+          Select a project to view versions.
         </Card>
       )}
     </div>

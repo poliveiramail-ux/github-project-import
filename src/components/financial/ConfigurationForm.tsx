@@ -120,7 +120,7 @@ export default function ConfigurationForm({ onBack }: Props) {
       .order('id_prj');
     
     if (error) {
-      toast({ title: 'Erro', description: 'Erro ao carregar projetos', variant: 'destructive' });
+      toast({ title: 'Error', description: 'Error loading projects', variant: 'destructive' });
       return;
     }
     setProjects(data || []);
@@ -134,7 +134,7 @@ export default function ConfigurationForm({ onBack }: Props) {
       .order('id_lang');
     
     if (error) {
-      toast({ title: 'Erro', description: 'Erro ao carregar linguagens', variant: 'destructive' });
+      toast({ title: 'Error', description: 'Error loading languages', variant: 'destructive' });
       return;
     }
     setLanguages(data || []);
@@ -152,7 +152,7 @@ export default function ConfigurationForm({ onBack }: Props) {
       .order('id_lob');
     
     if (error) {
-      toast({ title: 'Erro', description: 'Erro ao carregar LOBs', variant: 'destructive' });
+      toast({ title: 'Error', description: 'Error loading LOBs', variant: 'destructive' });
       return;
     }
     setLobs(data || []);
@@ -229,12 +229,12 @@ export default function ConfigurationForm({ onBack }: Props) {
 
   const handleSaveConfig = async () => {
     if (!configName.trim()) {
-      toast({ title: 'Atenção', description: 'Digite um nome para a configuração' });
+      toast({ title: 'Attention', description: 'Enter a name for the configuration' });
       return;
     }
 
     if (!selectedProjectId) {
-      toast({ title: 'Atenção', description: 'Selecione um projeto' });
+      toast({ title: 'Attention', description: 'Select a project' });
       return;
     }
 
@@ -245,7 +245,7 @@ export default function ConfigurationForm({ onBack }: Props) {
         .eq('id_sim_cfg', selectedConfig.id_sim_cfg);
       
       if (error) {
-        toast({ title: 'Erro', description: 'Erro ao atualizar configuração', variant: 'destructive' });
+        toast({ title: 'Error', description: 'Error updating configuration', variant: 'destructive' });
         return;
       }
     } else {
@@ -255,7 +255,7 @@ export default function ConfigurationForm({ onBack }: Props) {
         .select();
       
       if (error) {
-        toast({ title: 'Erro', description: 'Erro ao criar configuração', variant: 'destructive' });
+        toast({ title: 'Error', description: 'Error creating configuration', variant: 'destructive' });
         return;
       }
       if (data && data[0]) {
@@ -263,7 +263,7 @@ export default function ConfigurationForm({ onBack }: Props) {
       }
     }
     loadConfigs();
-    toast({ title: 'Sucesso', description: 'Configuração guardada' });
+    toast({ title: 'Success', description: 'Configuration saved' });
   };
 
   const handleSelectConfig = (config: SimulationConfig) => {
@@ -282,7 +282,7 @@ export default function ConfigurationForm({ onBack }: Props) {
   };
 
   const handleDeleteConfig = async (id: string) => {
-    if (!window.confirm('Eliminar esta configuração e todas as suas variáveis?')) return;
+    if (!window.confirm('Delete this configuration and all its variables?')) return;
 
     const { error } = await supabase
       .from('simulation_configs')
@@ -290,29 +290,29 @@ export default function ConfigurationForm({ onBack }: Props) {
       .eq('id_sim_cfg', id);
     
     if (error) {
-      toast({ title: 'Erro', description: 'Erro ao eliminar configuração', variant: 'destructive' });
+      toast({ title: 'Error', description: 'Error deleting configuration', variant: 'destructive' });
       return;
     }
     if (selectedConfig?.id_sim_cfg === id) {
       handleNewConfig();
     }
     loadConfigs();
-    toast({ title: 'Sucesso', description: 'Configuração eliminada' });
+    toast({ title: 'Success', description: 'Configuration deleted' });
   };
 
   const handleSaveVariable = async () => {
     if (!selectedConfig) {
-      toast({ title: 'Atenção', description: 'Selecione uma configuração primeiro' });
+      toast({ title: 'Attention', description: 'Select a configuration first' });
       return;
     }
 
     if (!editingVar?.account_num) {
-      toast({ title: 'Atenção', description: 'Número da conta é obrigatório' });
+      toast({ title: 'Attention', description: 'Account number is required' });
       return;
     }
 
     if (!editingVar?.name) {
-      toast({ title: 'Atenção', description: 'Nome é obrigatório' });
+      toast({ title: 'Attention', description: 'Name is required' });
       return;
     }
 
@@ -326,7 +326,7 @@ export default function ConfigurationForm({ onBack }: Props) {
       
       if (!validation.valid) {
         toast({ 
-          title: 'Erro na fórmula', 
+          title: 'Formula error', 
           description: validation.error, 
           variant: 'destructive' 
         });
@@ -361,8 +361,8 @@ export default function ConfigurationForm({ onBack }: Props) {
         .eq('id_sim_cfg_var', editingVar.id_sim_cfg_var);
       
       if (error) {
-        console.error('Erro ao atualizar variável:', error);
-        toast({ title: 'Erro', description: `Erro ao atualizar variável: ${error.message}`, variant: 'destructive' });
+        console.error('Error updating variable:', error);
+        toast({ title: 'Error', description: `Error updating variable: ${error.message}`, variant: 'destructive' });
         return;
       }
     } else {
@@ -388,8 +388,8 @@ export default function ConfigurationForm({ onBack }: Props) {
         }]);
       
       if (error) {
-        console.error('Erro ao criar variável:', error);
-        toast({ title: 'Erro', description: `Erro ao criar variável: ${error.message}`, variant: 'destructive' });
+        console.error('Error creating variable:', error);
+        toast({ title: 'Error', description: `Error creating variable: ${error.message}`, variant: 'destructive' });
         return;
       }
     }
@@ -402,7 +402,7 @@ export default function ConfigurationForm({ onBack }: Props) {
   };
 
   const handleDeleteVariable = async (id: string) => {
-    if (!window.confirm('Eliminar esta variável?')) return;
+    if (!window.confirm('Delete this variable?')) return;
 
     const { error } = await supabase
       .from('simulation_configs_variables')
@@ -410,11 +410,11 @@ export default function ConfigurationForm({ onBack }: Props) {
       .eq('id_sim_cfg_var', id);
     
     if (error) {
-      toast({ title: 'Erro', description: 'Erro ao eliminar variável', variant: 'destructive' });
+      toast({ title: 'Error', description: 'Error deleting variable', variant: 'destructive' });
       return;
     }
     if (selectedConfig) loadVariables(selectedConfig.id_sim_cfg);
-    toast({ title: 'Sucesso', description: 'Variável eliminada' });
+    toast({ title: 'Success', description: 'Variable deleted' });
   };
 
 
@@ -496,7 +496,7 @@ export default function ConfigurationForm({ onBack }: Props) {
     }
     
     loadVariables(selectedConfig.id_sim_cfg);
-    toast({ title: 'Sucesso', description: 'Variáveis ordenadas por número de conta' });
+    toast({ title: 'Success', description: 'Variables sorted by account number' });
   };
 
 
@@ -511,13 +511,13 @@ export default function ConfigurationForm({ onBack }: Props) {
 
       <Card className="p-6">
         <div className="space-y-6">
-          {/* Dropdown de Seleção de Configuração */}
+          {/* Configuration Selection Dropdown */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <Label>Selecionar Template</Label>
+              <Label>Select Template</Label>
               <Button size="sm" variant="outline" onClick={handleNewConfig}>
                 <Plus className="h-4 w-4 mr-1" />
-                Novo Template
+                New Template
               </Button>
             </div>
             <div className="flex gap-2">
@@ -529,7 +529,7 @@ export default function ConfigurationForm({ onBack }: Props) {
                 }}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione um template existente" />
+                  <SelectValue placeholder="Select an existing template" />
                 </SelectTrigger>
                 <SelectContent className="bg-background z-50">
                   {configs.map((config) => (
@@ -553,18 +553,18 @@ export default function ConfigurationForm({ onBack }: Props) {
 
           <div className="border-t pt-6">
             <h3 className="font-bold text-lg mb-4">
-              {selectedConfig ? 'Editar Template' : 'Novo Template'}
+              {selectedConfig ? 'Edit Template' : 'New Template'}
             </h3>
             
             <div className="space-y-6">
             <div>
-              <Label>Projeto *</Label>
+              <Label>Project *</Label>
               <Select
                 value={selectedProjectId}
                 onValueChange={(value) => setSelectedProjectId(value)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione um projeto" />
+                  <SelectValue placeholder="Select a project" />
                 </SelectTrigger>
                 <SelectContent className="bg-background z-50">
                   {projects.map((project) => (
@@ -577,14 +577,14 @@ export default function ConfigurationForm({ onBack }: Props) {
             </div>
 
             <div>
-              <Label>Nome da Configuração *</Label>
+              <Label>Configuration Name *</Label>
               <div className="flex gap-2 mt-1">
                 <Input
                   value={configName}
                   onChange={(e) => setConfigName(e.target.value)}
-                  placeholder="Ex: Plano de Contas 2025"
+                  placeholder="E.g.: Chart of Accounts 2025"
                 />
-                <Button onClick={handleSaveConfig}>Guardar</Button>
+                <Button onClick={handleSaveConfig}>Save</Button>
               </div>
             </div>
 
@@ -592,7 +592,7 @@ export default function ConfigurationForm({ onBack }: Props) {
               <>
                 <div className="border-t pt-6">
                   <div className="flex justify-between items-center mb-4">
-                    <h4 className="font-bold">Variáveis</h4>
+                    <h4 className="font-bold">Variables</h4>
                     <div className="flex gap-2">
                       <Button
                         size="sm"
@@ -600,7 +600,7 @@ export default function ConfigurationForm({ onBack }: Props) {
                         onClick={() => setShowFormulaHelp(true)}
                       >
                         <HelpCircle className="h-4 w-4 mr-1" />
-                        Ajuda Fórmulas
+                        Formula Help
                       </Button>
                       <Button
                         size="sm"
@@ -608,7 +608,7 @@ export default function ConfigurationForm({ onBack }: Props) {
                         onClick={handleSortByAccountNum}
                       >
                         <ArrowUpDown className="h-4 w-4 mr-1" />
-                        Ordenar por Conta
+                        Sort by Account
                       </Button>
                        <Button
                         size="sm"
@@ -627,7 +627,7 @@ export default function ConfigurationForm({ onBack }: Props) {
                         })}
                       >
                         <Plus className="h-4 w-4 mr-1" />
-                        Nova Variável
+                        New Variable
                       </Button>
                     </div>
                   </div>
@@ -635,16 +635,16 @@ export default function ConfigurationForm({ onBack }: Props) {
                    {editingVar && (
                     <Card className="p-4 mb-4 bg-muted">
                        <div className="mb-3">
-                        <Label>Conta Pai (Hierarquia)</Label>
+                        <Label>Parent Account (Hierarchy)</Label>
                         <Select
                           value={editingVar.parent_account_id || 'none'}
                           onValueChange={(value) => setEditingVar({ ...editingVar, parent_account_id: value === 'none' ? null : value })}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Conta de nível raiz" />
+                            <SelectValue placeholder="Root level account" />
                           </SelectTrigger>
                           <SelectContent className="bg-background z-50">
-                            <SelectItem value="none">-- Conta de Nível Raiz --</SelectItem>
+                            <SelectItem value="none">-- Root Level Account --</SelectItem>
                             {getAvailableParents().map((variable) => (
                               <SelectItem key={variable.id_sim_cfg_var} value={variable.id_sim_cfg_var}>
                                 {'  '.repeat(variable.level || 0)}{variable.account_num} - {variable.name}
@@ -654,33 +654,33 @@ export default function ConfigurationForm({ onBack }: Props) {
                         </Select>
                       </div>
                       <div className="mb-3">
-                        <Label>Número da Conta *</Label>
+                        <Label>Account Number *</Label>
                         <Input
                           value={editingVar.account_num || ''}
                           onChange={(e) => setEditingVar({ ...editingVar, account_num: e.target.value })}
-                          placeholder="Ex: 1, 1.1, 1.1.1"
+                          placeholder="E.g.: 1, 1.1, 1.1.1"
                         />
                       </div>
                       <div className="mb-3">
-                        <Label>Nome</Label>
+                        <Label>Name</Label>
                         <Input
                           value={editingVar.name || ''}
                           onChange={(e) => setEditingVar({ ...editingVar, name: e.target.value })}
-                          placeholder="Ex: Vendas PT"
+                          placeholder="E.g.: Sales PT"
                         />
                       </div>
                       <div className="mb-3">
-                        <Label>Linguagem</Label>
+                        <Label>Language</Label>
                         <Select
                           value={editingVar.id_lang || undefined}
                           onValueChange={(value) => setEditingVar({ ...editingVar, id_lang: value === 'none' ? null : value, id_lob: null })}
                           disabled={!selectedProjectId}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Selecione uma linguagem" />
+                            <SelectValue placeholder="Select a language" />
                           </SelectTrigger>
                           <SelectContent className="bg-background z-50">
-                            <SelectItem value="none">-- Limpar seleção --</SelectItem>
+                            <SelectItem value="none">-- Clear selection --</SelectItem>
                             {languages.map((language) => (
                               <SelectItem key={language.id_lang} value={language.id_lang}>
                                 {language.id_lang} {language.desc_lang && `- ${language.desc_lang}`}
@@ -697,10 +697,10 @@ export default function ConfigurationForm({ onBack }: Props) {
                           disabled={!editingVar.id_lang}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Selecione um LOB" />
+                            <SelectValue placeholder="Select a LOB" />
                           </SelectTrigger>
                           <SelectContent className="bg-background z-50">
-                            <SelectItem value="none">-- Limpar seleção --</SelectItem>
+                            <SelectItem value="none">-- Clear selection --</SelectItem>
                             {lobs
                               .filter((lob: any) => !editingVar.id_lang || lob.id_lang === editingVar.id_lang)
                               .map((lob) => (
@@ -712,7 +712,7 @@ export default function ConfigurationForm({ onBack }: Props) {
                         </Select>
                       </div>
                       <div className="mb-3">
-                        <Label>Tipo de Valor</Label>
+                        <Label>Value Type</Label>
                         <Select
                           value={editingVar.value_type || 'number'}
                           onValueChange={(value) => setEditingVar({ ...editingVar, value_type: value })}
@@ -721,16 +721,16 @@ export default function ConfigurationForm({ onBack }: Props) {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent className="bg-background z-50">
-                            <SelectItem value="number">Número</SelectItem>
-                            <SelectItem value="text">Texto</SelectItem>
-                            <SelectItem value="percentage">Percentagem</SelectItem>
+                            <SelectItem value="number">Number</SelectItem>
+                            <SelectItem value="text">Text</SelectItem>
+                            <SelectItem value="percentage">Percentage</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
                       <div className="mb-3">
                         <Label className="flex items-center gap-2">
                           <FileSpreadsheet className="h-4 w-4" />
-                          Página (Sheet)
+                          Page (Sheet)
                         </Label>
                         <div className="flex gap-2">
                           <Select
@@ -752,7 +752,7 @@ export default function ConfigurationForm({ onBack }: Props) {
                             <Input
                               value={newPageName}
                               onChange={(e) => setNewPageName(e.target.value)}
-                              placeholder="Nova página..."
+                              placeholder="New page..."
                               className="w-32"
                             />
                             <Button
@@ -773,11 +773,11 @@ export default function ConfigurationForm({ onBack }: Props) {
                         </div>
                       </div>
                       <div className="mb-3">
-                        <Label>Origem dos Dados</Label>
+                        <Label>Data Origin</Label>
                         <Input
                           value={editingVar.data_origin || ''}
                           onChange={(e) => setEditingVar({ ...editingVar, data_origin: e.target.value })}
-                          placeholder="Ex: SAP, Excel, Manual, API externa..."
+                          placeholder="E.g.: SAP, Excel, Manual, External API..."
                         />
                       </div>
                       <div className="mb-3 flex items-center space-x-2">
@@ -787,7 +787,7 @@ export default function ConfigurationForm({ onBack }: Props) {
                           onCheckedChange={(checked) => setEditingVar({ ...editingVar, blocked: checked as boolean })}
                         />
                         <Label htmlFor="blocked" className="cursor-pointer">
-                          Bloqueada (não editável)
+                          Blocked (not editable)
                         </Label>
                       </div>
                       <div className="mb-3 flex items-center space-x-2">
@@ -797,11 +797,11 @@ export default function ConfigurationForm({ onBack }: Props) {
                           onCheckedChange={(checked) => setEditingVar({ ...editingVar, rollup: checked as boolean })}
                         />
                         <Label htmlFor="rollup" className="cursor-pointer">
-                          RollUp (agregação de valores)
+                          RollUp (value aggregation)
                         </Label>
                       </div>
                       <div className="mb-3">
-                        <Label>Tipo de Cálculo</Label>
+                        <Label>Calculation Type</Label>
                         <Select
                           value={editingVar.calculation_type || 'MANUAL'}
                           onValueChange={(value: 'MANUAL' | 'FORMULA') => 
@@ -813,7 +813,7 @@ export default function ConfigurationForm({ onBack }: Props) {
                           </SelectTrigger>
                           <SelectContent className="bg-background z-50">
                             <SelectItem value="MANUAL">Manual</SelectItem>
-                            <SelectItem value="FORMULA">Fórmula</SelectItem>
+                            <SelectItem value="FORMULA">Formula</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -821,24 +821,24 @@ export default function ConfigurationForm({ onBack }: Props) {
                         <div className="mb-3">
                           <Label className="flex items-center gap-2">
                             <FunctionSquare className="h-4 w-4" />
-                            Fórmula (máximo 5 sub-fórmulas com OR)
+                            Formula (max 5 sub-formulas with OR)
                           </Label>
                           <Textarea
                             value={editingVar.formula || ''}
                             onChange={(e) => setEditingVar({ ...editingVar, formula: e.target.value })}
                             className="font-mono min-h-[100px]"
-                            placeholder="Ex: [1.1] * 1.2 OR [1.2] * 0.9 OR 50000"
+                            placeholder="E.g.: [1.1] * 1.2 OR [1.2] * 0.9 OR 50000"
                           />
                           <Alert className="mt-2">
                             <AlertCircle className="h-4 w-4" />
                             <AlertDescription className="text-xs">
-                              Sub-fórmulas são avaliadas pela ordem. A primeira válida será usada.
-                              Use <code className="bg-muted px-1 rounded">OR</code> para separar alternativas.
+                              Sub-formulas are evaluated in order. The first valid one will be used.
+                              Use <code className="bg-muted px-1 rounded">OR</code> to separate alternatives.
                             </AlertDescription>
                           </Alert>
                           {editingVar.formula && isOrFormula(editingVar.formula) && (
                             <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-950/20 rounded text-xs">
-                              <strong>Fórmula OR detectada:</strong>
+                              <strong>OR Formula detected:</strong>
                               <ul className="mt-1 list-disc list-inside">
                                 {editingVar.formula.split(/\s+OR\s+/i).map((sub, i) => (
                                   <li key={i} className="font-mono">{sub.trim()}</li>
@@ -854,9 +854,9 @@ export default function ConfigurationForm({ onBack }: Props) {
                           onClick={handleSaveVariable}
                           className={justSaved ? 'bg-green-600 hover:bg-green-700' : ''}
                         >
-                          Guardar
+                          Save
                         </Button>
-                        <Button size="sm" variant="outline" onClick={() => setEditingVar(null)}>Cancelar</Button>
+                        <Button size="sm" variant="outline" onClick={() => setEditingVar(null)}>Cancel</Button>
                       </div>
                     </Card>
                   )}
@@ -873,15 +873,15 @@ export default function ConfigurationForm({ onBack }: Props) {
                             className="flex items-center gap-2 p-2 border rounded-lg hover:bg-muted transition-colors"
                             style={{ marginLeft: `${level * 1.5}rem` }}
                           >
-                            {/* Botão de expansão/colapso (apenas se tiver filhos) */}
-                            {hasChildVars ? (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 p-0"
-                                onClick={() => toggleExpanded(variable.id_sim_cfg_var)}
-                                title={isExpanded ? "Colapsar" : "Expandir"}
-                              >
+                             {/* Expand/collapse button (only if has children) */}
+                             {hasChildVars ? (
+                               <Button
+                                 variant="ghost"
+                                 size="icon"
+                                 className="h-6 w-6 p-0"
+                                 onClick={() => toggleExpanded(variable.id_sim_cfg_var)}
+                                 title={isExpanded ? "Collapse" : "Expand"}
+                               >
                                 {isExpanded ? (
                                   <ChevronDown className="h-4 w-4" />
                                 ) : (
@@ -898,12 +898,12 @@ export default function ConfigurationForm({ onBack }: Props) {
                             <span className="text-sm font-mono text-muted-foreground">{variable.account_num}</span>
                            <span className="flex-1">{variable.name}</span>
                            {variable.page_name && variable.page_name !== 'Main' && (
-                             <span className="text-xs bg-purple-100 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded flex items-center gap-1" title={`Página: ${variable.page_name}`}>
+                             <span className="text-xs bg-purple-100 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded flex items-center gap-1" title={`Page: ${variable.page_name}`}>
                                <FileSpreadsheet className="h-3 w-3" />
                                {variable.page_name}
                              </span>
                            )}
-                           {variable.blocked && <span className="text-xs" title="Bloqueada">🔒</span>}
+                           {variable.blocked && <span className="text-xs" title="Blocked">🔒</span>}
                            {variable.calculation_type === 'FORMULA' && (
                              <div className="flex items-center gap-1">
                                <FunctionSquare className="h-3.5 w-3.5 text-blue-500" />
@@ -932,7 +932,7 @@ export default function ConfigurationForm({ onBack }: Props) {
                                id_lob: variable.id_lob,
                                parent_account_id: variable.id_sim_cfg_var
                              })}
-                             title="Adicionar sub-conta"
+                             title="Add sub-account"
                            >
                              <Plus className="h-4 w-4" />
                            </Button>

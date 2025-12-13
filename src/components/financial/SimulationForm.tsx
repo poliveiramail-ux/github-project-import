@@ -71,7 +71,7 @@ interface MonthYear {
   label: string;
 }
 
-const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 // Helper function to generate unique ID for a variable
 const getUniqueId = (accountNum: string, month: number, year: number, lang?: string, lob?: string): string => {
@@ -1550,7 +1550,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
                 className="text-xs h-7"
               >
                 <X className="h-3 w-3 mr-1" />
-                Limpar
+                Clear
               </Button>
               <Button
                 variant="secondary"
@@ -1560,7 +1560,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
                 className="text-xs h-7"
               >
                 <Plus className="h-3 w-3 mr-1" />
-                Nova Versão
+                New Version
               </Button>
               <Button
                 size="sm"
@@ -1599,10 +1599,10 @@ export default function SimulationForm({ onMenuClick }: Props) {
 
           <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
             <div>
-              <Label className="text-xs">Projeto</Label>
+              <Label className="text-xs">Project</Label>
               <Select value={selectedProject} onValueChange={handleProjectChange}>
                 <SelectTrigger className="h-8 text-xs">
-                  <SelectValue placeholder="Projeto" />
+                  <SelectValue placeholder="Project" />
                 </SelectTrigger>
                 <SelectContent>
                   {projects.map(p => (
@@ -1615,10 +1615,10 @@ export default function SimulationForm({ onMenuClick }: Props) {
             </div>
 
             <div>
-              <Label className="text-xs">Versão</Label>
+              <Label className="text-xs">Version</Label>
               <Select value={currentVersionId || ''} onValueChange={handleVersionChange} disabled={!selectedProject}>
                 <SelectTrigger className="h-8 text-xs">
-                  <SelectValue placeholder="Versão" />
+                  <SelectValue placeholder="Version" />
                 </SelectTrigger>
                 <SelectContent>
                   {versions.map(v => (
@@ -1631,10 +1631,10 @@ export default function SimulationForm({ onMenuClick }: Props) {
             </div>
 
             <div>
-              <Label className="text-xs">Linguagem</Label>
+              <Label className="text-xs">Language</Label>
               <Select value={selectedLanguage || 'DRILLDOWN'} onValueChange={handleLanguageChange} disabled={!currentVersionId}>
                 <SelectTrigger className="h-8 text-xs">
-                  <SelectValue placeholder="Linguagem" />
+                  <SelectValue placeholder="Language" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="DRILLDOWN" className="text-xs">DrillDown</SelectItem>
@@ -1671,14 +1671,14 @@ export default function SimulationForm({ onMenuClick }: Props) {
             </div>
 
             <div>
-              <Label className="text-xs">Nível Simulação</Label>
+              <Label className="text-xs">Simulation Level</Label>
               <Select 
                 value={simulationLevelValue} 
                 onValueChange={handleSimulationLevelChange} 
                 disabled={!selectedProject}
               >
                 <SelectTrigger className="h-8 text-xs">
-                  <SelectValue placeholder="Nível" />
+                  <SelectValue placeholder="Level" />
                 </SelectTrigger>
                 <SelectContent>
                   {simulationLevelOptions.projects.length > 0 && (
@@ -1769,11 +1769,11 @@ export default function SimulationForm({ onMenuClick }: Props) {
             <table className="w-full border-collapse">
               <thead>
                 <tr className="bg-muted border-b">
-                  <th className="px-2 py-2 text-left font-semibold w-16 text-xs">Língua</th>
+                  <th className="px-2 py-2 text-left font-semibold w-16 text-xs">Lang</th>
                   <th className="px-2 py-2 text-left font-semibold w-20 text-xs">LOB</th>
                   
                   
-                  <th className="px-2 py-2 text-left font-semibold min-w-[140px] text-xs">Conta</th>
+                  <th className="px-2 py-2 text-left font-semibold min-w-[140px] text-xs">Account</th>
                   {periods.map(period => (
                     <th key={`${period.year}-${period.month}`} className="px-3 py-1.5 text-right font-semibold min-w-[80px] text-xs">
                       {period.label}
@@ -1812,7 +1812,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
                               size="icon"
                               className="h-6 w-6 hover:bg-muted"
                               onClick={() => toggleExpandedRow(variable.uniqueId)}
-                              title={isExpanded ? "Colapsar" : "Expandir"}
+                              title={isExpanded ? "Collapse" : "Expand"}
                             >
                               {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                             </Button>
@@ -1896,7 +1896,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
           </Card>
         ) : (
           <Card className="p-12 text-center text-muted-foreground">
-            Selecione um projeto, linguagem e versão para começar
+            Select a project, language and version to start
           </Card>
         )}
       </div>
@@ -1905,11 +1905,11 @@ export default function SimulationForm({ onMenuClick }: Props) {
       <Dialog open={showVersionChoice} onOpenChange={setShowVersionChoice}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Criar Nova Versão</DialogTitle>
+            <DialogTitle>Create New Version</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <p className="text-sm text-muted-foreground">
-              Como deseja criar a nova versão?
+              How would you like to create the new version?
             </p>
             <div className="grid gap-4">
               <Button
@@ -1922,9 +1922,9 @@ export default function SimulationForm({ onMenuClick }: Props) {
                 }}
               >
                 <div className="text-left">
-                  <div className="font-semibold">Usar última versão</div>
+                  <div className="font-semibold">Use last version</div>
                   <div className="text-sm text-muted-foreground">
-                    Copia todos os campos e dados da última versão existente
+                    Copy all fields and data from the last existing version
                   </div>
                 </div>
               </Button>
@@ -1938,9 +1938,9 @@ export default function SimulationForm({ onMenuClick }: Props) {
                 }}
               >
                 <div className="text-left">
-                  <div className="font-semibold">Criar do template</div>
+                  <div className="font-semibold">Create from template</div>
                   <div className="text-sm text-muted-foreground">
-                    Usa o template configurado para o projeto
+                    Use the template configured for the project
                   </div>
                 </div>
               </Button>
@@ -1949,22 +1949,22 @@ export default function SimulationForm({ onMenuClick }: Props) {
         </DialogContent>
       </Dialog>
 
-      {/* Modal Nova Versão */}
+      {/* New Version Modal */}
       <Dialog open={showNewVersionModal} onOpenChange={(open) => {
         setShowNewVersionModal(open);
         if (!open) setNewVersionName('');
       }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Nova Versão</DialogTitle>
+            <DialogTitle>New Version</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
-              <Label>Nome da Versão</Label>
+              <Label>Version Name</Label>
               <Input
                 value={newVersionName}
                 onChange={(e) => setNewVersionName(e.target.value)}
-                placeholder="Ex: Cenário Base 2025"
+                placeholder="E.g.: Base Scenario 2025"
                 autoFocus
               />
             </div>
@@ -1974,9 +1974,9 @@ export default function SimulationForm({ onMenuClick }: Props) {
               setShowNewVersionModal(false);
               setNewVersionName('');
             }}>
-              Cancelar
+              Cancel
             </Button>
-            <Button onClick={handleCreateVersion}>Criar</Button>
+            <Button onClick={handleCreateVersion}>Create</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
