@@ -1544,46 +1544,52 @@ export default function SimulationForm({ onMenuClick }: Props) {
             <div className="flex gap-2">
               <Button
                 variant="outline"
+                size="sm"
                 onClick={handleClearSelections}
                 disabled={!selectedProject}
+                className="text-xs h-7"
               >
-                <X className="h-4 w-4 mr-2" />
+                <X className="h-3 w-3 mr-1" />
                 Limpar
               </Button>
               <Button
                 variant="secondary"
+                size="sm"
                 onClick={handleNewVersionClick}
                 disabled={!selectedProject}
+                className="text-xs h-7"
               >
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="h-3 w-3 mr-1" />
                 Nova Versão
               </Button>
               <Button
+                size="sm"
                 onClick={handleSave}
                 disabled={!currentVersionId || saveStatus === 'saving'}
                 variant={saveStatus === 'success' ? 'default' : saveStatus === 'error' ? 'destructive' : 'default'}
+                className="text-xs h-7"
               >
                 {saveStatus === 'saving' && (
                   <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
                     Saving...
                   </>
                 )}
                 {saveStatus === 'success' && (
                   <>
-                    <CheckCircle className="h-4 w-4 mr-2" />
+                    <CheckCircle className="h-3 w-3 mr-1" />
                     Saved
                   </>
                 )}
                 {saveStatus === 'error' && (
                   <>
-                    <XCircle className="h-4 w-4 mr-2" />
+                    <XCircle className="h-3 w-3 mr-1" />
                     Error
                   </>
                 )}
                 {saveStatus === 'idle' && (
                   <>
-                    <Save className="h-4 w-4 mr-2" />
+                    <Save className="h-3 w-3 mr-1" />
                     Save
                   </>
                 )}
