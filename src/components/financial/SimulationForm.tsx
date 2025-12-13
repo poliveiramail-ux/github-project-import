@@ -474,8 +474,15 @@ export default function SimulationForm({ onMenuClick }: Props) {
   const handleLanguageChange = (languageId: string) => {
     const actualLanguage = (languageId === 'DRILLDOWN' || languageId === 'ROLLUP') ? languageId : languageId;
     setSelectedLanguage(actualLanguage);
+    
+    // When language is ROLLUP, LOB must also be ROLLUP
+    const lobToUse = actualLanguage === 'ROLLUP' ? 'ROLLUP' : selectedLob;
+    if (actualLanguage === 'ROLLUP' && selectedLob !== 'ROLLUP') {
+      setSelectedLob('ROLLUP');
+    }
+    
     if (currentVersionId) {
-      loadVersion(currentVersionId, actualLanguage, selectedLob);
+      loadVersion(currentVersionId, actualLanguage, lobToUse);
     }
   };
 
@@ -1385,8 +1392,12 @@ export default function SimulationForm({ onMenuClick }: Props) {
 
             <div>
               <Label>LOB</Label>
-              <Select value={selectedLob || 'DRILLDOWN'} onValueChange={handleLobChange} disabled={!currentVersionId}>
-                <SelectTrigger>
+              <Select 
+                value={selectedLanguage === 'ROLLUP' ? 'ROLLUP' : (selectedLob || 'DRILLDOWN')} 
+                onValueChange={handleLobChange} 
+                disabled={!currentVersionId || selectedLanguage === 'ROLLUP'}
+              >
+                <SelectTrigger className={selectedLanguage === 'ROLLUP' ? 'opacity-50' : ''}>
                   <SelectValue placeholder="Selecione um LOB" />
                 </SelectTrigger>
                 <SelectContent>
