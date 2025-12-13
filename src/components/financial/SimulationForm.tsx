@@ -1538,7 +1538,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
               <Button variant="ghost" size="icon" onClick={onMenuClick}>
                 <Menu className="h-5 w-5" />
               </Button>
-              <h1 className="text-3xl font-bold">SimulationForm</h1>
+              <h1 className="text-xl font-bold">SimulationForm</h1>
             </div>
             
             <div className="flex gap-2">
@@ -1727,7 +1727,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
               <button
                 key={pageName}
                 onClick={() => setActivePage(pageName)}
-                className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap ${
+                className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium transition-colors border-b-2 -mb-px whitespace-nowrap ${
                   activePage === pageName
                     ? 'border-primary text-primary bg-background'
                     : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50'
@@ -1754,11 +1754,11 @@ export default function SimulationForm({ onMenuClick }: Props) {
                   
                   <th className="px-2 py-2 text-left font-semibold min-w-[200px] text-xs">Conta</th>
                   {periods.map(period => (
-                    <th key={`${period.year}-${period.month}`} className="px-4 py-2 text-right font-semibold min-w-[100px] text-sm">
+                    <th key={`${period.year}-${period.month}`} className="px-3 py-1.5 text-right font-semibold min-w-[80px] text-xs">
                       {period.label}
                     </th>
                   ))}
-                  <th className="px-4 py-2 text-right font-semibold min-w-[100px] text-sm">Total</th>
+                  <th className="px-3 py-1.5 text-right font-semibold min-w-[80px] text-xs">Total</th>
                 </tr>
               </thead>
               <tbody>
@@ -1822,7 +1822,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
                         const compareSymbol = value === originalValue ? '=' : value < originalValue ? '<' : '>';
                         
                         return (
-                          <td key={`${period.year}-${period.month}`} className="px-4 py-1 text-right">
+                          <td key={`${period.year}-${period.month}`} className="px-3 py-1 text-right">
                             <div className="flex flex-col items-end gap-0.5">
                               {isEditable ? (
                                 <>
@@ -1831,18 +1831,18 @@ export default function SimulationForm({ onMenuClick }: Props) {
                                     step="0.0001"
                                     value={value}
                                     onChange={(e) => updateValue(variable.account_code, period.year, period.month, variable.id_lang, variable.lob, e.target.value)}
-                                    className="w-full text-right h-7 text-sm bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900/30 focus:ring-green-500"
+                                    className="w-full text-right h-6 text-xs bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900/30 focus:ring-green-500"
                                   />
-                                  <span className="text-[10px] text-muted-foreground leading-none">
+                                  <span className="text-[9px] text-muted-foreground leading-none">
                                     {compareSymbol} {originalValue.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
                                   </span>
                                 </>
                               ) : (
                                 <>
-                                  <span className={hasChildren || calcType === 'FORMULA' ? 'font-semibold text-sm' : 'text-sm'}>
+                                  <span className={hasChildren || calcType === 'FORMULA' ? 'font-semibold text-xs' : 'text-xs'}>
                                     {value.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
                                   </span>
-                                  <span className="text-[10px] text-muted-foreground leading-none">
+                                  <span className="text-[9px] text-muted-foreground leading-none">
                                     {compareSymbol} {originalValue.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
                                   </span>
                                 </>
@@ -1852,12 +1852,12 @@ export default function SimulationForm({ onMenuClick }: Props) {
                         );
                       })}
                       
-                      <td className="px-4 py-1 text-right">
+                      <td className="px-3 py-1 text-right">
                         <div className="flex flex-col items-end gap-0.5">
-                          <span className="font-semibold text-sm">
+                          <span className="font-semibold text-xs">
                             {getTotal(variable).toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
                           </span>
-                          <span className="text-[10px] text-muted-foreground leading-none">
+                          <span className="text-[9px] text-muted-foreground leading-none">
                             {(() => {
                               const totalValue = getTotal(variable);
                               const totalOriginal = getOriginalTotal(variable);
