@@ -1522,7 +1522,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
                   <th className="px-2 py-2 text-left font-semibold w-20 text-xs">LOB</th>
                   
                   
-                  <th className="px-2 py-2 text-left font-semibold min-w-[200px] text-sm">Conta</th>
+                  <th className="px-2 py-2 text-left font-semibold min-w-[200px] text-xs">Conta</th>
                   {periods.map(period => (
                     <th key={`${period.year}-${period.month}`} className="px-4 py-2 text-right font-semibold min-w-[100px] text-sm">
                       {period.label}
@@ -1569,7 +1569,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
                             <div className="w-6" />
                           )}
                           
-                          <span className={isParent ? 'font-semibold text-sm' : 'text-sm'}>
+                          <span className={isParent ? 'font-semibold text-xs' : 'text-xs'}>
                             {variable.name}
                           </span>
                           
