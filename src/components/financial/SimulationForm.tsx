@@ -1182,42 +1182,32 @@ export default function SimulationForm({ onMenuClick }: Props) {
     
     // If RollUp mode is active, aggregate variables by name
     if (isLangRollUp || isLobRollUp) {
-      // Check if we're in DrillDown mode for language (show each language separately)
-      const isLangDrillDown = selectedLanguage === 'DRILLDOWN' || selectedLanguage === '';
-      
-      // Group variables by name (and period for proper aggregation)
       // When Language is DrillDown and LOB is RollUp: keep languages separate, aggregate LOBs
-      const aggregatedVarsMap = new Map<string, Variable>();
+      // When Language is RollUp: aggregate all languages
+      
+      // Step 1: Get unique variables for display (one row per name+language when lang is DrillDown)
+      const uniqueVarsForDisplayMap = new Map<string, Variable>();
       
       pageFilteredVars.forEach(v => {
-        // Create a key based on name, period, and optionally language
-        // If Language is NOT RollUp (DrillDown or specific), include language in key to keep them separate
+        // Create display key - include language if NOT in RollUp mode
         const langPart = !isLangRollUp ? (v.id_lang || 'null') : 'all';
-        const aggregateKey = `${v.name}_${v.month}_${v.year}_${langPart}`;
+        const displayKey = `${v.name}_${langPart}`;
         
-        if (!aggregatedVarsMap.has(aggregateKey)) {
-          // Create a copy of the variable for aggregation
-          const aggregatedVar: Variable = {
+        if (!uniqueVarsForDisplayMap.has(displayKey)) {
+          // Create a copy of the variable for display
+          const displayVar: Variable = {
             ...v,
-            uniqueId: `rollup_${v.name}_${v.month}_${v.year}_${langPart}`,
+            uniqueId: `rollup_${v.name}_${langPart}`,
+            // Keep original id_lang when language is DrillDown, set to ROLLUP when language is RollUp
             id_lang: isLangRollUp ? 'ROLLUP' : v.id_lang,
+            // Set LOB to ROLLUP when aggregating LOBs
             lob: isLobRollUp ? 'ROLLUP' : v.lob,
           };
-          aggregatedVarsMap.set(aggregateKey, aggregatedVar);
+          uniqueVarsForDisplayMap.set(displayKey, displayVar);
         }
       });
       
-      // Get unique variables by name (and language if not RollUp) for display
-      const uniqueByKeyMap = new Map<string, Variable>();
-      Array.from(aggregatedVarsMap.values()).forEach(v => {
-        // Create unique display key
-        const displayKey = !isLangRollUp ? `${v.name}_${v.id_lang}` : v.name;
-        if (!uniqueByKeyMap.has(displayKey)) {
-          uniqueByKeyMap.set(displayKey, v);
-        }
-      });
-      
-      const uniqueVars = Array.from(uniqueByKeyMap.values());
+      const uniqueVars = Array.from(uniqueVarsForDisplayMap.values());
       
       // Sort by row_index or account_code
       uniqueVars.sort((a, b) => {
