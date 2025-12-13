@@ -102,11 +102,13 @@ export default function SimulationForm({ onMenuClick }: Props) {
   const [activePage, setActivePage] = useState<string>('Main');
   const { toast } = useToast();
 
-  // Get unique page names from variables
+  // Get unique page names from variables - only include variables with page_name defined
   const pageNames = useMemo(() => {
     const pages = new Set<string>();
     variables.forEach(v => {
-      pages.add(v.page_name || 'Main');
+      if (v.page_name) {
+        pages.add(v.page_name);
+      }
     });
     return Array.from(pages).sort();
   }, [variables]);
@@ -1133,8 +1135,9 @@ export default function SimulationForm({ onMenuClick }: Props) {
     const isLangRollUp = selectedLanguage === 'ROLLUP';
     const isLobRollUp = selectedLob === 'ROLLUP';
     
-    // Filter variables by active page first
-    const pageFilteredVars = variables.filter(v => (v.page_name || 'Main') === activePage);
+    // Filter variables by active page - only show variables that have page_name matching the active tab
+    // Variables without page_name are excluded
+    const pageFilteredVars = variables.filter(v => v.page_name && v.page_name === activePage);
     
     // If RollUp mode is active, aggregate variables by name
     if (isLangRollUp || isLobRollUp) {
