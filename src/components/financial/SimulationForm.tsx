@@ -1022,11 +1022,12 @@ export default function SimulationForm({ onMenuClick }: Props) {
     
     // If in RollUp mode, aggregate values by name
     if (isLangRollUp || isLobRollUp) {
-      // Find all variables with the same name and period
+      // Find all variables with the same name, period and same page (sheet)
       const matchingVars = variables.filter(v => {
         if (v.name !== variable.name) return false;
         if (v.year !== year) return false;
         if (v.month !== month) return false;
+        if ((v.page_name || 'Main') !== (variable.page_name || 'Main')) return false;
         
         // If Language is NOT RollUp, filter by the variable's language
         // This handles both DrillDown (use variable.id_lang) and specific language selection
@@ -1085,11 +1086,12 @@ export default function SimulationForm({ onMenuClick }: Props) {
     
     // If in RollUp mode, aggregate original values by name
     if (isLangRollUp || isLobRollUp) {
-      // Find all variables with the same name and period
+      // Find all variables with the same name, period and same page (sheet)
       const matchingVars = variables.filter(v => {
         if (v.name !== variable.name) return false;
         if (v.year !== year) return false;
         if (v.month !== month) return false;
+        if ((v.page_name || 'Main') !== (variable.page_name || 'Main')) return false;
         
         // If Language is NOT RollUp, filter by the variable's language
         if (!isLangRollUp) {
