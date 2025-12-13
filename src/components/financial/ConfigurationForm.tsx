@@ -342,7 +342,7 @@ export default function ConfigurationForm({ onBack }: Props) {
     const calculatedLevel = parentLevel + 1;
 
     if (editingVar.id_sim_cfg_var) {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('simulation_configs_variables')
         .update({
           account_num: editingVar.account_num,
@@ -357,7 +357,7 @@ export default function ConfigurationForm({ onBack }: Props) {
           level: calculatedLevel,
           page_name: editingVar.page_name || 'Main',
           data_origin: editingVar.data_origin || null,
-          rollup: editingVar.rollup || 'true' as any
+          rollup: editingVar.rollup || 'true'
         })
         .eq('id_sim_cfg_var', editingVar.id_sim_cfg_var);
       
@@ -367,7 +367,7 @@ export default function ConfigurationForm({ onBack }: Props) {
         return;
       }
     } else {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('simulation_configs_variables')
         .insert([{
           id_sim_cfg: selectedConfig.id_sim_cfg,
@@ -385,7 +385,7 @@ export default function ConfigurationForm({ onBack }: Props) {
           level: calculatedLevel,
           page_name: editingVar.page_name || 'Main',
           data_origin: editingVar.data_origin || null,
-          rollup: (editingVar.rollup || 'true') as any
+          rollup: editingVar.rollup || 'true'
         }]);
       
       if (error) {
