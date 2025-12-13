@@ -551,7 +551,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
   const handleLobChange = (lobId: string) => {
     const actualLob = (lobId === 'DRILLDOWN' || lobId === 'ROLLUP') ? lobId : lobId;
     setSelectedLob(actualLob);
-    if (currentVersionId) {
+    // Não recarregar dados quando estamos no tab Simulation
+    if (currentVersionId && activePage !== 'Simulation') {
       loadVersion(currentVersionId, selectedLanguage, actualLob);
     }
   };
