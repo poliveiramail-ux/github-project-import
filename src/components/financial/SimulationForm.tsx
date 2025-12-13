@@ -50,6 +50,7 @@ interface Variable {
   value_orig?: number;
   row_index: number;
   page_name?: string;
+  rollup?: boolean;
 }
 
 interface VariableValue {
@@ -406,7 +407,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
         row_index: v.row_index || 0,
         value: v.value !== undefined ? v.value : 0,
         value_orig: v.value_orig !== undefined ? v.value_orig : 0,
-        page_name: v.page_name || 'Main'
+        page_name: v.page_name || 'Main',
+        rollup: v.rollup !== undefined ? v.rollup : true
       })) as Variable[];
       
       setVariables(vars);
@@ -1031,14 +1033,32 @@ export default function SimulationForm({ onMenuClick }: Props) {
     const isLobRollUp = selectedLob === 'ROLLUP';
     const isLangDrillDown = selectedLanguage === 'DRILLDOWN' || selectedLanguage === '';
     
-    // If in RollUp mode, aggregate values by name
+    // If in RollUp mode, aggregate values by name (only for variables with rollup = true)
     if (isLangRollUp || isLobRollUp) {
-      // Find all variables with the same name, period and same page (sheet)
+      // If variable has rollup = false, return its individual value (no aggregation)
+      if (variable.rollup === false) {
+        const matchingVar = variables.find(v => 
+          v.account_code === variable.account_code && 
+          v.year === year && 
+          v.month === month && 
+          v.lob === variable.lob &&
+          v.id_lang === variable.id_lang
+        );
+        
+        if (matchingVar?.calculation_type === 'FORMULA' && matchingVar.formula) {
+          return evaluateFormula(matchingVar.formula, year, month, matchingVar.account_code);
+        }
+        return matchingVar?.value || 0;
+      }
+      
+      // Find all variables with the same name, period and same page (sheet) that have rollup = true
       const matchingVars = variables.filter(v => {
         if (v.name !== variable.name) return false;
         if (v.year !== year) return false;
         if (v.month !== month) return false;
         if ((v.page_name || 'Main') !== (variable.page_name || 'Main')) return false;
+        // Only aggregate variables with rollup = true
+        if (v.rollup === false) return false;
         
         // If Language is NOT RollUp, filter by the variable's language
         // This handles both DrillDown (use variable.id_lang) and specific language selection
@@ -1095,14 +1115,28 @@ export default function SimulationForm({ onMenuClick }: Props) {
     const isLangRollUp = selectedLanguage === 'ROLLUP';
     const isLobRollUp = selectedLob === 'ROLLUP';
     
-    // If in RollUp mode, aggregate original values by name
+    // If in RollUp mode, aggregate original values by name (only for variables with rollup = true)
     if (isLangRollUp || isLobRollUp) {
-      // Find all variables with the same name, period and same page (sheet)
+      // If variable has rollup = false, return its individual original value
+      if (variable.rollup === false) {
+        const matchingVar = variables.find(v => 
+          v.account_code === variable.account_code && 
+          v.year === year && 
+          v.month === month && 
+          v.lob === variable.lob &&
+          v.id_lang === variable.id_lang
+        );
+        return matchingVar?.value_orig || 0;
+      }
+      
+      // Find all variables with the same name, period and same page (sheet) that have rollup = true
       const matchingVars = variables.filter(v => {
         if (v.name !== variable.name) return false;
         if (v.year !== year) return false;
         if (v.month !== month) return false;
         if ((v.page_name || 'Main') !== (variable.page_name || 'Main')) return false;
+        // Only aggregate variables with rollup = true
+        if (v.rollup === false) return false;
         
         // If Language is NOT RollUp, filter by the variable's language
         if (!isLangRollUp) {
