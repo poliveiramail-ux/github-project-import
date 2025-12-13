@@ -1272,8 +1272,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
           // PROJECT level: show only records with id_lang = null AND id_lob = null
           filteredVars = pageFilteredVars.filter(v => !v.id_lang && !v.lob);
         } else if (levelType === 'LANGUAGE' && levelId) {
-          // Filter by specific language
-          filteredVars = pageFilteredVars.filter(v => v.id_lang === levelId);
+          // Filter by specific language with lob = null
+          filteredVars = pageFilteredVars.filter(v => v.id_lang === levelId && !v.lob);
         } else if (levelType === 'LOB' && levelId) {
           // Filter by specific LOB
           filteredVars = pageFilteredVars.filter(v => v.lob === levelId);
