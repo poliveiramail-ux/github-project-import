@@ -50,7 +50,7 @@ interface Variable {
   value_orig?: number;
   row_index: number;
   page_name?: string;
-  rollup?: boolean;
+  rollup?: string; // 'true', 'false', or 'hidden'
 }
 
 interface VariableValue {
@@ -1086,7 +1086,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
     // If in RollUp mode, aggregate values by name (only for variables with rollup = true)
     if (isLangRollUp || isLobRollUp) {
       // If variable has rollup = false, return its individual value (no aggregation)
-      if (variable.rollup === false) {
+      if (variable.rollup === 'false') {
         const matchingVar = variables.find(v => 
           v.account_code === variable.account_code && 
           v.year === year && 
@@ -1111,7 +1111,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
         // Exclude Simulation page variables from aggregation
         if (v.page_name === 'Simulation') return false;
         // Only aggregate variables with rollup = true
-        if (v.rollup === false) return false;
+        if (v.rollup === 'false' || v.rollup === 'hidden') return false;
         
         // If Language is NOT RollUp, filter by the variable's language
         // This handles both DrillDown (use variable.id_lang) and specific language selection
@@ -1171,7 +1171,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
     // If in RollUp mode, aggregate original values by name (only for variables with rollup = true)
     if (isLangRollUp || isLobRollUp) {
       // If variable has rollup = false, return its individual original value
-      if (variable.rollup === false) {
+      if (variable.rollup === 'false') {
         const matchingVar = variables.find(v => 
           v.account_code === variable.account_code && 
           v.year === year && 
@@ -1191,7 +1191,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
         // Exclude Simulation page variables from aggregation
         if (v.page_name === 'Simulation') return false;
         // Only aggregate variables with rollup = true
-        if (v.rollup === false) return false;
+        if (v.rollup === 'false' || v.rollup === 'hidden') return false;
         
         // If Language is NOT RollUp, filter by the variable's language
         if (!isLangRollUp) {

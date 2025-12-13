@@ -37,7 +37,7 @@ interface ConfigVariable {
   level?: number;
   page_name?: string;
   data_origin?: string | null;
-  rollup?: boolean;
+  rollup?: string; // 'true', 'false', or 'hidden'
 }
 
 interface Props {
@@ -216,7 +216,8 @@ export default function ConfigurationForm({ onBack }: Props) {
       parent_account_id: (v as any).parent_account_id || null,
       level: parseInt((v as any).level || '0', 10),
       page_name: (v as any).page_name || 'Main',
-      data_origin: (v as any).data_origin || null
+      data_origin: (v as any).data_origin || null,
+      rollup: typeof v.rollup === 'boolean' ? (v.rollup ? 'true' : 'false') : (v.rollup || 'true')
     }));
 
     console.log('🗺️ Mapped variables:', mappedVars);
@@ -356,7 +357,7 @@ export default function ConfigurationForm({ onBack }: Props) {
           level: calculatedLevel,
           page_name: editingVar.page_name || 'Main',
           data_origin: editingVar.data_origin || null,
-          rollup: editingVar.rollup || false
+          rollup: editingVar.rollup || 'true'
         })
         .eq('id_sim_cfg_var', editingVar.id_sim_cfg_var);
       
@@ -384,7 +385,7 @@ export default function ConfigurationForm({ onBack }: Props) {
           level: calculatedLevel,
           page_name: editingVar.page_name || 'Main',
           data_origin: editingVar.data_origin || null,
-          rollup: editingVar.rollup || false
+          rollup: editingVar.rollup || 'true'
         }]);
       
       if (error) {
@@ -623,7 +624,7 @@ export default function ConfigurationForm({ onBack }: Props) {
                           account_num: '',
                           id_lang: languages[0]?.id_lang || null,
                           id_lob: null,
-                          rollup: true
+                          rollup: 'true'
                         })}
                       >
                         <Plus className="h-4 w-4 mr-1" />
@@ -790,15 +791,21 @@ export default function ConfigurationForm({ onBack }: Props) {
                           Blocked (not editable)
                         </Label>
                       </div>
-                      <div className="mb-3 flex items-center space-x-2">
-                        <Checkbox
-                          id="rollup"
-                          checked={editingVar.rollup || false}
-                          onCheckedChange={(checked) => setEditingVar({ ...editingVar, rollup: checked as boolean })}
-                        />
-                        <Label htmlFor="rollup" className="cursor-pointer">
-                          RollUp (value aggregation)
-                        </Label>
+                      <div className="mb-3">
+                        <Label>RollUp (value aggregation)</Label>
+                        <Select
+                          value={editingVar.rollup || 'true'}
+                          onValueChange={(value) => setEditingVar({ ...editingVar, rollup: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background z-50">
+                            <SelectItem value="true">Yes (include in aggregation)</SelectItem>
+                            <SelectItem value="false">No (show individually)</SelectItem>
+                            <SelectItem value="hidden">Hidden (exclude and hide)</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div className="mb-3">
                         <Label>Calculation Type</Label>
