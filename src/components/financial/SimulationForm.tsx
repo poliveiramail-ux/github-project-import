@@ -85,11 +85,11 @@ export default function SimulationForm({ onMenuClick }: Props) {
   const [selectedProject, setSelectedProject] = useState('');
   const [selectedLanguage, setSelectedLanguage] = useState('');
   const [selectedLob, setSelectedLob] = useState('');
-  const [simulationLevel, setSimulationLevel] = useState<'PROJECT' | 'LANGUAGE' | 'LOB'>('PROJECT');
+  const [simulationLevelValue, setSimulationLevelValue] = useState<string>('');
   const [simulationLevelOptions, setSimulationLevelOptions] = useState<{
-    projects: string[];
-    languages: string[];
-    lobs: string[];
+    projects: Array<{ id: string; label: string }>;
+    languages: Array<{ id: string; label: string }>;
+    lobs: Array<{ id: string; label: string }>;
   }>({ projects: [], languages: [], lobs: [] });
   const [variables, setVariables] = useState<Variable[]>([]);
   const [variableValues, setVariableValues] = useState<Map<string, number>>(new Map());
@@ -173,22 +173,28 @@ export default function SimulationForm({ onMenuClick }: Props) {
     // Get languages configured for this project
     const { data: langData } = await supabase
       .from('lang')
-      .select('id_lang')
+      .select('id_lang, desc_lang')
       .eq('id_prj', projectId);
 
     // Get LOBs configured for this project via languages
     const { data: lobData } = await supabase
       .from('lob')
-      .select('id_lob, id_lang');
+      .select('id_lob, name, id_lang');
 
     // Filter LOBs that belong to languages of this project
     const projectLangs = new Set((langData || []).map(l => l.id_lang));
     const projectLobs = (lobData || []).filter(l => projectLangs.has(l.id_lang));
 
     setSimulationLevelOptions({
-      projects: [projectId],
-      languages: Array.from(new Set((langData || []).map(l => l.id_lang))),
-      lobs: Array.from(new Set(projectLobs.map(l => l.id_lob)))
+      projects: [{ id: `PROJECT:${projectId}`, label: projectId }],
+      languages: (langData || []).map(l => ({ 
+        id: `LANGUAGE:${l.id_lang}`, 
+        label: l.desc_lang || l.id_lang 
+      })),
+      lobs: projectLobs.map(l => ({ 
+        id: `LOB:${l.id_lob}`, 
+        label: l.name || l.id_lob 
+      }))
     });
   };
 
@@ -514,7 +520,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
     setSelectedLanguage('');
     setVersions([]);
     setCurrentVersionId(null);
-    setSimulationLevel('PROJECT');
+    setSimulationLevelValue('');
     if (projectId) {
       loadVersions(projectId);
       loadSimulationLevelOptions(projectId);
@@ -523,8 +529,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
     }
   };
 
-  const handleSimulationLevelChange = (level: 'PROJECT' | 'LANGUAGE' | 'LOB') => {
-    setSimulationLevel(level);
+  const handleSimulationLevelChange = (value: string) => {
+    setSimulationLevelValue(value);
   };
 
   const handleLanguageChange = (languageId: string) => {
@@ -1567,23 +1573,50 @@ export default function SimulationForm({ onMenuClick }: Props) {
             <div>
               <Label>Nível Simulação</Label>
               <Select 
-                value={simulationLevel} 
-                onValueChange={(value) => handleSimulationLevelChange(value as 'PROJECT' | 'LANGUAGE' | 'LOB')} 
+                value={simulationLevelValue} 
+                onValueChange={handleSimulationLevelChange} 
                 disabled={!selectedProject}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione o nível" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="PROJECT">
-                    Project ({simulationLevelOptions.projects.length > 0 ? simulationLevelOptions.projects.join(', ') : 'N/A'})
-                  </SelectItem>
-                  <SelectItem value="LANGUAGE" disabled={simulationLevelOptions.languages.length === 0}>
-                    Language ({simulationLevelOptions.languages.length > 0 ? simulationLevelOptions.languages.join(', ') : 'N/A'})
-                  </SelectItem>
-                  <SelectItem value="LOB" disabled={simulationLevelOptions.lobs.length === 0}>
-                    LOB ({simulationLevelOptions.lobs.length > 0 ? simulationLevelOptions.lobs.join(', ') : 'N/A'})
-                  </SelectItem>
+                  {simulationLevelOptions.projects.length > 0 && (
+                    <>
+                      <SelectItem value="__header_project" disabled className="font-semibold text-muted-foreground text-xs">
+                        — Project —
+                      </SelectItem>
+                      {simulationLevelOptions.projects.map(p => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.label}
+                        </SelectItem>
+                      ))}
+                    </>
+                  )}
+                  {simulationLevelOptions.languages.length > 0 && (
+                    <>
+                      <SelectItem value="__header_language" disabled className="font-semibold text-muted-foreground text-xs">
+                        — Language —
+                      </SelectItem>
+                      {simulationLevelOptions.languages.map(l => (
+                        <SelectItem key={l.id} value={l.id}>
+                          {l.label}
+                        </SelectItem>
+                      ))}
+                    </>
+                  )}
+                  {simulationLevelOptions.lobs.length > 0 && (
+                    <>
+                      <SelectItem value="__header_lob" disabled className="font-semibold text-muted-foreground text-xs">
+                        — LOB —
+                      </SelectItem>
+                      {simulationLevelOptions.lobs.map(l => (
+                        <SelectItem key={l.id} value={l.id}>
+                          {l.label}
+                        </SelectItem>
+                      ))}
+                    </>
+                  )}
                 </SelectContent>
               </Select>
             </div>
