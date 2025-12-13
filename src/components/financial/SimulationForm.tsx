@@ -1451,6 +1451,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
                   <th className="px-4 py-2 text-left font-semibold min-w-[100px] text-sm">Língua</th>
                   <th className="px-4 py-2 text-left font-semibold min-w-[100px] text-sm">LOB</th>
                   <th className="px-4 py-2 text-left font-semibold min-w-[100px] text-sm">Nº Conta</th>
+                  <th className="px-4 py-2 text-left font-semibold min-w-[80px] text-sm">Página</th>
                   <th className="px-4 py-2 text-left font-semibold min-w-[300px] text-sm">Conta</th>
                   {periods.map(period => (
                     <th key={`${period.year}-${period.month}`} className="px-4 py-2 text-right font-semibold min-w-[100px] text-sm">
@@ -1480,6 +1481,9 @@ export default function SimulationForm({ onMenuClick }: Props) {
                       </td>
                       <td className="px-4 py-1 text-sm font-mono">
                         {variable.account_code || '-'}
+                      </td>
+                      <td className="px-4 py-1 text-sm">
+                        {variable.page_name || '-'}
                       </td>
                       <td className="px-4 py-1">
                         <div 
