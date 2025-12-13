@@ -1728,21 +1728,36 @@ export default function SimulationForm({ onMenuClick }: Props) {
       {/* Page Tabs */}
       <div className="container mx-auto px-6 pt-4">
         {pageNames.length > 1 && (
-          <div className="flex items-center gap-1 border-b overflow-x-auto pb-0">
-            {pageNames.map(pageName => (
+          <div className="flex items-center border-b overflow-x-auto pb-0">
+            <div className="flex items-center gap-1 flex-1">
+              {pageNames.filter(p => p !== 'Simulation').map(pageName => (
+                <button
+                  key={pageName}
+                  onClick={() => setActivePage(pageName)}
+                  className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium transition-colors border-b-2 -mb-px whitespace-nowrap ${
+                    activePage === pageName
+                      ? 'border-primary text-primary bg-background'
+                      : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                  }`}
+                >
+                  <FileSpreadsheet className="h-4 w-4" />
+                  {pageName}
+                </button>
+              ))}
+            </div>
+            {pageNames.includes('Simulation') && (
               <button
-                key={pageName}
-                onClick={() => setActivePage(pageName)}
-                className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium transition-colors border-b-2 -mb-px whitespace-nowrap ${
-                  activePage === pageName
+                onClick={() => setActivePage('Simulation')}
+                className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium transition-colors border-b-2 -mb-px whitespace-nowrap ml-auto ${
+                  activePage === 'Simulation'
                     ? 'border-primary text-primary bg-background'
                     : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50'
                 }`}
               >
                 <FileSpreadsheet className="h-4 w-4" />
-                {pageName}
+                Simulation
               </button>
-            ))}
+            )}
           </div>
         )}
       </div>
