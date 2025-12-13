@@ -1209,8 +1209,12 @@ export default function SimulationForm({ onMenuClick }: Props) {
       
       const uniqueVars = Array.from(uniqueVarsForDisplayMap.values());
       
-      // Sort by row_index or account_code
+      // Sort by language first, then row_index or account_code
       uniqueVars.sort((a, b) => {
+        // First sort by language
+        const langCompare = (a.id_lang || '').localeCompare(b.id_lang || '');
+        if (langCompare !== 0) return langCompare;
+        // Then by row_index
         if (a.row_index !== b.row_index) return a.row_index - b.row_index;
         return (a.account_code || '').localeCompare(b.account_code || '', undefined, { numeric: true });
       });
