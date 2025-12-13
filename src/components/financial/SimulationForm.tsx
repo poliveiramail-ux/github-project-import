@@ -1364,21 +1364,10 @@ export default function SimulationForm({ onMenuClick }: Props) {
       // When Language is DrillDown and LOB is RollUp: keep languages separate, aggregate LOBs
       // When Language is RollUp: aggregate all languages
       
-      // First, identify which variables are parents (have children)
-      const parentIds = new Set<string>();
-      pageFilteredVars.forEach(v => {
-        if (v.parent_account_id && v.parent_account_id !== v.id_sim_cfg_var) {
-          parentIds.add(v.parent_account_id);
-        }
-      });
-      
-      // Filter to only show parent variables (variables that have children)
-      const parentVars = pageFilteredVars.filter(v => parentIds.has(v.id_sim_cfg_var));
-      
       // Step 1: Get unique variables for display (one row per name+language when lang is DrillDown)
       const uniqueVarsForDisplayMap = new Map<string, Variable>();
       
-      parentVars.forEach(v => {
+      pageFilteredVars.forEach(v => {
         // Create display key - include language if NOT in RollUp mode
         const langPart = !isLangRollUp ? (v.id_lang || 'null') : 'all';
         const displayKey = `${v.name}_${langPart}`;
