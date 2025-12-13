@@ -511,6 +511,95 @@ export type Database = {
           },
         ]
       }
+      simulation_configs_variables_duplicate_old1: {
+        Row: {
+          account_num: string
+          blocked: boolean | null
+          calculation_type: string | null
+          created_at: string | null
+          data_origin: string | null
+          formula: string | null
+          id_lang: string | null
+          id_lob: string | null
+          id_proj: string
+          id_sim_cfg: string | null
+          id_sim_cfg_var: string
+          level: number
+          name: string
+          page_name: string | null
+          parent_account_id: string | null
+          row_index: number
+          value_type: string | null
+        }
+        Insert: {
+          account_num: string
+          blocked?: boolean | null
+          calculation_type?: string | null
+          created_at?: string | null
+          data_origin?: string | null
+          formula?: string | null
+          id_lang?: string | null
+          id_lob?: string | null
+          id_proj: string
+          id_sim_cfg?: string | null
+          id_sim_cfg_var?: string
+          level?: number
+          name: string
+          page_name?: string | null
+          parent_account_id?: string | null
+          row_index?: number
+          value_type?: string | null
+        }
+        Update: {
+          account_num?: string
+          blocked?: boolean | null
+          calculation_type?: string | null
+          created_at?: string | null
+          data_origin?: string | null
+          formula?: string | null
+          id_lang?: string | null
+          id_lob?: string | null
+          id_proj?: string
+          id_sim_cfg?: string | null
+          id_sim_cfg_var?: string
+          level?: number
+          name?: string
+          page_name?: string | null
+          parent_account_id?: string | null
+          row_index?: number
+          value_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "simulation_configs_variables_duplicate_o_parent_account_id_fkey"
+            columns: ["parent_account_id"]
+            isOneToOne: false
+            referencedRelation: "simulation_configs_variables"
+            referencedColumns: ["id_sim_cfg_var"]
+          },
+          {
+            foreignKeyName: "simulation_configs_variables_duplicate_old1_id_lang_fkey"
+            columns: ["id_lang"]
+            isOneToOne: false
+            referencedRelation: "lang"
+            referencedColumns: ["id_lang"]
+          },
+          {
+            foreignKeyName: "simulation_configs_variables_duplicate_old1_id_lob_fkey"
+            columns: ["id_lob"]
+            isOneToOne: false
+            referencedRelation: "lob"
+            referencedColumns: ["id_lob"]
+          },
+          {
+            foreignKeyName: "simulation_configs_variables_duplicate_old1_id_sim_cfg_fkey"
+            columns: ["id_sim_cfg"]
+            isOneToOne: false
+            referencedRelation: "simulation_configs"
+            referencedColumns: ["id_sim_cfg"]
+          },
+        ]
+      }
       simulation_intake: {
         Row: {
           created_at: string | null
