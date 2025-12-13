@@ -1182,11 +1182,22 @@ export default function SimulationForm({ onMenuClick }: Props) {
     }
     
     // Normal DrillDown or specific filter behavior
-    // Get unique variables by account_code  
+    // Check if we're in DrillDown mode (show all languages/lobs separately)
+    const isLangDrillDown = selectedLanguage === 'DRILLDOWN' || selectedLanguage === '';
+    const isLobDrillDown = selectedLob === 'DRILLDOWN' || selectedLob === '';
+    
+    // Get unique variables by account_code + language + lob combination
+    // In DrillDown mode, we show each language/lob as separate rows
     const uniqueVarsMap = new Map<string, Variable>();
     pageFilteredVars.forEach(v => {
-      if (!uniqueVarsMap.has(v.account_code)) {
-        uniqueVarsMap.set(v.account_code, v);
+      // Create unique key based on account_code, language and lob
+      // This ensures we show separate rows for each language/lob combination
+      const langPart = isLangDrillDown ? (v.id_lang || 'null') : 'all';
+      const lobPart = isLobDrillDown ? (v.lob || 'null') : 'all';
+      const uniqueKey = `${v.account_code}_${langPart}_${lobPart}`;
+      
+      if (!uniqueVarsMap.has(uniqueKey)) {
+        uniqueVarsMap.set(uniqueKey, v);
       }
     });
     
@@ -1234,10 +1245,17 @@ export default function SimulationForm({ onMenuClick }: Props) {
       // If this variable is expanded, add its children
       if (expandedRows.has(variable.uniqueId)) {
         // Find all children (variables whose parent_account_id equals this variable's id_sim_cfg_var)
-        const children = uniqueVars.filter(v => 
-          v.parent_account_id === variable.id_sim_cfg_var && 
-          !visited.has(v.uniqueId) // Skip already visited children
-        );
+        // In DrillDown mode, also filter by same language/lob to maintain proper hierarchy
+        const children = uniqueVars.filter(v => {
+          if (v.parent_account_id !== variable.id_sim_cfg_var) return false;
+          if (visited.has(v.uniqueId)) return false;
+          
+          // In DrillDown mode, children should have the same language/lob as parent
+          if (isLangDrillDown && v.id_lang !== variable.id_lang) return false;
+          if (isLobDrillDown && v.lob !== variable.lob) return false;
+          
+          return true;
+        });
         
         // Sort children by account_num
         children.sort((a, b) => {
