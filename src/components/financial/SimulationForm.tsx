@@ -1497,16 +1497,16 @@ export default function SimulationForm({ onMenuClick }: Props) {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
             <div>
-              <Label>Projeto</Label>
+              <Label className="text-xs">Projeto</Label>
               <Select value={selectedProject} onValueChange={handleProjectChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um projeto" />
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Projeto" />
                 </SelectTrigger>
                 <SelectContent>
                   {projects.map(p => (
-                    <SelectItem key={p.id_prj} value={p.id_prj}>
+                    <SelectItem key={p.id_prj} value={p.id_prj} className="text-xs">
                       {p.id_prj}{p.desc_prj ? ` - ${p.desc_prj}` : ''}
                     </SelectItem>
                   ))}
@@ -1515,14 +1515,14 @@ export default function SimulationForm({ onMenuClick }: Props) {
             </div>
 
             <div>
-              <Label>Versão</Label>
+              <Label className="text-xs">Versão</Label>
               <Select value={currentVersionId || ''} onValueChange={handleVersionChange} disabled={!selectedProject}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma versão" />
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Versão" />
                 </SelectTrigger>
                 <SelectContent>
                   {versions.map(v => (
-                    <SelectItem key={v.id} value={v.id}>
+                    <SelectItem key={v.id} value={v.id} className="text-xs">
                       {v.name} ({new Date(v.created_at).toLocaleDateString()})
                     </SelectItem>
                   ))}
@@ -1531,16 +1531,16 @@ export default function SimulationForm({ onMenuClick }: Props) {
             </div>
 
             <div>
-              <Label>Linguagem</Label>
+              <Label className="text-xs">Linguagem</Label>
               <Select value={selectedLanguage || 'DRILLDOWN'} onValueChange={handleLanguageChange} disabled={!currentVersionId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma linguagem" />
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Linguagem" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="DRILLDOWN">DrillDown</SelectItem>
-                  <SelectItem value="ROLLUP">RollUp</SelectItem>
+                  <SelectItem value="DRILLDOWN" className="text-xs">DrillDown</SelectItem>
+                  <SelectItem value="ROLLUP" className="text-xs">RollUp</SelectItem>
                   {languages.map(l => (
-                    <SelectItem key={l.id_lang} value={l.id_lang}>
+                    <SelectItem key={l.id_lang} value={l.id_lang} className="text-xs">
                       {l.id_lang}{l.desc_lang ? ` - ${l.desc_lang}` : ''}
                     </SelectItem>
                   ))}
@@ -1549,20 +1549,20 @@ export default function SimulationForm({ onMenuClick }: Props) {
             </div>
 
             <div>
-              <Label>LOB</Label>
+              <Label className="text-xs">LOB</Label>
               <Select 
                 value={selectedLanguage === 'ROLLUP' ? 'ROLLUP' : (selectedLob || 'DRILLDOWN')} 
                 onValueChange={handleLobChange} 
                 disabled={!currentVersionId || selectedLanguage === 'ROLLUP'}
               >
-                <SelectTrigger className={selectedLanguage === 'ROLLUP' ? 'opacity-50' : ''}>
-                  <SelectValue placeholder="Selecione um LOB" />
+                <SelectTrigger className={`h-8 text-xs ${selectedLanguage === 'ROLLUP' ? 'opacity-50' : ''}`}>
+                  <SelectValue placeholder="LOB" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="DRILLDOWN">DrillDown</SelectItem>
-                  <SelectItem value="ROLLUP">RollUp</SelectItem>
+                  <SelectItem value="DRILLDOWN" className="text-xs">DrillDown</SelectItem>
+                  <SelectItem value="ROLLUP" className="text-xs">RollUp</SelectItem>
                   {lobs.map(l => (
-                    <SelectItem key={l.id_lob} value={l.id_lob}>
+                    <SelectItem key={l.id_lob} value={l.id_lob} className="text-xs">
                       {l.name}
                     </SelectItem>
                   ))}
@@ -1571,23 +1571,23 @@ export default function SimulationForm({ onMenuClick }: Props) {
             </div>
 
             <div>
-              <Label>Nível Simulação</Label>
+              <Label className="text-xs">Nível Simulação</Label>
               <Select 
                 value={simulationLevelValue} 
                 onValueChange={handleSimulationLevelChange} 
                 disabled={!selectedProject}
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o nível" />
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Nível" />
                 </SelectTrigger>
                 <SelectContent>
                   {simulationLevelOptions.projects.length > 0 && (
                     <>
-                      <SelectItem value="__header_project" disabled className="font-semibold text-muted-foreground text-xs">
+                      <SelectItem value="__header_project" disabled className="font-semibold text-muted-foreground text-[10px]">
                         — Project —
                       </SelectItem>
                       {simulationLevelOptions.projects.map(p => (
-                        <SelectItem key={p.id} value={p.id}>
+                        <SelectItem key={p.id} value={p.id} className="text-xs">
                           {p.label}
                         </SelectItem>
                       ))}
@@ -1595,11 +1595,11 @@ export default function SimulationForm({ onMenuClick }: Props) {
                   )}
                   {simulationLevelOptions.languages.length > 0 && (
                     <>
-                      <SelectItem value="__header_language" disabled className="font-semibold text-muted-foreground text-xs">
+                      <SelectItem value="__header_language" disabled className="font-semibold text-muted-foreground text-[10px]">
                         — Language —
                       </SelectItem>
                       {simulationLevelOptions.languages.map(l => (
-                        <SelectItem key={l.id} value={l.id}>
+                        <SelectItem key={l.id} value={l.id} className="text-xs">
                           {l.label}
                         </SelectItem>
                       ))}
@@ -1607,11 +1607,11 @@ export default function SimulationForm({ onMenuClick }: Props) {
                   )}
                   {simulationLevelOptions.lobs.length > 0 && (
                     <>
-                      <SelectItem value="__header_lob" disabled className="font-semibold text-muted-foreground text-xs">
+                      <SelectItem value="__header_lob" disabled className="font-semibold text-muted-foreground text-[10px]">
                         — LOB —
                       </SelectItem>
                       {simulationLevelOptions.lobs.map(l => (
-                        <SelectItem key={l.id} value={l.id}>
+                        <SelectItem key={l.id} value={l.id} className="text-xs">
                           {l.label}
                         </SelectItem>
                       ))}
