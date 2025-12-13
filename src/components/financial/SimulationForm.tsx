@@ -408,7 +408,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
         value: v.value !== undefined ? v.value : 0,
         value_orig: v.value_orig !== undefined ? v.value_orig : 0,
         page_name: v.page_name || 'Main',
-        rollup: v.rollup !== undefined ? v.rollup : true
+        rollup: v.rollup === true // Only true if explicitly set to true
       })) as Variable[];
       
       setVariables(vars);
