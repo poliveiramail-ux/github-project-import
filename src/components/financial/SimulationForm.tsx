@@ -1018,17 +1018,29 @@ export default function SimulationForm({ onMenuClick }: Props) {
     // Check if we're in RollUp mode
     const isLangRollUp = selectedLanguage === 'ROLLUP';
     const isLobRollUp = selectedLob === 'ROLLUP';
+    const isLangDrillDown = selectedLanguage === 'DRILLDOWN' || selectedLanguage === '';
     
     // If in RollUp mode, aggregate values by name
     if (isLangRollUp || isLobRollUp) {
       // Find all variables with the same name and period
-      const matchingVars = variables.filter(v => 
-        v.name === variable.name && 
-        v.year === year && 
-        v.month === month &&
-        // If only LOB is RollUp but Language is specific, filter by language
-        (!isLangRollUp && selectedLanguage && selectedLanguage !== 'DRILLDOWN' ? v.id_lang === selectedLanguage : true)
-      );
+      const matchingVars = variables.filter(v => {
+        if (v.name !== variable.name) return false;
+        if (v.year !== year) return false;
+        if (v.month !== month) return false;
+        
+        // If Language is NOT RollUp, filter by the variable's language
+        // This handles both DrillDown (use variable.id_lang) and specific language selection
+        if (!isLangRollUp) {
+          if (v.id_lang !== variable.id_lang) return false;
+        }
+        
+        // If LOB is NOT RollUp, filter by the variable's LOB
+        if (!isLobRollUp) {
+          if (v.lob !== variable.lob) return false;
+        }
+        
+        return true;
+      });
       
       // Sum up all matching values
       return matchingVars.reduce((sum, v) => {
@@ -1074,13 +1086,23 @@ export default function SimulationForm({ onMenuClick }: Props) {
     // If in RollUp mode, aggregate original values by name
     if (isLangRollUp || isLobRollUp) {
       // Find all variables with the same name and period
-      const matchingVars = variables.filter(v => 
-        v.name === variable.name && 
-        v.year === year && 
-        v.month === month &&
-        // If only LOB is RollUp but Language is specific, filter by language
-        (!isLangRollUp && selectedLanguage && selectedLanguage !== 'DRILLDOWN' ? v.id_lang === selectedLanguage : true)
-      );
+      const matchingVars = variables.filter(v => {
+        if (v.name !== variable.name) return false;
+        if (v.year !== year) return false;
+        if (v.month !== month) return false;
+        
+        // If Language is NOT RollUp, filter by the variable's language
+        if (!isLangRollUp) {
+          if (v.id_lang !== variable.id_lang) return false;
+        }
+        
+        // If LOB is NOT RollUp, filter by the variable's LOB
+        if (!isLobRollUp) {
+          if (v.lob !== variable.lob) return false;
+        }
+        
+        return true;
+      });
       
       // Sum up all matching original values
       return matchingVars.reduce((sum, v) => sum + (v.value_orig || 0), 0);
@@ -1141,20 +1163,24 @@ export default function SimulationForm({ onMenuClick }: Props) {
     
     // If RollUp mode is active, aggregate variables by name
     if (isLangRollUp || isLobRollUp) {
+      // Check if we're in DrillDown mode for language (show each language separately)
+      const isLangDrillDown = selectedLanguage === 'DRILLDOWN' || selectedLanguage === '';
+      
       // Group variables by name (and period for proper aggregation)
+      // When Language is DrillDown and LOB is RollUp: keep languages separate, aggregate LOBs
       const aggregatedVarsMap = new Map<string, Variable>();
       
       pageFilteredVars.forEach(v => {
-        // Create a key based on name and period
-        // For language RollUp: aggregate all languages for same name/month/year
-        // For LOB RollUp: aggregate all LOBs for same name/month/year (within same language if selected)
-        const aggregateKey = `${v.name}_${v.month}_${v.year}`;
+        // Create a key based on name, period, and optionally language
+        // If Language is NOT RollUp (DrillDown or specific), include language in key to keep them separate
+        const langPart = !isLangRollUp ? (v.id_lang || 'null') : 'all';
+        const aggregateKey = `${v.name}_${v.month}_${v.year}_${langPart}`;
         
         if (!aggregatedVarsMap.has(aggregateKey)) {
           // Create a copy of the variable for aggregation
           const aggregatedVar: Variable = {
             ...v,
-            uniqueId: `rollup_${v.name}_${v.month}_${v.year}`,
+            uniqueId: `rollup_${v.name}_${v.month}_${v.year}_${langPart}`,
             id_lang: isLangRollUp ? 'ROLLUP' : v.id_lang,
             lob: isLobRollUp ? 'ROLLUP' : v.lob,
           };
@@ -1162,15 +1188,17 @@ export default function SimulationForm({ onMenuClick }: Props) {
         }
       });
       
-      // Get unique variables by name for display
-      const uniqueByNameMap = new Map<string, Variable>();
+      // Get unique variables by name (and language if not RollUp) for display
+      const uniqueByKeyMap = new Map<string, Variable>();
       Array.from(aggregatedVarsMap.values()).forEach(v => {
-        if (!uniqueByNameMap.has(v.name)) {
-          uniqueByNameMap.set(v.name, v);
+        // Create unique display key
+        const displayKey = !isLangRollUp ? `${v.name}_${v.id_lang}` : v.name;
+        if (!uniqueByKeyMap.has(displayKey)) {
+          uniqueByKeyMap.set(displayKey, v);
         }
       });
       
-      const uniqueVars = Array.from(uniqueByNameMap.values());
+      const uniqueVars = Array.from(uniqueByKeyMap.values());
       
       // Sort by row_index or account_code
       uniqueVars.sort((a, b) => {
