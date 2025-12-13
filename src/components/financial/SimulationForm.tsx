@@ -1434,6 +1434,8 @@ export default function SimulationForm({ onMenuClick }: Props) {
             <table className="w-full border-collapse">
               <thead>
                 <tr className="bg-muted border-b">
+                  <th className="px-4 py-2 text-left font-semibold min-w-[100px] text-sm">Língua</th>
+                  <th className="px-4 py-2 text-left font-semibold min-w-[100px] text-sm">LOB</th>
                   <th className="px-4 py-2 text-left font-semibold min-w-[300px] text-sm">Conta</th>
                   {periods.map(period => (
                     <th key={`${period.year}-${period.month}`} className="px-4 py-2 text-right font-semibold min-w-[100px] text-sm">
@@ -1455,6 +1457,12 @@ export default function SimulationForm({ onMenuClick }: Props) {
                   
                   return (
                     <tr key={variable.uniqueId} className="border-b hover:bg-muted/50 transition-colors">
+                      <td className="px-4 py-1 text-sm">
+                        {variable.id_lang || '-'}
+                      </td>
+                      <td className="px-4 py-1 text-sm">
+                        {variable.lob || '-'}
+                      </td>
                       <td className="px-4 py-1">
                         <div 
                           className="flex items-center gap-2"
