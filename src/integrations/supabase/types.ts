@@ -140,7 +140,7 @@ export type Database = {
           name: string
           page_name: string | null
           parent_account_id: string
-          rollup: boolean | null
+          rollup: string | null
           row_index: number
           value: number | null
           value_orig: number | null
@@ -164,7 +164,7 @@ export type Database = {
           name: string
           page_name?: string | null
           parent_account_id: string
-          rollup?: boolean | null
+          rollup?: string | null
           row_index: number
           value?: number | null
           value_orig?: number | null
@@ -188,7 +188,7 @@ export type Database = {
           name?: string
           page_name?: string | null
           parent_account_id?: string
-          rollup?: boolean | null
+          rollup?: string | null
           row_index?: number
           value?: number | null
           value_orig?: number | null
@@ -264,7 +264,7 @@ export type Database = {
           name: string
           page_name: string | null
           parent_account_id: string | null
-          rollup: boolean | null
+          rollup: string | null
           row_index: number
           value_type: string | null
         }
@@ -284,7 +284,7 @@ export type Database = {
           name: string
           page_name?: string | null
           parent_account_id?: string | null
-          rollup?: boolean | null
+          rollup?: string | null
           row_index?: number
           value_type?: string | null
         }
@@ -304,7 +304,7 @@ export type Database = {
           name?: string
           page_name?: string | null
           parent_account_id?: string | null
-          rollup?: boolean | null
+          rollup?: string | null
           row_index?: number
           value_type?: string | null
         }

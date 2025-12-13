@@ -357,7 +357,7 @@ export default function ConfigurationForm({ onBack }: Props) {
           level: calculatedLevel,
           page_name: editingVar.page_name || 'Main',
           data_origin: editingVar.data_origin || null,
-          rollup: editingVar.rollup || 'true'
+          rollup: editingVar.rollup || 'true' as any
         })
         .eq('id_sim_cfg_var', editingVar.id_sim_cfg_var);
       
@@ -385,7 +385,7 @@ export default function ConfigurationForm({ onBack }: Props) {
           level: calculatedLevel,
           page_name: editingVar.page_name || 'Main',
           data_origin: editingVar.data_origin || null,
-          rollup: editingVar.rollup || 'true'
+          rollup: (editingVar.rollup || 'true') as any
         }]);
       
       if (error) {

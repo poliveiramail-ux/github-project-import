@@ -449,7 +449,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
         value: v.value !== undefined ? v.value : 0,
         value_orig: v.value_orig !== undefined ? v.value_orig : 0,
         page_name: v.page_name || 'Main',
-        rollup: v.rollup === true // Only true if explicitly set to true
+        rollup: typeof v.rollup === 'boolean' ? (v.rollup ? 'true' : 'false') : (v.rollup || 'true')
       })) as Variable[];
       
       setVariables(vars);
@@ -658,7 +658,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
         parent_account_id: record.parent_account_id,
         id_sim_cfg_var: record.id_sim_cfg_var,
         page_name: record.page_name || 'Main',
-        rollup: record.rollup || false
+        rollup: typeof record.rollup === 'boolean' ? (record.rollup ? 'true' : 'false') : (record.rollup || 'true')
       }));
 
       const { error: varsError } = await (supabase as any)
@@ -749,7 +749,7 @@ export default function SimulationForm({ onMenuClick }: Props) {
             parent_account_id: configVar.parent_account_id,
             id_sim_cfg_var: configVar.id_sim_cfg_var,
             page_name: configVar.page_name || 'Main',
-            rollup: configVar.rollup || false
+            rollup: (configVar.rollup || 'true') as any
           };
           
           variablesToInsert.push(recordData);
@@ -1257,7 +1257,12 @@ export default function SimulationForm({ onMenuClick }: Props) {
   const getVisibleVariables = () => {
     // Filter variables by active page - only show variables that have page_name matching the active tab
     // Variables without page_name are excluded
-    const pageFilteredVars = variables.filter(v => v.page_name && v.page_name === activePage);
+    // Also exclude hidden variables (rollup === 'hidden')
+    const pageFilteredVars = variables.filter(v => 
+      v.page_name && 
+      v.page_name === activePage && 
+      v.rollup !== 'hidden'
+    );
     
     // SPECIAL CASE: Simulation page is independent of DrillDown/RollUp filters
     // But filters by simulation level selection
