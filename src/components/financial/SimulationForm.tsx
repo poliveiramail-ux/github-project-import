@@ -1254,13 +1254,80 @@ export default function SimulationForm({ onMenuClick }: Props) {
   };
 
   const getVisibleVariables = () => {
-    // Check if we're in RollUp mode
-    const isLangRollUp = selectedLanguage === 'ROLLUP';
-    const isLobRollUp = selectedLob === 'ROLLUP';
-    
     // Filter variables by active page - only show variables that have page_name matching the active tab
     // Variables without page_name are excluded
     const pageFilteredVars = variables.filter(v => v.page_name && v.page_name === activePage);
+    
+    // SPECIAL CASE: Simulation page is independent of DrillDown/RollUp filters
+    // Show all variables as-is without aggregation or filter logic
+    if (activePage === 'Simulation') {
+      // Get unique variables by account_code + language + lob combination
+      const uniqueVarsMap = new Map<string, Variable>();
+      pageFilteredVars.forEach(v => {
+        const uniqueKey = `${v.account_code}_${v.id_lang || 'null'}_${v.lob || 'null'}`;
+        if (!uniqueVarsMap.has(uniqueKey)) {
+          uniqueVarsMap.set(uniqueKey, v);
+        }
+      });
+      
+      const uniqueVars = Array.from(uniqueVarsMap.values());
+      
+      // Create a set of all config var IDs for quick lookup
+      const allCfgVarIds = new Set(uniqueVars.map(v => v.id_sim_cfg_var));
+      
+      // Identify root variables
+      const rootVars: Variable[] = [];
+      uniqueVars.forEach(variable => {
+        const isRoot = !variable.parent_account_id || 
+                       variable.parent_account_id === variable.id_sim_cfg_var ||
+                       !allCfgVarIds.has(variable.parent_account_id);
+        if (isRoot) {
+          rootVars.push(variable);
+        }
+      });
+      
+      // Sort roots by account_num
+      rootVars.sort((a, b) => {
+        const aNum = a.account_code || '';
+        const bNum = b.account_code || '';
+        return aNum.localeCompare(bNum, undefined, { numeric: true });
+      });
+      
+      // Build visible list hierarchically
+      const visible: Variable[] = [];
+      const visited = new Set<string>();
+      
+      const addVariableAndChildren = (variable: Variable) => {
+        if (visited.has(variable.uniqueId)) return;
+        visited.add(variable.uniqueId);
+        visible.push(variable);
+        
+        if (expandedRows.has(variable.uniqueId)) {
+          const children = uniqueVars.filter(v => {
+            if (v.parent_account_id !== variable.id_sim_cfg_var) return false;
+            if (visited.has(v.uniqueId)) return false;
+            if (v.id_lang !== variable.id_lang) return false;
+            if (v.lob !== variable.lob) return false;
+            return true;
+          });
+          
+          children.sort((a, b) => {
+            const aNum = a.account_code || '';
+            const bNum = b.account_code || '';
+            return aNum.localeCompare(bNum, undefined, { numeric: true });
+          });
+          
+          children.forEach(child => addVariableAndChildren(child));
+        }
+      };
+      
+      rootVars.forEach(root => addVariableAndChildren(root));
+      return visible;
+    }
+    
+    // Check if we're in RollUp mode
+    const isLangRollUp = selectedLanguage === 'ROLLUP';
+    const isLobRollUp = selectedLob === 'ROLLUP';
     
     // Debug: log DE variables in the current page
     const deVars = pageFilteredVars.filter(v => v.id_lang === 'DE');
