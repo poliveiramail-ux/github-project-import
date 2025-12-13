@@ -1260,11 +1260,27 @@ export default function SimulationForm({ onMenuClick }: Props) {
     const pageFilteredVars = variables.filter(v => v.page_name && v.page_name === activePage);
     
     // SPECIAL CASE: Simulation page is independent of DrillDown/RollUp filters
-    // Show all variables as-is without aggregation or filter logic
+    // But filters by simulation level selection
     if (activePage === 'Simulation') {
+      // Parse the simulation level value to determine filter
+      let filteredVars = pageFilteredVars;
+      
+      if (simulationLevelValue) {
+        const [levelType, levelId] = simulationLevelValue.split(':');
+        
+        if (levelType === 'LANGUAGE' && levelId) {
+          // Filter by specific language
+          filteredVars = pageFilteredVars.filter(v => v.id_lang === levelId);
+        } else if (levelType === 'LOB' && levelId) {
+          // Filter by specific LOB
+          filteredVars = pageFilteredVars.filter(v => v.lob === levelId);
+        }
+        // PROJECT level shows all variables (no additional filter)
+      }
+      
       // Get unique variables by account_code + language + lob combination
       const uniqueVarsMap = new Map<string, Variable>();
-      pageFilteredVars.forEach(v => {
+      filteredVars.forEach(v => {
         const uniqueKey = `${v.account_code}_${v.id_lang || 'null'}_${v.lob || 'null'}`;
         if (!uniqueVarsMap.has(uniqueKey)) {
           uniqueVarsMap.set(uniqueKey, v);
