@@ -772,7 +772,7 @@ export default function SimulationForm_v2({ onMenuClick }: Props) {
         }
       });
       
-      return Array.from(uniqueVarsMap.values()).sort((a, b) => a.row_index - b.row_index);
+      return Array.from(uniqueVarsMap.values());
     }
     
     const isLangRollUp = selectedLanguage === 'ROLLUP';
@@ -803,8 +803,7 @@ export default function SimulationForm_v2({ onMenuClick }: Props) {
           const langCompare = (a.id_lang || '').localeCompare(b.id_lang || '');
           if (langCompare !== 0) return langCompare;
         }
-        // Then sort by row_index within each group
-        return a.row_index - b.row_index;
+        return 0;
       });
     }
     
@@ -833,8 +832,7 @@ export default function SimulationForm_v2({ onMenuClick }: Props) {
         if (lobCompare !== 0) return lobCompare;
       }
       
-      // Then sort by row_index within each group
-      return a.row_index - b.row_index;
+      return 0;
     });
   };
 
