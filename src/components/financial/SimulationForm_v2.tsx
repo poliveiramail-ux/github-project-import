@@ -1121,10 +1121,10 @@ export default function SimulationForm_v2({ onMenuClick }: Props) {
                   const calcType = variable.calculation_type || 'AUTO';
                   const isBlocked = blockedVariables.has(variable.account_code);
                   
-                  // Check if any selected version is not Draft - block editing on Simulation tab
+                  // Check if any selected version is not Open - block editing on Simulation tab
                   const isSimulationTabLocked = activePage === 'Simulation' && selectedVersionIds.some(vId => {
                     const version = versions.find(v => v.id === vId);
-                    return version && version.status !== 'Draft';
+                    return version && version.status !== 'Open' && version.status !== null;
                   });
                   
                   const isEditable = isLeafAccount(variable.account_code, allVariables) && 
