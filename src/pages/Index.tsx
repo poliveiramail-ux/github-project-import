@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import SimulationForm from '@/components/financial/SimulationForm';
+import SimulationForm_v2 from '@/components/financial/SimulationForm_v2';
 import VersionsManager from '@/components/financial/VersionsManager';
 import ConfigurationForm from '@/components/financial/ConfigurationForm';
 import MasterDataManager from '@/components/financial/MasterDataManager';
@@ -19,6 +20,10 @@ const Index = () => {
       
       {currentView === 'simulation' && (
         <SimulationForm onMenuClick={() => setMenuOpen(true)} />
+      )}
+      
+      {currentView === 'simulation_v2' && (
+        <SimulationForm_v2 onMenuClick={() => setMenuOpen(true)} />
       )}
       
       {currentView === 'versions' && (

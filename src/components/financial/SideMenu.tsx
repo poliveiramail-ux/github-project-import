@@ -16,6 +16,7 @@ interface Props {
 export default function SideMenu({ isOpen, onClose, onNavigate }: Props) {
   const menuItems: MenuItem[] = [
     { id: 'simulation', label: 'SimulationForm', icon: <Clock className="h-5 w-5" /> },
+    { id: 'simulation_v2', label: 'SimulationForm V2', icon: <Clock className="h-5 w-5" /> },
     { id: 'versions', label: 'VersionsManager', icon: <Clock className="h-5 w-5" /> },
     { id: 'configurations', label: 'ConfigurationForm', icon: <Settings className="h-5 w-5" /> },
     { id: 'masterdata', label: 'MasterDataManager', icon: <FileText className="h-5 w-5" /> }

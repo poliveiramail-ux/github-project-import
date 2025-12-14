@@ -1,0 +1,1969 @@
+import { useState, useEffect, useMemo } from 'react';
+import { Menu, Plus, Save, CheckCircle, XCircle, Lock, ChevronDown, ChevronRight, Loader2, X, FunctionSquare, FileSpreadsheet } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Card } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { useToast } from '@/hooks/use-toast';
+import { 
+  clearFormulaCache, 
+  isOrFormula, 
+  evaluateOrFormula 
+} from '@/lib/formulaOrEvaluator';
+
+interface Project {
+  id_prj: string;
+  desc_prj: string | null;
+}
+
+interface Language {
+  id_lang: string;
+  desc_lang: string | null;
+}
+
+interface SimulationVersion {
+  id: string;
+  name: string;
+  id_prj: string;
+  id_lang: string;
+  created_at: string;
+}
+
+interface Variable {
+  uniqueId: string; // Computed from version_id + account_num + month + year
+  version_id: string;
+  account_code: string;
+  name: string;
+  calculation_type: 'MANUAL' | 'FORMULA';
+  formula: string | null;
+  month: number;
+  year: number;
+  lob: string;
+  id_lang: string;
+  level: number;
+  parent_account_id?: string | null;
+  id_sim_cfg_var: string;
+  value?: number;
+  value_orig?: number;
+  row_index: number;
+  page_name?: string;
+  rollup?: string; // 'true', 'false', or 'hidden'
+}
+
+interface VariableValue {
+  variable_id: string;
+  account_code: string;
+  month: number;
+  year: number;
+  value: number;
+}
+
+interface Props {
+  onMenuClick: () => void;
+}
+
+interface MonthYear {
+  month: number;
+  year: number;
+  label: string;
+}
+
+const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+// Helper function to generate unique ID for a variable
+const getUniqueId = (accountNum: string, month: number, year: number, lang?: string, lob?: string): string => {
+  return `${accountNum}_${month}_${year}_${lang || 'null'}_${lob || 'null'}`;
+};
+
+export default function SimulationForm({ onMenuClick }: Props) {
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [languages, setLanguages] = useState<Language[]>([]);
+  const [lobs, setLobs] = useState<Array<{ id_lob: string; name: string }>>([]);
+  const [selectedProject, setSelectedProject] = useState('');
+  const [selectedLanguage, setSelectedLanguage] = useState('');
+  const [selectedLob, setSelectedLob] = useState('');
+  const [simulationLevelValue, setSimulationLevelValue] = useState<string>('');
+  const [simulationLevelOptions, setSimulationLevelOptions] = useState<{
+    projects: Array<{ id: string; label: string }>;
+    languages: Array<{ id: string; label: string }>;
+    lobs: Array<{ id: string; label: string }>;
+  }>({ projects: [], languages: [], lobs: [] });
+  const [variables, setVariables] = useState<Variable[]>([]);
+  const [variableValues, setVariableValues] = useState<Map<string, number>>(new Map());
+  const [versions, setVersions] = useState<SimulationVersion[]>([]);
+  const [currentVersionId, setCurrentVersionId] = useState<string | null>(null);
+  const [expandedRows, setExpandedRows] = useState(new Set<string>());
+  const [loading, setLoading] = useState(true);
+  const [showNewVersionModal, setShowNewVersionModal] = useState(false);
+  const [newVersionName, setNewVersionName] = useState('');
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
+  const [periods, setPeriods] = useState<MonthYear[]>([]);
+  const [showVersionChoice, setShowVersionChoice] = useState(false);
+  const [versionCreationType, setVersionCreationType] = useState<'last' | 'template'>('template');
+  const [blockedVariables, setBlockedVariables] = useState<Set<string>>(new Set());
+  const [configVarMap, setConfigVarMap] = useState<Map<string, string>>(new Map()); // config_id -> sim_id
+  const [simToConfigMap, setSimToConfigMap] = useState<Map<string, string>>(new Map()); // sim_id -> config_id
+  const [activePage, setActivePage] = useState<string>('Main');
+  const { toast } = useToast();
+
+  // Get unique page names from variables - only include variables with page_name defined
+  const pageNames = useMemo(() => {
+    const pages = new Set<string>();
+    variables.forEach(v => {
+      if (v.page_name) {
+        pages.add(v.page_name);
+      }
+    });
+    return Array.from(pages).sort();
+  }, [variables]);
+
+  useEffect(() => {
+    loadProjects();
+  }, []);
+
+  useEffect(() => {
+    if (selectedProject) {
+      loadVersions(selectedProject);
+    } else {
+      setVersions([]);
+      setCurrentVersionId(null);
+      setLanguages([]);
+      setSelectedLanguage('');
+      setLobs([]);
+      setSelectedLob('');
+    }
+  }, [selectedProject]);
+
+  useEffect(() => {
+    if (selectedProject && currentVersionId) {
+      loadLanguages(selectedProject, currentVersionId);
+    } else {
+      setLanguages([]);
+      setSelectedLanguage('');
+      setLobs([]);
+      setSelectedLob('');
+    }
+  }, [selectedProject, currentVersionId]);
+
+  useEffect(() => {
+    if (selectedProject && currentVersionId && selectedLanguage) {
+      loadLobs(selectedProject, currentVersionId, selectedLanguage);
+    } else {
+      setLobs([]);
+      setSelectedLob('');
+    }
+  }, [selectedProject, currentVersionId, selectedLanguage]);
+
+  const loadProjects = async () => {
+    const { data } = await supabase.from('project').select('id_prj, desc_prj').order('id_prj');
+    setProjects((data || []).map(p => ({ id_prj: p.id_prj, desc_prj: p.desc_prj })));
+    setLoading(false);
+  };
+
+  // Load simulation level options when project changes
+  const loadSimulationLevelOptions = async (projectId: string) => {
+    if (!projectId) {
+      setSimulationLevelOptions({ projects: [], languages: [], lobs: [] });
+      return;
+    }
+
+    // Get languages configured for this project
+    const { data: langData } = await supabase
+      .from('lang')
+      .select('id_lang, desc_lang')
+      .eq('id_prj', projectId);
+
+    // Get LOBs configured for this project via languages
+    const { data: lobData } = await supabase
+      .from('lob')
+      .select('id_lob, name, id_lang');
+
+    // Filter LOBs that belong to languages of this project
+    const projectLangs = new Set((langData || []).map(l => l.id_lang));
+    const projectLobs = (lobData || []).filter(l => projectLangs.has(l.id_lang));
+
+    setSimulationLevelOptions({
+      projects: [{ id: `PROJECT:${projectId}`, label: projectId }],
+      languages: (langData || []).map(l => ({ 
+        id: `LANGUAGE:${l.id_lang}`, 
+        label: l.desc_lang || l.id_lang 
+      })),
+      lobs: projectLobs.map(l => ({ 
+        id: `LOB:${l.id_lob}`, 
+        label: l.name || l.id_lob 
+      }))
+    });
+  };
+
+  const loadLanguages = async (projectId: string, versionId: string) => {
+    const { data } = await (supabase as any)
+      .from('simulation')
+      .select('id_lang')
+      .eq('id_proj', projectId)
+      .eq('id_sim_ver', versionId)
+      .not('id_lang', 'is', null);
+    
+    if (data) {
+      const uniqueLangs = Array.from(
+        new Set(data.map((item: any) => item.id_lang as string).filter(Boolean))
+      ) as string[];
+      
+      setLanguages(uniqueLangs.map((lang: string) => ({
+        id_lang: lang,
+        desc_lang: lang
+      })));
+    }
+  };
+
+  const loadLobs = async (projectId: string, versionId: string, languageId: string) => {
+    // If language is DrillDown or empty, load LOBs from all languages
+    const isLangDrillDown = languageId === 'DRILLDOWN' || languageId === '';
+    
+    let query = (supabase as any)
+      .from('simulation')
+      .select('id_lob')
+      .eq('id_proj', projectId)
+      .eq('id_sim_ver', versionId)
+      .not('id_lob', 'is', null);
+    
+    // Only filter by language if it's a specific language (not DrillDown)
+    if (!isLangDrillDown && languageId) {
+      query = query.eq('id_lang', languageId);
+    }
+    
+    const { data } = await query;
+    
+    if (data) {
+      const uniqueLobs = Array.from(
+        new Set(data.map((item: any) => item.id_lob as string).filter(Boolean))
+      ) as string[];
+      
+      setLobs(uniqueLobs.map((lob: string) => ({
+        id_lob: lob,
+        name: lob
+      })));
+    }
+  };
+
+  const loadVersions = async (projectId: string) => {
+    if (!projectId) {
+      setVersions([]);
+      return;
+    }
+
+    // Get unique version IDs from simulation table
+    const { data: simData } = await (supabase as any)
+      .from('simulation')
+      .select('id_sim_ver')
+      .eq('id_proj', projectId);
+    
+    if (simData && simData.length > 0) {
+      // Get unique version IDs
+      const uniqueVersionIds = Array.from(
+        new Set(simData.map((item: any) => item.id_sim_ver))
+      );
+      
+      // Get version details from simulation_versions table
+      const { data: versionData } = await (supabase as any)
+        .from('simulation_versions')
+        .select('id_sim_ver, name, created_at, id_prj')
+        .in('id_sim_ver', uniqueVersionIds)
+        .order('created_at', { ascending: false });
+      
+      if (versionData) {
+        const mappedData = versionData.map((v: any) => ({
+          id: v.id_sim_ver,
+          name: v.name,
+          id_prj: v.id_prj,
+          id_lang: '',
+          created_at: v.created_at
+        }));
+        
+      setVersions(mappedData);
+      
+      if (mappedData.length > 0) {
+        setCurrentVersionId(mappedData[0].id);
+        loadVersion(mappedData[0].id, '', '');
+      } else {
+        setVariables([]);
+        setVariableValues(new Map());
+        setPeriods([]);
+        setCurrentVersionId(null);
+      }
+      }
+    } else {
+      setVersions([]);
+      setVariables([]);
+      setVariableValues(new Map());
+      setPeriods([]);
+      setCurrentVersionId(null);
+    }
+  };
+
+  const loadVersion = async (versionId: string, languageFilter?: string, lobFilter?: string) => {
+    // Clear formula cache when loading new version
+    clearFormulaCache();
+    
+    // Don't load any data if project or version is not selected
+    if (!selectedProject || !versionId) {
+      setVariables([]);
+      setVariableValues(new Map());
+      setPeriods([]);
+      setCurrentVersionId(null);
+      setBlockedVariables(new Set());
+      return;
+    }
+
+    const langToUse = languageFilter !== undefined ? languageFilter : selectedLanguage;
+    const lobToUse = lobFilter !== undefined ? lobFilter : selectedLob;
+    
+    // Check if we're in RollUp mode
+    const isLangRollUp = langToUse === 'ROLLUP';
+    const isLobRollUp = lobToUse === 'ROLLUP';
+    const isLangDrillDown = langToUse === 'DRILLDOWN' || langToUse === '';
+    const isLobDrillDown = lobToUse === 'DRILLDOWN' || lobToUse === '';
+
+    // Load blocked variables and config structure from config
+    let configVarsQuery = (supabase as any)
+      .from('simulation_configs_variables')
+      .select('id_sim_cfg_var, account_num, blocked, parent_account_id, id_lang, id_lob')
+      .eq('id_proj', selectedProject);
+    
+    // Apply same filters as simulation data (only for specific language/lob selections)
+    if (langToUse && !isLangRollUp && !isLangDrillDown) {
+      configVarsQuery = configVarsQuery.or(`id_lang.eq.${langToUse},id_lang.is.null`);
+    }
+    if (lobToUse && !isLobRollUp && !isLobDrillDown) {
+      configVarsQuery = configVarsQuery.or(`id_lob.eq.${lobToUse},id_lob.is.null`);
+    }
+    
+    const { data: configVars } = await configVarsQuery;
+    
+    const blockedSet = new Set<string>();
+    const configMap = new Map<string, any>(); // config_id -> config variable
+    
+    if (configVars) {
+      configVars.forEach((cv: any) => {
+        if (cv.blocked) {
+          blockedSet.add(cv.account_num);
+        }
+        configMap.set(cv.id_sim_cfg_var, cv);
+      });
+    }
+    setBlockedVariables(blockedSet);
+
+    // Load all data
+    const { data: allData } = await (supabase as any)
+      .from('simulation')
+      .select('*')
+      .eq('id_sim_ver', versionId)
+      .eq('id_proj', selectedProject)
+      .order('account_num');
+    
+    // Filter data based on language and LOB selection
+    let data = allData;
+    const activeFilters: string[] = [];
+    
+    // Handle language filter (only if it's a specific language, not DrillDown or RollUp)
+    if (langToUse && !isLangRollUp && !isLangDrillDown) {
+      activeFilters.push(`Língua: ${langToUse}`);
+      
+      // Separate included and excluded records
+      const included: any[] = [];
+      const excluded: any[] = [];
+      
+      // Filter to show ONLY variables that match the language exactly
+      // Parents with different/null language will be added later in the hierarchy logic
+      allData?.forEach((v: any) => {
+        if (v.id_lang === langToUse) {
+          included.push(v);
+        } else {
+          excluded.push(v);
+        }
+      });
+      
+      data = included;
+    }
+    
+    // Handle LOB filter (only if it's a specific LOB, not DrillDown or RollUp)
+    if (lobToUse && !isLobRollUp && !isLobDrillDown) {
+      activeFilters.push(`LOB: ${lobToUse}`);
+      
+      const included: any[] = [];
+      const excluded: any[] = [];
+      
+      // Filter to show ONLY variables that match the LOB exactly
+      // Parents with different/null LOB will be added later in the hierarchy logic
+      data?.forEach((v: any) => {
+        if (v.id_lob === lobToUse) {
+          included.push(v);
+        } else {
+          excluded.push(v);
+        }
+      });
+      
+      data = included;
+    }
+    
+    // Include direct parents of filtered records even if they don't match filters
+    if ((langToUse && !isLangRollUp && !isLangDrillDown) || (lobToUse && !isLobRollUp && !isLobDrillDown)) {
+      if (data && allData) {
+        const dataIds = new Set(data.map((v: any) => v.parent_account_id));
+        const includedIds = new Set(data.map((v: any) => v.id_sim_cfg_var));
+        
+        // Find and add missing parents
+        const parentsToAdd: any[] = [];
+        dataIds.forEach(parentId => {
+          if (parentId && !includedIds.has(parentId)) {
+            const parent = allData.find((v: any) => v.id_sim_cfg_var === parentId);
+            if (parent) {
+              parentsToAdd.push(parent);
+              includedIds.add(parent.id_sim_cfg_var);
+            }
+          }
+        });
+        
+        if (parentsToAdd.length > 0) {
+          data = [...data, ...parentsToAdd];
+        }
+      }
+    }
+    
+    if (data) {
+      const vars = data.map((v: any) => ({
+        ...v,
+        uniqueId: getUniqueId(v.account_num, v.month || 1, v.year || new Date().getFullYear(), v.id_lang, v.id_lob),
+        account_code: v.account_num,
+        calculation_type: (v.calculation_type === 'AUTO' ? 'MANUAL' : v.calculation_type || 'MANUAL') as 'MANUAL' | 'FORMULA',
+        month: v.month || 1,
+        year: v.year || new Date().getFullYear(),
+        lob: v.id_lob,
+        id_lang: v.id_lang,
+        level: parseInt(v.level || '0', 10),
+        parent_account_id: v.parent_account_id || null,
+        id_sim_cfg_var: v.id_sim_cfg_var,
+        row_index: v.row_index || 0,
+        value: v.value !== undefined ? v.value : 0,
+        value_orig: v.value_orig !== undefined ? v.value_orig : 0,
+        page_name: v.page_name || 'Main',
+        rollup: typeof v.rollup === 'boolean' ? (v.rollup ? 'true' : 'false') : (v.rollup || 'true')
+      })) as Variable[];
+      
+      setVariables(vars);
+      
+      
+      // Extract unique periods and sort them
+      const uniquePeriods = new Map<string, MonthYear>();
+      vars.forEach(v => {
+        const key = `${v.year}-${v.month}`;
+        if (!uniquePeriods.has(key)) {
+          uniquePeriods.set(key, {
+            month: v.month,
+            year: v.year,
+            label: `${monthNames[v.month - 1]}/${v.year}`
+          });
+        }
+      });
+      
+      const sortedPeriods = Array.from(uniquePeriods.values()).sort((a, b) => {
+        if (a.year !== b.year) return a.year - b.year;
+        return a.month - b.month;
+      });
+      
+      setPeriods(sortedPeriods);
+      
+      // Fix missing formulas: if a variable has calculation_type=FORMULA but formula=null,
+      // get the formula from config and update it
+      const formulaFixes: Promise<any>[] = [];
+      vars.forEach(v => {
+        if (v.calculation_type === 'FORMULA' && !v.formula) {
+          const configVar = configVars?.find((cv: any) => cv.account_num === v.account_code);
+          if (configVar?.formula) {
+            formulaFixes.push(
+              (supabase as any)
+                .from('simulation')
+                .update({ formula: configVar.formula })
+                .eq('account_num', v.account_code)
+                .eq('month', v.month)
+                .eq('year', v.year)
+                .eq('version_id', v.version_id)
+                .eq('id_lang', v.id_lang || null)
+                .eq('id_lob', v.lob || null)
+            );
+            // Also update the local variable
+            v.formula = configVar.formula;
+          }
+        }
+      });
+      
+      if (formulaFixes.length > 0) {
+        await Promise.all(formulaFixes);
+      }
+      
+      // variableValues Map will only contain user edits, not initial DB values
+      // getValue will read from variables array for DB values
+    }
+    
+    setCurrentVersionId(versionId);
+    
+    // Iniciar com todas as variáveis colapsadas (set vazio)
+    // As variáveis raiz serão visíveis por terem parent_account_id null
+    console.log('Resetting expanded rows to empty set');
+    setExpandedRows(new Set());
+  };
+
+  const handleProjectChange = (projectId: string) => {
+    setSelectedProject(projectId);
+    setSelectedLanguage('');
+    setVersions([]);
+    setCurrentVersionId(null);
+    setSimulationLevelValue('');
+    if (projectId) {
+      loadVersions(projectId);
+      loadSimulationLevelOptions(projectId);
+    } else {
+      setSimulationLevelOptions({ projects: [], languages: [], lobs: [] });
+    }
+  };
+
+  const handleSimulationLevelChange = (value: string) => {
+    setSimulationLevelValue(value);
+  };
+
+  const handleLanguageChange = (languageId: string) => {
+    const actualLanguage = (languageId === 'DRILLDOWN' || languageId === 'ROLLUP') ? languageId : languageId;
+    setSelectedLanguage(actualLanguage);
+    
+    // When language is ROLLUP, LOB must also be ROLLUP
+    const lobToUse = actualLanguage === 'ROLLUP' ? 'ROLLUP' : selectedLob;
+    if (actualLanguage === 'ROLLUP' && selectedLob !== 'ROLLUP') {
+      setSelectedLob('ROLLUP');
+    }
+    
+    if (currentVersionId) {
+      loadVersion(currentVersionId, actualLanguage, lobToUse);
+    }
+  };
+
+  const handleLobChange = (lobId: string) => {
+    const actualLob = (lobId === 'DRILLDOWN' || lobId === 'ROLLUP') ? lobId : lobId;
+    setSelectedLob(actualLob);
+    // Não recarregar dados quando estamos no tab Simulation
+    if (currentVersionId && activePage !== 'Simulation') {
+      loadVersion(currentVersionId, selectedLanguage, actualLob);
+    }
+  };
+
+  const handleVersionChange = (versionId: string) => {
+    setCurrentVersionId(versionId);
+    loadVersion(versionId, selectedLanguage, selectedLob);
+  };
+
+  const handleClearSelections = () => {
+    setSelectedProject('');
+    setSelectedLanguage('');
+    setSelectedLob('');
+    setVersions([]);
+    setCurrentVersionId(null);
+    setVariables([]);
+    setVariableValues(new Map());
+    setPeriods([]);
+  };
+
+  const handleNewVersionClick = async () => {
+    if (!selectedProject) {
+      toast({ title: 'Atenção', description: 'Selecione um projeto' });
+      return;
+    }
+
+    // Check if there are existing versions for this project
+    const { data: existingVersions } = await (supabase as any)
+      .from('simulation_versions')
+      .select('id_sim_ver')
+      .eq('id_prj', selectedProject)
+      .limit(1);
+
+    if (existingVersions && existingVersions.length > 0) {
+      // Show choice dialog
+      setShowVersionChoice(true);
+    } else {
+      // No versions exist, go directly to create from template
+      setShowNewVersionModal(true);
+    }
+  };
+
+  const createVersionFromLastVersion = async (versionName: string) => {
+    try {
+      // Get the last version
+      const { data: lastVersionData } = await (supabase as any)
+        .from('simulation_versions')
+        .select('id_sim_ver')
+        .eq('id_prj', selectedProject)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (!lastVersionData || lastVersionData.length === 0) {
+        throw new Error('Nenhuma versão anterior encontrada');
+      }
+
+      const lastVersionId = lastVersionData[0].id_sim_ver;
+
+      // Create new version
+      const { data: newVersion, error: versionError } = await (supabase as any)
+        .from('simulation_versions')
+        .insert([{
+          name: versionName,
+          id_prj: selectedProject
+        }])
+        .select();
+
+      if (versionError || !newVersion?.[0]) {
+        throw new Error('Erro ao criar versão');
+      }
+
+      const versionId = newVersion[0].id_sim_ver;
+
+      // Get all records from the last simulation
+      const { data: lastSimData } = await (supabase as any)
+        .from('simulation')
+        .select('*')
+        .eq('id_sim_ver', lastVersionId)
+        .order('account_num');
+
+      if (!lastSimData || lastSimData.length === 0) {
+        throw new Error('Nenhum dado encontrado na última versão');
+      }
+
+      // Copy all data
+      const variablesToInsert = lastSimData.map((record: any) => ({
+        id_sim_ver: versionId,
+        version_id: versionId,
+        row_index: record.row_index,
+        account_num: record.account_num,
+        name: record.name,
+        calculation_type: record.calculation_type === 'AUTO' ? 'MANUAL' : (record.calculation_type || 'MANUAL'),
+        formula: record.formula || null,
+        value: record.value || 0,
+        value_orig: record.value_orig || 0,
+        month: record.month,
+        year: record.year,
+        id_lob: record.id_lob,
+        id_proj: selectedProject,
+        id_lang: record.id_lang,
+        value_type: record.value_type || 'number',
+        level: record.level,
+        parent_account_id: record.parent_account_id,
+        id_sim_cfg_var: record.id_sim_cfg_var,
+        page_name: record.page_name || 'Main',
+        rollup: typeof record.rollup === 'boolean' ? (record.rollup ? 'true' : 'false') : (record.rollup || 'true')
+      }));
+
+      const { error: varsError } = await (supabase as any)
+        .from('simulation')
+        .insert(variablesToInsert);
+
+      if (varsError) {
+        console.error('Error inserting variables:', varsError);
+        throw varsError;
+      }
+
+      loadVersions(selectedProject);
+      toast({ title: 'Sucesso', description: 'Versão criada com sucesso a partir da última versão' });
+    } catch (error) {
+      console.error('Error creating version from last:', error);
+      toast({ title: 'Erro', description: 'Erro ao criar versão', variant: 'destructive' });
+      throw error;
+    }
+  };
+
+  const createVersionFromTemplate = async (versionName: string) => {
+    try {
+      // Get the simulation config for this project
+      const { data: configData } = await (supabase as any)
+        .from('simulation_configs')
+        .select('id_sim_cfg')
+        .eq('id_prj', selectedProject)
+        .eq('is_active', true)
+        .limit(1);
+
+      if (!configData || configData.length === 0) {
+        throw new Error('Nenhuma configuração ativa encontrada para este projeto');
+      }
+
+      const configId = configData[0].id_sim_cfg;
+
+      // Get config variables
+      const { data: configVars } = await (supabase as any)
+        .from('simulation_configs_variables')
+        .select('*')
+        .eq('id_sim_cfg', configId)
+        .order('row_index');
+
+      if (!configVars || configVars.length === 0) {
+        throw new Error('Nenhuma variável encontrada no template');
+      }
+
+      // Create new version
+      const { data: newVersion, error: versionError } = await (supabase as any)
+        .from('simulation_versions')
+        .insert([{
+          name: versionName,
+          id_prj: selectedProject
+        }])
+        .select();
+
+      if (versionError || !newVersion?.[0]) {
+        throw new Error('Erro ao criar versão');
+      }
+
+      const versionId = newVersion[0].id_sim_ver;
+
+      // Create 3 months for each config variable (no duplication by LOB or language)
+      const variablesToInsert: any[] = [];
+      const monthsToCreate = [1, 2, 3]; // Jan, Feb, Mar
+      const yearToUse = new Date().getFullYear();
+
+      configVars.forEach((configVar: any, index: number) => {
+        monthsToCreate.forEach((month) => {
+          const valueType = configVar.value_type === 'percentage' ? 'percentage' : 'number';
+          const recordData = {
+            id_sim_ver: versionId,
+            version_id: versionId,
+            row_index: (index * 3) + month,
+            account_num: configVar.account_num,
+            name: configVar.name,
+            calculation_type: configVar.calculation_type === 'AUTO' ? 'MANUAL' : (configVar.calculation_type || 'MANUAL'),
+            formula: configVar.formula || null,
+            value: 0,
+            value_orig: 0,
+            month: month,
+            year: yearToUse,
+            id_lob: configVar.id_lob,
+            id_proj: selectedProject,
+            id_lang: configVar.id_lang,
+            value_type: valueType,
+            level: configVar.level,
+            parent_account_id: configVar.parent_account_id,
+            id_sim_cfg_var: configVar.id_sim_cfg_var,
+            page_name: configVar.page_name || 'Main',
+            rollup: (configVar.rollup || 'true') as any
+          };
+          
+          variablesToInsert.push(recordData);
+        });
+      });
+
+      if (variablesToInsert.length === 0) {
+        throw new Error('Não há dados para criar');
+      }
+
+      // Insert all variables
+      const { error: varsError } = await (supabase as any)
+        .from('simulation')
+        .insert(variablesToInsert);
+
+      if (varsError) {
+        console.error('Error inserting variables:', varsError);
+        throw varsError;
+      }
+
+      loadVersions(selectedProject);
+      toast({ title: 'Sucesso', description: 'Versão criada com sucesso a partir do template' });
+    } catch (error) {
+      console.error('Error creating version from template:', error);
+      toast({ title: 'Erro', description: 'Erro ao criar versão', variant: 'destructive' });
+      throw error;
+    }
+  };
+
+  const handleCreateVersion = async () => {
+    if (!newVersionName.trim()) {
+      toast({ title: 'Atenção', description: 'Digite um nome para a versão' });
+      return;
+    }
+
+    if (!selectedProject) {
+      toast({ title: 'Atenção', description: 'Selecione um projeto' });
+      return;
+    }
+
+    try {
+      if (versionCreationType === 'last') {
+        await createVersionFromLastVersion(newVersionName);
+      } else {
+        await createVersionFromTemplate(newVersionName);
+      }
+
+      setShowNewVersionModal(false);
+      setShowVersionChoice(false);
+      setNewVersionName('');
+    } catch (error) {
+      // Error already handled in the called functions
+    }
+  };
+
+  const handleSave = async () => {
+    if (!currentVersionId) {
+      toast({ title: 'Atenção', description: 'Nenhuma versão selecionada' });
+      return;
+    }
+
+    setSaveStatus('saving');
+
+    try {
+      // Update each edited value from variableValues Map
+      const updates: Promise<any>[] = [];
+      
+      variableValues.forEach((value, key) => {
+        // Parse the key: accountCode-year-month-language-lob
+        const [accountCode, year, month, language, lob] = key.split('-');
+        
+        // Find the matching variable
+        const variable = variables.find(v => 
+          v.account_code === accountCode && 
+          v.year === parseInt(year) && 
+          v.month === parseInt(month) && 
+          v.id_lang === language &&
+          v.lob === lob
+        );
+        
+        if (variable) {
+          updates.push(
+            (supabase as any)
+              .from('simulation')
+              .update({ value: value })
+              .eq('account_num', variable.account_code)
+              .eq('month', variable.month)
+              .eq('year', variable.year)
+              .eq('version_id', variable.version_id)
+              .eq('id_lang', variable.id_lang || null)
+              .eq('id_lob', variable.lob || null)
+          );
+        }
+      });
+      
+      if (updates.length > 0) {
+        await Promise.all(updates);
+      }
+      
+      // Reload the version to update the UI with saved values
+      await loadVersion(currentVersionId);
+      
+      // Clear the edited values map since they're now saved
+      setVariableValues(new Map());
+      
+      setSaveStatus('success');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+      toast({ title: 'Sucesso', description: `${updates.length} valores guardados` });
+    } catch (error) {
+      console.error('Error saving:', error);
+      setSaveStatus('error');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+      toast({ title: 'Erro', description: 'Erro ao guardar', variant: 'destructive' });
+    }
+  };
+
+  const hasChildren = (uniqueId: string) => {
+    const thisVar = variables.find(v => v.uniqueId === uniqueId);
+    if (!thisVar) return false;
+    
+    // Check if any variable has this config ID as parent
+    return variables.some(v => v.parent_account_id === thisVar.id_sim_cfg_var);
+  };
+
+  const isLeafAccount = (accountCode: string, allVars: Variable[]) => {
+    const variable = allVars.find(v => v.account_code === accountCode);
+    if (!variable) return true;
+    return !hasChildren(variable.uniqueId);
+  };
+
+  const getChildAccounts = (accountCode: string, allVars: Variable[]) => {
+    const variable = allVars.find(v => v.account_code === accountCode);
+    if (!variable) return [];
+    
+    // Find all variables whose parent_account_id matches this config ID
+    return allVars.filter(v => v.parent_account_id === variable.id_sim_cfg_var);
+  };
+
+  const calculateParentValue = (accountCode: string, year: number, month: number): number => {
+    const children = getChildAccounts(accountCode, variables);
+    return children.reduce((sum, child) => {
+      if (isLeafAccount(child.account_code, variables)) {
+        return sum + (getValue(child, year, month) || 0);
+      } else {
+        return sum + calculateParentValue(child.account_code, year, month);
+      }
+    }, 0);
+  };
+
+  const evaluateFormula = (formula: string, year: number, month: number, accountCode?: string): number => {
+    if (!formula) return 0;
+    
+    try {
+      // Helper function to get value for account reference
+      const getAccountValue = (accCode: string, targetYear?: number, targetMonth?: number): number | null => {
+        const variable = variables.find(v => v.account_code === accCode);
+        if (!variable) return null;
+        const value = getValue(variable, targetYear ?? year, targetMonth ?? month);
+        return value;
+      };
+
+      // Check if this is an OR formula
+      if (isOrFormula(formula)) {
+        // Use the OR evaluator with cache
+        return evaluateOrFormula(
+          accountCode || 'unknown',
+          formula,
+          (subFormula) => evaluateSimpleFormula(subFormula, year, month, getAccountValue),
+          getAccountValue
+        );
+      }
+
+      // Regular formula evaluation
+      return evaluateSimpleFormula(formula, year, month, getAccountValue);
+    } catch (error) {
+      console.error('Error evaluating formula:', formula, error);
+      return 0;
+    }
+  };
+
+  const evaluateSimpleFormula = (
+    formula: string, 
+    year: number, 
+    month: number, 
+    getAccountValue: (accountCode: string, targetYear?: number, targetMonth?: number) => number | null
+  ): number => {
+    try {
+      let processedFormula = formula;
+
+      // Process temporal functions
+      processedFormula = processedFormula.replace(/PREV_MONTH\(\[([^\]]+)\]\)/g, (_, accountCode) => {
+        const prevMonth = month === 1 ? 12 : month - 1;
+        const prevYear = month === 1 ? year - 1 : year;
+        return String(getAccountValue(accountCode, prevYear, prevMonth));
+      });
+
+      processedFormula = processedFormula.replace(/PREV_YEAR\(\[([^\]]+)\]\)/g, (_, accountCode) => {
+        return String(getAccountValue(accountCode, year - 1, month));
+      });
+
+      processedFormula = processedFormula.replace(/YTD\(\[([^\]]+)\]\)/g, (_, accountCode) => {
+        const variable = variables.find(v => v.account_code === accountCode);
+        if (!variable) return '0';
+        let sum = 0;
+        for (let m = 1; m <= month; m++) {
+          sum += getValue(variable, year, m);
+        }
+        return String(sum);
+      });
+
+      // Process mathematical functions with multiple arguments
+      processedFormula = processedFormula.replace(/SUM\(([^)]+)\)/g, (_, args) => {
+        const values = args.split(',').map((arg: string) => {
+          const trimmed = arg.trim();
+          if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+            return getAccountValue(trimmed.slice(1, -1));
+          }
+          return parseFloat(trimmed) || 0;
+        });
+        return String(values.reduce((a: number, b: number) => a + b, 0));
+      });
+
+      processedFormula = processedFormula.replace(/AVG\(([^)]+)\)/g, (_, args) => {
+        const values = args.split(',').map((arg: string) => {
+          const trimmed = arg.trim();
+          if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+            return getAccountValue(trimmed.slice(1, -1));
+          }
+          return parseFloat(trimmed) || 0;
+        });
+        return String(values.reduce((a: number, b: number) => a + b, 0) / values.length);
+      });
+
+      processedFormula = processedFormula.replace(/MAX\(([^)]+)\)/g, (_, args) => {
+        const values = args.split(',').map((arg: string) => {
+          const trimmed = arg.trim();
+          if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+            return getAccountValue(trimmed.slice(1, -1));
+          }
+          return parseFloat(trimmed) || 0;
+        });
+        return String(Math.max(...values));
+      });
+
+      processedFormula = processedFormula.replace(/MIN\(([^)]+)\)/g, (_, args) => {
+        const values = args.split(',').map((arg: string) => {
+          const trimmed = arg.trim();
+          if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+            return getAccountValue(trimmed.slice(1, -1));
+          }
+          return parseFloat(trimmed) || 0;
+        });
+        return String(Math.min(...values));
+      });
+
+      // Process single-argument math functions
+      processedFormula = processedFormula.replace(/ABS\(([^)]+)\)/g, (_, arg) => {
+        const value = arg.trim().startsWith('[') 
+          ? getAccountValue(arg.trim().slice(1, -1))
+          : parseFloat(arg);
+        return String(Math.abs(value));
+      });
+
+      processedFormula = processedFormula.replace(/SQRT\(([^)]+)\)/g, (_, arg) => {
+        const value = arg.trim().startsWith('[') 
+          ? getAccountValue(arg.trim().slice(1, -1))
+          : parseFloat(arg);
+        return String(Math.sqrt(value));
+      });
+
+      processedFormula = processedFormula.replace(/ROUND\(([^,]+),\s*(\d+)\)/g, (_, value, decimals) => {
+        const val = value.trim().startsWith('[') 
+          ? getAccountValue(value.trim().slice(1, -1))
+          : parseFloat(value);
+        const dec = parseInt(decimals);
+        return String(Math.round(val * Math.pow(10, dec)) / Math.pow(10, dec));
+      });
+
+      processedFormula = processedFormula.replace(/POW\(([^,]+),\s*([^)]+)\)/g, (_, base, exp) => {
+        const baseVal = base.trim().startsWith('[') 
+          ? getAccountValue(base.trim().slice(1, -1))
+          : parseFloat(base);
+        const expVal = exp.trim().startsWith('[') 
+          ? getAccountValue(exp.trim().slice(1, -1))
+          : parseFloat(exp);
+        return String(Math.pow(baseVal, expVal));
+      });
+
+      // Process IF function
+      processedFormula = processedFormula.replace(/IF\(([^,]+),\s*([^,]+),\s*([^)]+)\)/g, (_, condition, trueVal, falseVal) => {
+        // Replace account references in condition
+        let processedCondition = condition;
+        const condRefs = condition.match(/\[([^\]]+)\]/g);
+        if (condRefs) {
+          for (const ref of condRefs) {
+            const accountCode = ref.slice(1, -1);
+            processedCondition = processedCondition.replace(ref, String(getAccountValue(accountCode)));
+          }
+        }
+        
+        const isTrue = new Function('return ' + processedCondition)();
+        const resultVal = isTrue ? trueVal.trim() : falseVal.trim();
+        
+        if (resultVal.startsWith('[') && resultVal.endsWith(']')) {
+          return String(getAccountValue(resultVal.slice(1, -1)));
+        }
+        return resultVal;
+      });
+
+      // Process remaining account references
+      const references = processedFormula.match(/\[([^\]]+)\]/g);
+      if (references) {
+        for (const ref of references) {
+          const accountCode = ref.slice(1, -1);
+          const value = getAccountValue(accountCode);
+          processedFormula = processedFormula.replace(ref, String(value ?? 0));
+        }
+      }
+      
+      const result = new Function('return ' + processedFormula)();
+      return isNaN(result) ? 0 : result;
+    } catch (error) {
+      console.error('Error evaluating simple formula:', formula, error);
+      return 0;
+    }
+  };
+
+  const getValue = (variable: Variable, year: number, month: number): number => {
+    // Check if we're in RollUp mode
+    const isLangRollUp = selectedLanguage === 'ROLLUP';
+    const isLobRollUp = selectedLob === 'ROLLUP';
+    const isLangDrillDown = selectedLanguage === 'DRILLDOWN' || selectedLanguage === '';
+    
+    // If in RollUp mode, aggregate values by name (only for variables with rollup = true)
+    if (isLangRollUp || isLobRollUp) {
+      // If variable has rollup = false, return its individual value (no aggregation)
+      if (variable.rollup === 'false') {
+        const matchingVar = variables.find(v => 
+          v.account_code === variable.account_code && 
+          v.year === year && 
+          v.month === month && 
+          v.lob === variable.lob &&
+          v.id_lang === variable.id_lang
+        );
+        
+        if (matchingVar?.calculation_type === 'FORMULA' && matchingVar.formula) {
+          return evaluateFormula(matchingVar.formula, year, month, matchingVar.account_code);
+        }
+        return matchingVar?.value || 0;
+      }
+      
+      // Find all variables with the same name, period and same page (sheet) that have rollup = true
+      // Exclude variables with page_name = 'Simulation' from aggregation
+      const matchingVars = variables.filter(v => {
+        if (v.name !== variable.name) return false;
+        if (v.year !== year) return false;
+        if (v.month !== month) return false;
+        if ((v.page_name || 'Main') !== (variable.page_name || 'Main')) return false;
+        // Exclude Simulation page variables from aggregation
+        if (v.page_name === 'Simulation') return false;
+        // Only aggregate variables with rollup = true
+        if (v.rollup === 'false' || v.rollup === 'hidden') return false;
+        
+        // If Language is NOT RollUp, filter by the variable's language
+        // This handles both DrillDown (use variable.id_lang) and specific language selection
+        if (!isLangRollUp) {
+          if (v.id_lang !== variable.id_lang) return false;
+        }
+        
+        // If LOB is NOT RollUp, filter by the variable's LOB
+        if (!isLobRollUp) {
+          if (v.lob !== variable.lob) return false;
+        }
+        
+        return true;
+      });
+      
+      // Sum up all matching values
+      return matchingVars.reduce((sum, v) => {
+        if (v.calculation_type === 'FORMULA' && v.formula) {
+          return sum + evaluateFormula(v.formula, year, month, v.account_code);
+        }
+        return sum + (v.value || 0);
+      }, 0);
+    }
+    
+    const key = `${variable.account_code}-${year}-${month}-${variable.id_lang}-${variable.lob}`;
+    
+    // Check if user has edited this value in the Map first
+    if (variableValues.has(key)) {
+      const editedValue = variableValues.get(key) || 0;
+      return editedValue;
+    }
+    
+    // For FORMULA type variables, always recalculate based on current dependencies
+    // This ensures formulas update when their referenced variables change
+    const matchingVar = variables.find(v => 
+      v.account_code === variable.account_code && 
+      v.year === year && 
+      v.month === month && 
+      v.lob === variable.lob &&
+      v.id_lang === variable.id_lang
+    );
+    
+    if (matchingVar?.calculation_type === 'FORMULA' && matchingVar.formula) {
+      const result = evaluateFormula(matchingVar.formula, year, month, matchingVar.account_code);
+      return result;
+    }
+    
+    // For non-formula variables, read from database value
+    return matchingVar?.value || 0;
+  };
+
+  const getOriginalValue = (variable: Variable, year: number, month: number): number => {
+    // Check if we're in RollUp mode
+    const isLangRollUp = selectedLanguage === 'ROLLUP';
+    const isLobRollUp = selectedLob === 'ROLLUP';
+    
+    // If in RollUp mode, aggregate original values by name (only for variables with rollup = true)
+    if (isLangRollUp || isLobRollUp) {
+      // If variable has rollup = false, return its individual original value
+      if (variable.rollup === 'false') {
+        const matchingVar = variables.find(v => 
+          v.account_code === variable.account_code && 
+          v.year === year && 
+          v.month === month && 
+          v.lob === variable.lob &&
+          v.id_lang === variable.id_lang
+        );
+        return matchingVar?.value_orig || 0;
+      }
+      
+      // Find all variables with the same name, period and same page (sheet) that have rollup = true
+      const matchingVars = variables.filter(v => {
+        if (v.name !== variable.name) return false;
+        if (v.year !== year) return false;
+        if (v.month !== month) return false;
+        if ((v.page_name || 'Main') !== (variable.page_name || 'Main')) return false;
+        // Exclude Simulation page variables from aggregation
+        if (v.page_name === 'Simulation') return false;
+        // Only aggregate variables with rollup = true
+        if (v.rollup === 'false' || v.rollup === 'hidden') return false;
+        
+        // If Language is NOT RollUp, filter by the variable's language
+        if (!isLangRollUp) {
+          if (v.id_lang !== variable.id_lang) return false;
+        }
+        
+        // If LOB is NOT RollUp, filter by the variable's LOB
+        if (!isLobRollUp) {
+          if (v.lob !== variable.lob) return false;
+        }
+        
+        return true;
+      });
+      
+      // Sum up all matching original values
+      return matchingVars.reduce((sum, v) => sum + (v.value_orig || 0), 0);
+    }
+    
+    // Find the original record to get value_orig
+    const matchingVar = variables.find(v => 
+      v.account_code === variable.account_code && 
+      v.year === year && 
+      v.month === month && 
+      v.lob === variable.lob &&
+      v.id_lang === variable.id_lang
+    );
+    return matchingVar?.value_orig || 0;
+  };
+
+  const updateValue = (accountCode: string, year: number, month: number, language: string, lob: string, value: string) => {
+    const key = `${accountCode}-${year}-${month}-${language}-${lob}`;
+    setVariableValues(prev => {
+      const newMap = new Map(prev);
+      newMap.set(key, parseFloat(value) || 0);
+      return newMap;
+    });
+  };
+
+  const getTotal = (variable: Variable) => {
+    return periods.reduce((sum, period) => 
+      sum + getValue(variable, period.year, period.month), 0
+    );
+  };
+
+  const getOriginalTotal = (variable: Variable) => {
+    return periods.reduce((sum, period) => 
+      sum + getOriginalValue(variable, period.year, period.month), 0
+    );
+  };
+
+  const toggleExpandedRow = (varId: string) => {
+    setExpandedRows(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(varId)) {
+        newSet.delete(varId);
+      } else {
+        newSet.add(varId);
+      }
+      return newSet;
+    });
+  };
+
+  const getVisibleVariables = () => {
+    // Filter variables by active page - only show variables that have page_name matching the active tab
+    // Variables without page_name are excluded
+    // Also exclude hidden variables (rollup === 'hidden')
+    const pageFilteredVars = variables.filter(v => 
+      v.page_name && 
+      v.page_name === activePage && 
+      v.rollup !== 'hidden'
+    );
+    
+    // SPECIAL CASE: Simulation page is independent of DrillDown/RollUp filters
+    // But filters by simulation level selection
+    if (activePage === 'Simulation') {
+      // Parse the simulation level value to determine filter
+      let filteredVars = pageFilteredVars;
+      
+      if (simulationLevelValue) {
+        const [levelType, levelId] = simulationLevelValue.split(':');
+        
+        if (levelType === 'PROJECT') {
+          // PROJECT level: show only records with id_lang = null AND id_lob = null
+          filteredVars = pageFilteredVars.filter(v => !v.id_lang && !v.lob);
+        } else if (levelType === 'LANGUAGE' && levelId) {
+          // Filter by specific language with lob = null
+          filteredVars = pageFilteredVars.filter(v => v.id_lang === levelId && !v.lob);
+        } else if (levelType === 'LOB' && levelId) {
+          // Filter by specific LOB
+          filteredVars = pageFilteredVars.filter(v => v.lob === levelId);
+        }
+      } else {
+        // No level selected: show only records with id_lang = null AND id_lob = null (default to project level)
+        filteredVars = pageFilteredVars.filter(v => !v.id_lang && !v.lob);
+      }
+      
+      // Get unique variables by account_code + language + lob combination
+      const uniqueVarsMap = new Map<string, Variable>();
+      filteredVars.forEach(v => {
+        const uniqueKey = `${v.account_code}_${v.id_lang || 'null'}_${v.lob || 'null'}`;
+        if (!uniqueVarsMap.has(uniqueKey)) {
+          uniqueVarsMap.set(uniqueKey, v);
+        }
+      });
+      
+      const uniqueVars = Array.from(uniqueVarsMap.values());
+      
+      // Create a set of all config var IDs for quick lookup
+      const allCfgVarIds = new Set(uniqueVars.map(v => v.id_sim_cfg_var));
+      
+      // Identify root variables
+      const rootVars: Variable[] = [];
+      uniqueVars.forEach(variable => {
+        const isRoot = !variable.parent_account_id || 
+                       variable.parent_account_id === variable.id_sim_cfg_var ||
+                       !allCfgVarIds.has(variable.parent_account_id);
+        if (isRoot) {
+          rootVars.push(variable);
+        }
+      });
+      
+      // Sort roots by account_num
+      rootVars.sort((a, b) => {
+        const aNum = a.account_code || '';
+        const bNum = b.account_code || '';
+        return aNum.localeCompare(bNum, undefined, { numeric: true });
+      });
+      
+      // Build visible list hierarchically
+      const visible: Variable[] = [];
+      const visited = new Set<string>();
+      
+      const addVariableAndChildren = (variable: Variable) => {
+        if (visited.has(variable.uniqueId)) return;
+        visited.add(variable.uniqueId);
+        visible.push(variable);
+        
+        if (expandedRows.has(variable.uniqueId)) {
+          const children = uniqueVars.filter(v => {
+            if (v.parent_account_id !== variable.id_sim_cfg_var) return false;
+            if (visited.has(v.uniqueId)) return false;
+            if (v.id_lang !== variable.id_lang) return false;
+            if (v.lob !== variable.lob) return false;
+            return true;
+          });
+          
+          children.sort((a, b) => {
+            const aNum = a.account_code || '';
+            const bNum = b.account_code || '';
+            return aNum.localeCompare(bNum, undefined, { numeric: true });
+          });
+          
+          children.forEach(child => addVariableAndChildren(child));
+        }
+      };
+      
+      rootVars.forEach(root => addVariableAndChildren(root));
+      return visible;
+    }
+    
+    // Check if we're in RollUp mode
+    const isLangRollUp = selectedLanguage === 'ROLLUP';
+    const isLobRollUp = selectedLob === 'ROLLUP';
+    
+    // Debug: log DE variables in the current page
+    const deVars = pageFilteredVars.filter(v => v.id_lang === 'DE');
+    if (deVars.length > 0) {
+      console.log('DE variables in page', activePage, ':', deVars.map(v => ({ name: v.name, lob: v.lob, id_lang: v.id_lang })));
+    } else {
+      console.log('No DE variables found in page', activePage, '- total vars in page:', pageFilteredVars.length);
+    }
+    
+    // If RollUp mode is active, aggregate variables by name
+    if (isLangRollUp || isLobRollUp) {
+      // When Language is DrillDown and LOB is RollUp: keep languages separate, aggregate LOBs
+      // When Language is RollUp: aggregate all languages
+      
+      // Step 1: Get unique variables for display (one row per name+language when lang is DrillDown)
+      const uniqueVarsForDisplayMap = new Map<string, Variable>();
+      
+      pageFilteredVars.forEach(v => {
+        // Create display key - include language if NOT in RollUp mode
+        const langPart = !isLangRollUp ? (v.id_lang || 'null') : 'all';
+        const displayKey = `${v.name}_${langPart}`;
+        
+        if (!uniqueVarsForDisplayMap.has(displayKey)) {
+          // Create a copy of the variable for display
+          const displayVar: Variable = {
+            ...v,
+            uniqueId: `rollup_${v.name}_${langPart}`,
+            // Keep original id_lang when language is DrillDown, set to ROLLUP when language is RollUp
+            id_lang: isLangRollUp ? 'ROLLUP' : v.id_lang,
+            // Set LOB to ROLLUP when aggregating LOBs
+            lob: isLobRollUp ? 'ROLLUP' : v.lob,
+          };
+          uniqueVarsForDisplayMap.set(displayKey, displayVar);
+        }
+      });
+      
+      const uniqueVars = Array.from(uniqueVarsForDisplayMap.values());
+      
+      // Sort by language first, then row_index or account_code
+      uniqueVars.sort((a, b) => {
+        // First sort by language
+        const langCompare = (a.id_lang || '').localeCompare(b.id_lang || '');
+        if (langCompare !== 0) return langCompare;
+        // Then by row_index
+        if (a.row_index !== b.row_index) return a.row_index - b.row_index;
+        return (a.account_code || '').localeCompare(b.account_code || '', undefined, { numeric: true });
+      });
+      
+      return uniqueVars;
+    }
+    
+    // Normal DrillDown or specific filter behavior
+    // Check if we're in DrillDown mode (show all languages/lobs separately)
+    const isLangDrillDown = selectedLanguage === 'DRILLDOWN' || selectedLanguage === '';
+    const isLobDrillDown = selectedLob === 'DRILLDOWN' || selectedLob === '';
+    
+    // Get unique variables by account_code + language + lob combination
+    // In DrillDown mode, we show each language/lob as separate rows
+    const uniqueVarsMap = new Map<string, Variable>();
+    pageFilteredVars.forEach(v => {
+      // Create unique key based on account_code, language and lob
+      // This ensures we show separate rows for each language/lob combination
+      const langPart = isLangDrillDown ? (v.id_lang || 'null') : 'all';
+      const lobPart = isLobDrillDown ? (v.lob || 'null') : 'all';
+      const uniqueKey = `${v.account_code}_${langPart}_${lobPart}`;
+      
+      if (!uniqueVarsMap.has(uniqueKey)) {
+        uniqueVarsMap.set(uniqueKey, v);
+      }
+    });
+    
+    const uniqueVars = Array.from(uniqueVarsMap.values());
+    
+    // Create a set of all config var IDs for quick lookup
+    const allCfgVarIds = new Set(uniqueVars.map(v => v.id_sim_cfg_var));
+    
+    // Identify root variables (where parent_account_id is null or doesn't exist in config vars)
+    const rootVars: Variable[] = [];
+    uniqueVars.forEach(variable => {
+      // A variable is root if:
+      // 1. parent_account_id is null/undefined, OR
+      // 2. parent_account_id equals its own id_sim_cfg_var (self-reference), OR
+      // 3. parent_account_id doesn't correspond to any id_sim_cfg_var in our variables
+      const isRoot = !variable.parent_account_id || 
+                     variable.parent_account_id === variable.id_sim_cfg_var ||
+                     !allCfgVarIds.has(variable.parent_account_id);
+      
+      if (isRoot) {
+        rootVars.push(variable);
+      }
+    });
+    
+    // Sort roots by account_num
+    rootVars.sort((a, b) => {
+      const aNum = a.account_code || '';
+      const bNum = b.account_code || '';
+      return aNum.localeCompare(bNum, undefined, { numeric: true });
+    });
+    
+    // Build visible list hierarchically
+    const visible: Variable[] = [];
+    const visited = new Set<string>(); // Track visited to prevent infinite loops
+    
+    const addVariableAndChildren = (variable: Variable) => {
+      // Prevent cycles by checking if already visited
+      if (visited.has(variable.uniqueId)) {
+        return;
+      }
+      
+      visited.add(variable.uniqueId);
+      visible.push(variable);
+      
+      // If this variable is expanded, add its children
+      if (expandedRows.has(variable.uniqueId)) {
+        // Find all children (variables whose parent_account_id equals this variable's id_sim_cfg_var)
+        // In DrillDown mode, also filter by same language/lob to maintain proper hierarchy
+        const children = uniqueVars.filter(v => {
+          if (v.parent_account_id !== variable.id_sim_cfg_var) return false;
+          if (visited.has(v.uniqueId)) return false;
+          
+          // In DrillDown mode, children should have the same language/lob as parent
+          if (isLangDrillDown && v.id_lang !== variable.id_lang) return false;
+          if (isLobDrillDown && v.lob !== variable.lob) return false;
+          
+          return true;
+        });
+        
+        // Sort children by account_num
+        children.sort((a, b) => {
+          const aNum = a.account_code || '';
+          const bNum = b.account_code || '';
+          return aNum.localeCompare(bNum, undefined, { numeric: true });
+        });
+        
+        // Recursively add each child
+        children.forEach(child => addVariableAndChildren(child));
+      }
+    };
+    
+    // Start with root variables
+    rootVars.forEach(root => addVariableAndChildren(root));
+    
+    return visible;
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-primary" />
+          <p className="text-muted-foreground">A carregar...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <style>{`
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
+        }
+        input[type="number"] {
+          -moz-appearance: textfield;
+        }
+      `}</style>
+      
+      {/* Header */}
+      <div className="bg-card border-b sticky top-0 z-10">
+        <div className="container mx-auto px-6 py-4">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon" onClick={onMenuClick}>
+                <Menu className="h-5 w-5" />
+              </Button>
+              <h1 className="text-xl font-bold">SimulationForm</h1>
+            </div>
+            
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleClearSelections}
+                disabled={!selectedProject}
+                className="text-xs h-7"
+              >
+                <X className="h-3 w-3 mr-1" />
+                Clear
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleNewVersionClick}
+                disabled={!selectedProject}
+                className="text-xs h-7"
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                New Version
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleSave}
+                disabled={!currentVersionId || saveStatus === 'saving'}
+                variant={saveStatus === 'success' ? 'default' : saveStatus === 'error' ? 'destructive' : 'default'}
+                className="text-xs h-7"
+              >
+                {saveStatus === 'saving' && (
+                  <>
+                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                    Saving...
+                  </>
+                )}
+                {saveStatus === 'success' && (
+                  <>
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    Saved
+                  </>
+                )}
+                {saveStatus === 'error' && (
+                  <>
+                    <XCircle className="h-3 w-3 mr-1" />
+                    Error
+                  </>
+                )}
+                {saveStatus === 'idle' && (
+                  <>
+                    <Save className="h-3 w-3 mr-1" />
+                    Save
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+            <div>
+              <Label className="text-xs">Project</Label>
+              <Select value={selectedProject} onValueChange={handleProjectChange}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Project" />
+                </SelectTrigger>
+                <SelectContent>
+                  {projects.map(p => (
+                    <SelectItem key={p.id_prj} value={p.id_prj} className="text-xs">
+                      {p.id_prj}{p.desc_prj ? ` - ${p.desc_prj}` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label className="text-xs">Version</Label>
+              <Select value={currentVersionId || ''} onValueChange={handleVersionChange} disabled={!selectedProject}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Version" />
+                </SelectTrigger>
+                <SelectContent>
+                  {versions.map(v => (
+                    <SelectItem key={v.id} value={v.id} className="text-xs">
+                      {v.name} ({new Date(v.created_at).toLocaleDateString()})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label className="text-xs">Language</Label>
+              <Select value={selectedLanguage || 'DRILLDOWN'} onValueChange={handleLanguageChange} disabled={!currentVersionId}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Language" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="DRILLDOWN" className="text-xs">DrillDown</SelectItem>
+                  <SelectItem value="ROLLUP" className="text-xs">RollUp</SelectItem>
+                  {languages.map(l => (
+                    <SelectItem key={l.id_lang} value={l.id_lang} className="text-xs">
+                      {l.id_lang}{l.desc_lang ? ` - ${l.desc_lang}` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label className="text-xs">LOB</Label>
+              <Select 
+                value={selectedLanguage === 'ROLLUP' ? 'ROLLUP' : (selectedLob || 'DRILLDOWN')} 
+                onValueChange={handleLobChange} 
+                disabled={!currentVersionId || selectedLanguage === 'ROLLUP'}
+              >
+                <SelectTrigger className={`h-8 text-xs ${selectedLanguage === 'ROLLUP' ? 'opacity-50' : ''}`}>
+                  <SelectValue placeholder="LOB" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="DRILLDOWN" className="text-xs">DrillDown</SelectItem>
+                  <SelectItem value="ROLLUP" className="text-xs">RollUp</SelectItem>
+                  {lobs.map(l => (
+                    <SelectItem key={l.id_lob} value={l.id_lob} className="text-xs">
+                      {l.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label className="text-xs">Simulation Level</Label>
+              <Select 
+                value={simulationLevelValue} 
+                onValueChange={handleSimulationLevelChange} 
+                disabled={!selectedProject}
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Level" />
+                </SelectTrigger>
+                <SelectContent>
+                  {simulationLevelOptions.projects.length > 0 && (
+                    <>
+                      <SelectItem value="__header_project" disabled className="font-semibold text-muted-foreground text-[10px]">
+                        — Project —
+                      </SelectItem>
+                      {simulationLevelOptions.projects.map(p => (
+                        <SelectItem key={p.id} value={p.id} className="text-xs">
+                          {p.label}
+                        </SelectItem>
+                      ))}
+                    </>
+                  )}
+                  {simulationLevelOptions.languages.length > 0 && (
+                    <>
+                      <SelectItem value="__header_language" disabled className="font-semibold text-muted-foreground text-[10px]">
+                        — Language —
+                      </SelectItem>
+                      {simulationLevelOptions.languages.map(l => (
+                        <SelectItem key={l.id} value={l.id} className="text-xs">
+                          {l.label}
+                        </SelectItem>
+                      ))}
+                    </>
+                  )}
+                  {simulationLevelOptions.lobs.length > 0 && (
+                    <>
+                      <SelectItem value="__header_lob" disabled className="font-semibold text-muted-foreground text-[10px]">
+                        — LOB —
+                      </SelectItem>
+                      {simulationLevelOptions.lobs.map(l => (
+                        <SelectItem key={l.id} value={l.id} className="text-xs">
+                          {l.label}
+                        </SelectItem>
+                      ))}
+                    </>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      {/* Page Tabs */}
+      <div className="container mx-auto px-6 pt-4">
+        {pageNames.length > 1 && (
+          <div className="flex items-center border-b overflow-x-auto pb-0">
+            <div className="flex items-center gap-1 flex-1">
+              {pageNames.filter(p => p !== 'Simulation').map(pageName => (
+                <button
+                  key={pageName}
+                  onClick={() => setActivePage(pageName)}
+                  className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium transition-colors border-b-2 -mb-px whitespace-nowrap ${
+                    activePage === pageName
+                      ? 'border-primary text-primary bg-background'
+                      : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                  }`}
+                >
+                  <FileSpreadsheet className="h-4 w-4" />
+                  {pageName}
+                </button>
+              ))}
+            </div>
+            {pageNames.includes('Simulation') && (
+              <button
+                onClick={() => setActivePage('Simulation')}
+                className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium transition-colors border-b-2 -mb-px whitespace-nowrap ml-auto ${
+                  activePage === 'Simulation'
+                    ? 'border-primary text-primary bg-background'
+                    : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                }`}
+              >
+                <FileSpreadsheet className="h-4 w-4" />
+                Simulation
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Tabela */}
+      <div className="container mx-auto p-6 pt-4">
+        {currentVersionId ? (
+          <Card className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-muted border-b">
+                  <th className="px-2 py-2 text-left font-semibold w-16 text-xs">Lang</th>
+                  <th className="px-2 py-2 text-left font-semibold w-20 text-xs">LOB</th>
+                  
+                  
+                  <th className="px-2 py-2 text-left font-semibold min-w-[140px] text-xs">Account</th>
+                  {periods.map(period => (
+                    <th key={`${period.year}-${period.month}`} className="px-3 py-1.5 text-right font-semibold min-w-[80px] text-xs">
+                      {period.label}
+                    </th>
+                  ))}
+                  <th className="px-3 py-1.5 text-right font-semibold min-w-[80px] text-xs">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {getVisibleVariables().map(variable => {
+                  const isParent = hasChildren(variable.uniqueId);
+                  const isExpanded = expandedRows.has(variable.uniqueId);
+                  const calcType = variable.calculation_type || 'AUTO';
+                  const isBlocked = blockedVariables.has(variable.account_code);
+                  const isEditable = isLeafAccount(variable.account_code, variables) && 
+                                    calcType !== 'FORMULA' &&
+                                    !isBlocked;
+                  
+                  return (
+                    <tr key={variable.uniqueId} className="border-b hover:bg-muted/50 transition-colors">
+                      <td className="px-2 py-1 text-xs">
+                        {variable.id_lang || '-'}
+                      </td>
+                      <td className="px-2 py-1 text-xs">
+                        {variable.lob || '-'}
+                      </td>
+                      
+                      <td className="px-2 py-1">
+                        <div 
+                          className="flex items-center gap-2"
+                          style={{ paddingLeft: `${variable.level * 20}px` }}
+                        >
+                          {isParent ? (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 hover:bg-muted"
+                              onClick={() => toggleExpandedRow(variable.uniqueId)}
+                              title={isExpanded ? "Collapse" : "Expand"}
+                            >
+                              {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                            </Button>
+                          ) : (
+                            <div className="w-6" />
+                          )}
+                          
+                          <span className={isParent ? 'font-semibold text-xs' : 'text-xs'}>
+                            {variable.name}
+                          </span>
+                          
+                        </div>
+                      </td>
+                      
+                      {periods.map((period) => {
+                        const value = getValue(variable, period.year, period.month);
+                        const originalValue = getOriginalValue(variable, period.year, period.month);
+                        const compareSymbol = value === originalValue ? '=' : value < originalValue ? '<' : '>';
+                        
+                        return (
+                          <td key={`${period.year}-${period.month}`} className="px-3 py-1 text-right">
+                            <div className="flex flex-col items-end gap-0.5">
+                              {isEditable ? (
+                                <>
+                                  <Input
+                                    type="number"
+                                    step="0.0001"
+                                    value={value}
+                                    onChange={(e) => updateValue(variable.account_code, period.year, period.month, variable.id_lang, variable.lob, e.target.value)}
+                                    className="w-full text-right h-6 text-xs bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900/30 focus:ring-green-500"
+                                  />
+                                  <span className="text-[9px] text-muted-foreground leading-none">
+                                    {compareSymbol} {originalValue.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+                                  </span>
+                                </>
+                              ) : (
+                                <>
+                                  <span className={hasChildren || calcType === 'FORMULA' ? 'font-semibold text-xs' : 'text-xs'}>
+                                    {value.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+                                  </span>
+                                  <span className="text-[9px] text-muted-foreground leading-none">
+                                    {compareSymbol} {originalValue.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        );
+                      })}
+                      
+                      <td className="px-3 py-1 text-right">
+                        <div className="flex flex-col items-end gap-0.5">
+                          <span className="font-semibold text-xs">
+                            {getTotal(variable).toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+                          </span>
+                          <span className="text-[9px] text-muted-foreground leading-none">
+                            {(() => {
+                              const totalValue = getTotal(variable);
+                              const totalOriginal = getOriginalTotal(variable);
+                              const compareSymbol = totalValue === totalOriginal ? '=' : totalValue < totalOriginal ? '<' : '>';
+                              return `${compareSymbol} ${totalOriginal.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`;
+                            })()}
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </Card>
+        ) : (
+          <Card className="p-12 text-center text-muted-foreground">
+            Select a project, language and version to start
+          </Card>
+        )}
+      </div>
+
+      {/* Dialog: Choice between last version or template */}
+      <Dialog open={showVersionChoice} onOpenChange={setShowVersionChoice}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Version</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-muted-foreground">
+              How would you like to create the new version?
+            </p>
+            <div className="grid gap-4">
+              <Button
+                variant="outline"
+                className="h-auto p-4 justify-start"
+                onClick={() => {
+                  setVersionCreationType('last');
+                  setShowVersionChoice(false);
+                  setShowNewVersionModal(true);
+                }}
+              >
+                <div className="text-left">
+                  <div className="font-semibold">Use last version</div>
+                  <div className="text-sm text-muted-foreground">
+                    Copy all fields and data from the last existing version
+                  </div>
+                </div>
+              </Button>
+              <Button
+                variant="outline"
+                className="h-auto p-4 justify-start"
+                onClick={() => {
+                  setVersionCreationType('template');
+                  setShowVersionChoice(false);
+                  setShowNewVersionModal(true);
+                }}
+              >
+                <div className="text-left">
+                  <div className="font-semibold">Create from template</div>
+                  <div className="text-sm text-muted-foreground">
+                    Use the template configured for the project
+                  </div>
+                </div>
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* New Version Modal */}
+      <Dialog open={showNewVersionModal} onOpenChange={(open) => {
+        setShowNewVersionModal(open);
+        if (!open) setNewVersionName('');
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>New Version</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label>Version Name</Label>
+              <Input
+                value={newVersionName}
+                onChange={(e) => setNewVersionName(e.target.value)}
+                placeholder="E.g.: Base Scenario 2025"
+                autoFocus
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setShowNewVersionModal(false);
+              setNewVersionName('');
+            }}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateVersion}>Create</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
