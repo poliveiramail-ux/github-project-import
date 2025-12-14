@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from 'recharts';
 import { 
   clearFormulaCache, 
   isOrFormula, 
@@ -1207,116 +1208,206 @@ export default function SimulationForm_v2({ onMenuClick }: Props) {
               dashboardVariables.length === 0 ? (
                 <p className="text-muted-foreground text-center py-8">No variables linked to this dashboard for the selected project/versions.</p>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="bg-muted/50 border-b">
-                        <th className="px-2 py-1 text-left font-semibold w-16 text-xs" rowSpan={2}>Lang</th>
-                        <th className="px-2 py-1 text-left font-semibold w-20 text-xs" rowSpan={2}>LOB</th>
-                        <th className="px-2 py-1 text-left font-semibold min-w-[140px] text-xs" rowSpan={2}>Name</th>
-                        {selectedVersionsData.map(vd => {
-                          const versionPeriods = [...new Set(dashboardVariables
-                            .filter(v => v.version_id === vd.versionId)
-                            .map(v => `${v.year}-${v.month}`))]
-                            .map(key => {
-                              const [year, month] = key.split('-').map(Number);
-                              return { year, month, label: `${monthNames[month - 1]}/${year}` };
-                            })
-                            .sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
+                <>
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="bg-muted/50 border-b">
+                          <th className="px-2 py-1 text-left font-semibold w-16 text-xs" rowSpan={2}>Lang</th>
+                          <th className="px-2 py-1 text-left font-semibold w-20 text-xs" rowSpan={2}>LOB</th>
+                          <th className="px-2 py-1 text-left font-semibold min-w-[140px] text-xs" rowSpan={2}>Name</th>
+                          {selectedVersionsData.map(vd => {
+                            const versionPeriods = [...new Set(dashboardVariables
+                              .filter(v => v.version_id === vd.versionId)
+                              .map(v => `${v.year}-${v.month}`))]
+                              .map(key => {
+                                const [year, month] = key.split('-').map(Number);
+                                return { year, month, label: `${monthNames[month - 1]}/${year}` };
+                              })
+                              .sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
+                            
+                            return (
+                              <th 
+                                key={vd.versionId} 
+                                className="px-2 py-1 text-center font-semibold text-xs border-l bg-primary/5"
+                                colSpan={versionPeriods.length || 1}
+                              >
+                                {vd.versionName}
+                              </th>
+                            );
+                          })}
+                        </tr>
+                        <tr className="bg-muted border-b">
+                          {selectedVersionsData.map(vd => {
+                            const versionPeriods = [...new Set(dashboardVariables
+                              .filter(v => v.version_id === vd.versionId)
+                              .map(v => `${v.year}-${v.month}`))]
+                              .map(key => {
+                                const [year, month] = key.split('-').map(Number);
+                                return { year, month, label: `${monthNames[month - 1]}/${year}` };
+                              })
+                              .sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
+                            
+                            return (
+                              <React.Fragment key={`header-${vd.versionId}`}>
+                                {versionPeriods.length > 0 ? versionPeriods.map(period => (
+                                  <th 
+                                    key={`${vd.versionId}-${period.year}-${period.month}`} 
+                                    className="px-3 py-1.5 text-right font-semibold min-w-[80px] text-xs border-l first:border-l-0"
+                                  >
+                                    {period.label}
+                                  </th>
+                                )) : (
+                                  <th className="px-3 py-1.5 text-right font-semibold min-w-[80px] text-xs border-l">-</th>
+                                )}
+                              </React.Fragment>
+                            );
+                          })}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(() => {
+                          // Group dashboard variables by name + lang + lob for display
+                          const uniqueVarsMap = new Map<string, Variable>();
+                          dashboardVariables.forEach(v => {
+                            const key = `${v.name}_${v.id_lang || 'null'}_${v.lob || 'null'}`;
+                            if (!uniqueVarsMap.has(key)) {
+                              uniqueVarsMap.set(key, v);
+                            }
+                          });
                           
-                          return (
-                            <th 
-                              key={vd.versionId} 
-                              className="px-2 py-1 text-center font-semibold text-xs border-l bg-primary/5"
-                              colSpan={versionPeriods.length || 1}
-                            >
-                              {vd.versionName}
-                            </th>
-                          );
-                        })}
-                      </tr>
-                      <tr className="bg-muted border-b">
-                        {selectedVersionsData.map(vd => {
-                          const versionPeriods = [...new Set(dashboardVariables
-                            .filter(v => v.version_id === vd.versionId)
-                            .map(v => `${v.year}-${v.month}`))]
-                            .map(key => {
-                              const [year, month] = key.split('-').map(Number);
-                              return { year, month, label: `${monthNames[month - 1]}/${year}` };
-                            })
-                            .sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
-                          
-                          return (
-                            <React.Fragment key={`header-${vd.versionId}`}>
-                              {versionPeriods.length > 0 ? versionPeriods.map(period => (
-                                <th 
-                                  key={`${vd.versionId}-${period.year}-${period.month}`} 
-                                  className="px-3 py-1.5 text-right font-semibold min-w-[80px] text-xs border-l first:border-l-0"
-                                >
-                                  {period.label}
-                                </th>
-                              )) : (
-                                <th className="px-3 py-1.5 text-right font-semibold min-w-[80px] text-xs border-l">-</th>
-                              )}
-                            </React.Fragment>
-                          );
-                        })}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(() => {
-                        // Group dashboard variables by name + lang + lob for display
-                        const uniqueVarsMap = new Map<string, Variable>();
-                        dashboardVariables.forEach(v => {
-                          const key = `${v.name}_${v.id_lang || 'null'}_${v.lob || 'null'}`;
-                          if (!uniqueVarsMap.has(key)) {
-                            uniqueVarsMap.set(key, v);
-                          }
-                        });
-                        
-                        return Array.from(uniqueVarsMap.values()).map((variable, idx) => (
-                          <tr key={idx} className="border-b hover:bg-muted/50 transition-colors">
-                            <td className="px-2 py-1 text-xs">{variable.id_lang || '-'}</td>
-                            <td className="px-2 py-1 text-xs">{variable.lob || '-'}</td>
-                            <td className="px-2 py-1 text-xs">{variable.name}</td>
-                            {selectedVersionsData.map(vd => {
-                              const versionPeriods = [...new Set(dashboardVariables
-                                .filter(v => v.version_id === vd.versionId)
-                                .map(v => `${v.year}-${v.month}`))]
-                                .map(key => {
-                                  const [year, month] = key.split('-').map(Number);
-                                  return { year, month };
-                                })
-                                .sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
-                              
-                              return (
-                                <React.Fragment key={`cells-${vd.versionId}`}>
-                                  {versionPeriods.length > 0 ? versionPeriods.map(period => {
-                                    const val = dashboardVariables.find(v => 
-                                      v.name === variable.name &&
-                                      v.id_lang === variable.id_lang &&
-                                      v.lob === variable.lob &&
-                                      v.version_id === vd.versionId &&
-                                      v.month === period.month &&
-                                      v.year === period.year
-                                    );
-                                    return (
-                                      <td key={`${vd.versionId}-${period.year}-${period.month}`} className="px-3 py-1 text-right text-xs border-l">
-                                        {val?.value != null ? val.value.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '-'}
-                                      </td>
-                                    );
-                                  }) : (
-                                    <td className="px-3 py-1 text-right text-xs border-l">-</td>
-                                  )}
-                                </React.Fragment>
-                              );
-                            })}
-                          </tr>
-                        ));
-                      })()}
-                    </tbody>
-                  </table>
-                </div>
+                          return Array.from(uniqueVarsMap.values()).map((variable, idx) => (
+                            <tr key={idx} className="border-b hover:bg-muted/50 transition-colors">
+                              <td className="px-2 py-1 text-xs">{variable.id_lang || '-'}</td>
+                              <td className="px-2 py-1 text-xs">{variable.lob || '-'}</td>
+                              <td className="px-2 py-1 text-xs">{variable.name}</td>
+                              {selectedVersionsData.map(vd => {
+                                const versionPeriods = [...new Set(dashboardVariables
+                                  .filter(v => v.version_id === vd.versionId)
+                                  .map(v => `${v.year}-${v.month}`))]
+                                  .map(key => {
+                                    const [year, month] = key.split('-').map(Number);
+                                    return { year, month };
+                                  })
+                                  .sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
+                                
+                                return (
+                                  <React.Fragment key={`cells-${vd.versionId}`}>
+                                    {versionPeriods.length > 0 ? versionPeriods.map(period => {
+                                      const val = dashboardVariables.find(v => 
+                                        v.name === variable.name &&
+                                        v.id_lang === variable.id_lang &&
+                                        v.lob === variable.lob &&
+                                        v.version_id === vd.versionId &&
+                                        v.month === period.month &&
+                                        v.year === period.year
+                                      );
+                                      return (
+                                        <td key={`${vd.versionId}-${period.year}-${period.month}`} className="px-3 py-1 text-right text-xs border-l">
+                                          {val?.value != null ? val.value.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '-'}
+                                        </td>
+                                      );
+                                    }) : (
+                                      <td className="px-3 py-1 text-right text-xs border-l">-</td>
+                                    )}
+                                  </React.Fragment>
+                                );
+                              })}
+                            </tr>
+                          ));
+                        })()}
+                      </tbody>
+                    </table>
+                  </div>
+                  
+                  {/* Waterfall Chart */}
+                  {(() => {
+                    // Prepare waterfall data - aggregate values per variable
+                    const waterfallData: Array<{ name: string; value: number; isTotal?: boolean }> = [];
+                    let runningTotal = 0;
+                    
+                    // Group by variable name and sum all values
+                    const varTotals = new Map<string, number>();
+                    dashboardVariables.forEach(v => {
+                      const current = varTotals.get(v.name) || 0;
+                      varTotals.set(v.name, current + (v.value || 0));
+                    });
+                    
+                    varTotals.forEach((value, name) => {
+                      runningTotal += value;
+                      waterfallData.push({ name, value });
+                    });
+                    
+                    // Add total bar
+                    if (waterfallData.length > 0) {
+                      waterfallData.push({ name: 'Total', value: runningTotal, isTotal: true });
+                    }
+                    
+                    // Calculate waterfall positions
+                    const chartData = waterfallData.map((item, index) => {
+                      if (item.isTotal) {
+                        return {
+                          name: item.name,
+                          value: item.value,
+                          start: 0,
+                          end: item.value,
+                          isPositive: item.value >= 0,
+                          isTotal: true
+                        };
+                      }
+                      
+                      const previousTotal = waterfallData
+                        .slice(0, index)
+                        .reduce((sum, d) => sum + (d.isTotal ? 0 : d.value), 0);
+                      
+                      return {
+                        name: item.name,
+                        value: item.value,
+                        start: item.value >= 0 ? previousTotal : previousTotal + item.value,
+                        end: Math.abs(item.value),
+                        isPositive: item.value >= 0,
+                        isTotal: false
+                      };
+                    });
+                    
+                    if (chartData.length === 0) return null;
+                    
+                    return (
+                      <Card className="mt-4 p-4">
+                        <h3 className="text-sm font-semibold mb-4">Waterfall Chart</h3>
+                        <ResponsiveContainer width="100%" height={300}>
+                          <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+                            <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                            <XAxis 
+                              dataKey="name" 
+                              tick={{ fontSize: 10 }} 
+                              angle={-45}
+                              textAnchor="end"
+                              height={80}
+                            />
+                            <YAxis tick={{ fontSize: 10 }} />
+                            <Tooltip 
+                              formatter={(value: number) => value.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              contentStyle={{ fontSize: 12 }}
+                            />
+                            <ReferenceLine y={0} stroke="#666" />
+                            {/* Invisible bar for positioning */}
+                            <Bar dataKey="start" stackId="waterfall" fill="transparent" />
+                            {/* Visible bar */}
+                            <Bar dataKey="end" stackId="waterfall">
+                              {chartData.map((entry, index) => (
+                                <Cell 
+                                  key={`cell-${index}`}
+                                  fill={entry.isTotal ? 'hsl(var(--primary))' : entry.isPositive ? 'hsl(142, 76%, 36%)' : 'hsl(0, 84%, 60%)'}
+                                />
+                              ))}
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </Card>
+                    );
+                  })()}
+                </>
               )
             ) : (
               <div className="py-12 text-center text-muted-foreground">
