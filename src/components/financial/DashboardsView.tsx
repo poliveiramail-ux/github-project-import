@@ -150,7 +150,10 @@ export default function DashboardsView({ onBack, onMenuClick }: Props) {
     setLoading(false);
   };
 
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  
+  // Get unique months that exist in the data
+  const availableMonths = [...new Set(variables.flatMap(v => v.values.map(val => val.month)))].sort((a, b) => a - b);
 
   return (
     <div className="min-h-screen bg-background p-4">
@@ -224,8 +227,8 @@ export default function DashboardsView({ onBack, onMenuClick }: Props) {
                         <TableHead>LOB</TableHead>
                         <TableHead>Account</TableHead>
                         <TableHead>Name</TableHead>
-                        {months.map(m => (
-                          <TableHead key={m} className="text-right">{m}</TableHead>
+                        {availableMonths.map(m => (
+                          <TableHead key={m} className="text-right">{monthNames[m - 1]}</TableHead>
                         ))}
                       </TableRow>
                     </TableHeader>
@@ -236,10 +239,10 @@ export default function DashboardsView({ onBack, onMenuClick }: Props) {
                           <TableCell>{v.id_lob || '-'}</TableCell>
                           <TableCell>{v.account_num}</TableCell>
                           <TableCell>{v.name}</TableCell>
-                          {months.map((_, monthIdx) => {
-                            const val = v.values.find(x => x.month === monthIdx + 1);
+                          {availableMonths.map(monthNum => {
+                            const val = v.values.find(x => x.month === monthNum);
                             return (
-                              <TableCell key={monthIdx} className="text-right">
+                              <TableCell key={monthNum} className="text-right">
                                 {val?.value != null ? val.value.toLocaleString() : '-'}
                               </TableCell>
                             );
