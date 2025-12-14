@@ -944,9 +944,36 @@ export default function ConfigurationForm({ onBack }: Props) {
                               {dashboards
                                 .filter(d => !(editingVar.dashboards || []).includes(d.id))
                                 .map((dashboard) => (
-                                  <SelectItem key={dashboard.id} value={dashboard.id}>
-                                    {dashboard.name}
-                                  </SelectItem>
+                                  <div key={dashboard.id} className="flex items-center justify-between px-2 py-1.5 hover:bg-accent rounded-sm cursor-pointer group">
+                                    <span 
+                                      className="flex-1"
+                                      onClick={() => {
+                                        if (!editingVar.dashboards?.includes(dashboard.id)) {
+                                          setEditingVar({ 
+                                            ...editingVar, 
+                                            dashboards: [...(editingVar.dashboards || []), dashboard.id] 
+                                          });
+                                        }
+                                      }}
+                                    >
+                                      {dashboard.name}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-destructive/20 rounded transition-opacity"
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        if (window.confirm(`Delete dashboard "${dashboard.name}"? This will remove it from all variables.`)) {
+                                          await supabase.from('dashboards').delete().eq('id', dashboard.id);
+                                          await loadDashboards();
+                                          toast({ title: 'Success', description: 'Dashboard deleted' });
+                                        }
+                                      }}
+                                      title="Delete dashboard"
+                                    >
+                                      <Trash2 className="h-3 w-3 text-destructive" />
+                                    </button>
+                                  </div>
                                 ))}
                             </SelectContent>
                           </Select>
