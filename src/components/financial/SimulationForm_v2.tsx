@@ -1165,10 +1165,9 @@ export default function SimulationForm_v2({ onMenuClick }: Props) {
                       <td className="px-2 py-1 text-xs">
                         {variable.lob || '-'}
                       </td>
-                      <td className="px-2 py-1">
+                      <td className="px-2 py-1 text-left">
                         <div 
-                          className="flex items-center gap-2"
-                          style={{ paddingLeft: `${variable.level * 20}px` }}
+                          className="flex items-center gap-2 justify-start"
                         >
                           {isParent ? (
                             <Button
