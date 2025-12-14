@@ -4,6 +4,7 @@ import SimulationForm_v2 from '@/components/financial/SimulationForm_v2';
 import VersionsManager from '@/components/financial/VersionsManager';
 import ConfigurationForm from '@/components/financial/ConfigurationForm';
 import MasterDataManager from '@/components/financial/MasterDataManager';
+import DashboardsView from '@/components/financial/DashboardsView';
 import SideMenu from '@/components/financial/SideMenu';
 
 const Index = () => {
@@ -36,6 +37,10 @@ const Index = () => {
       
       {currentView === 'masterdata' && (
         <MasterDataManager onBack={() => setCurrentView('simulation')} />
+      )}
+      
+      {currentView === 'dashboards' && (
+        <DashboardsView onBack={() => setCurrentView('simulation_v2')} onMenuClick={() => setMenuOpen(true)} />
       )}
     </div>
   );

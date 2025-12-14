@@ -1,4 +1,4 @@
-import { FileText, Clock, Settings, X } from 'lucide-react';
+import { FileText, Clock, Settings, X, LayoutDashboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface MenuItem {
@@ -19,7 +19,8 @@ export default function SideMenu({ isOpen, onClose, onNavigate }: Props) {
     { id: 'simulation_v2', label: 'SimulationForm V2', icon: <Clock className="h-5 w-5" /> },
     { id: 'versions', label: 'VersionsManager', icon: <Clock className="h-5 w-5" /> },
     { id: 'configurations', label: 'ConfigurationForm', icon: <Settings className="h-5 w-5" /> },
-    { id: 'masterdata', label: 'MasterDataManager', icon: <FileText className="h-5 w-5" /> }
+    { id: 'masterdata', label: 'MasterDataManager', icon: <FileText className="h-5 w-5" /> },
+    { id: 'dashboards', label: 'Dashboards', icon: <LayoutDashboard className="h-5 w-5" /> }
   ];
 
   if (!isOpen) return null;
