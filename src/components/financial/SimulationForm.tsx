@@ -1818,16 +1818,6 @@ export default function SimulationForm({ onMenuClick }: Props) {
                             {variable.name}
                           </span>
                           
-                          {calcType === 'FORMULA' && (
-                            <div className="flex items-center gap-1">
-                              <FunctionSquare className="h-3.5 w-3.5 text-blue-500" />
-                              <span className="text-xs bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded font-mono" title={variable.formula || ''}>
-                                fx
-                              </span>
-                            </div>
-                          )}
-                          {isBlocked && <Lock className="h-3 w-3 text-muted-foreground" />}
-                          {!isEditable && calcType !== 'FORMULA' && !isBlocked && <Lock className="h-3 w-3 text-muted-foreground" />}
                         </div>
                       </td>
                       
