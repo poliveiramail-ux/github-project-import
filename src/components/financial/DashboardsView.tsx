@@ -68,10 +68,10 @@ export default function DashboardsView({ onBack, onMenuClick }: Props) {
   };
 
   const loadProjects = async () => {
+    // Load from simulation table to get projects that have simulation data
     const { data, error } = await supabase
       .from('simulation')
-      .select('id_proj')
-      .order('id_proj');
+      .select('id_proj');
     
     if (error) return;
     const uniqueProjects = [...new Set(data?.map(d => d.id_proj) || [])];
