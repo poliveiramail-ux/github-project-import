@@ -965,6 +965,13 @@ export default function ConfigurationForm({ onBack }: Props) {
                                         e.stopPropagation();
                                         if (window.confirm(`Delete dashboard "${dashboard.name}"? This will remove it from all variables.`)) {
                                           await supabase.from('dashboards').delete().eq('id', dashboard.id);
+                                          // Remove from editingVar.dashboards if present
+                                          if (editingVar.dashboards?.includes(dashboard.id)) {
+                                            setEditingVar({
+                                              ...editingVar,
+                                              dashboards: editingVar.dashboards.filter(id => id !== dashboard.id)
+                                            });
+                                          }
                                           await loadDashboards();
                                           toast({ title: 'Success', description: 'Dashboard deleted' });
                                         }
