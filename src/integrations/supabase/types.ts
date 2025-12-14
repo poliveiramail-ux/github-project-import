@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      dashboards: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       detail_indicators: {
         Row: {
           created_at: string | null
@@ -701,6 +722,42 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "project"
             referencedColumns: ["id_prj"]
+          },
+        ]
+      }
+      variable_dashboards: {
+        Row: {
+          created_at: string | null
+          dashboard_id: string
+          id: string
+          variable_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          dashboard_id: string
+          id?: string
+          variable_id: string
+        }
+        Update: {
+          created_at?: string | null
+          dashboard_id?: string
+          id?: string
+          variable_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "variable_dashboards_dashboard_id_fkey"
+            columns: ["dashboard_id"]
+            isOneToOne: false
+            referencedRelation: "dashboards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "variable_dashboards_variable_id_fkey"
+            columns: ["variable_id"]
+            isOneToOne: false
+            referencedRelation: "simulation_configs_variables"
+            referencedColumns: ["id_sim_cfg_var"]
           },
         ]
       }

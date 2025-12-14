@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { ArrowLeft, Plus, Edit3, Trash2, ArrowUpDown, ChevronRight, ChevronDown, HelpCircle, AlertCircle, FunctionSquare, FileSpreadsheet } from 'lucide-react';
+import { ArrowLeft, Plus, Edit3, Trash2, ArrowUpDown, ChevronRight, ChevronDown, HelpCircle, AlertCircle, FunctionSquare, FileSpreadsheet, LayoutDashboard, X } from 'lucide-react';
 import FormulaHelp from './FormulaHelp';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -38,6 +38,13 @@ interface ConfigVariable {
   page_name?: string;
   data_origin?: string | null;
   rollup?: string; // 'true', 'false', or 'hidden'
+  dashboards?: string[]; // Array of dashboard IDs
+}
+
+interface Dashboard {
+  id: string;
+  name: string;
+  description?: string | null;
 }
 
 interface Props {
@@ -59,6 +66,8 @@ export default function ConfigurationForm({ onBack }: Props) {
   const [justSaved, setJustSaved] = useState(false);
   const [showFormulaHelp, setShowFormulaHelp] = useState(false);
   const [newPageName, setNewPageName] = useState('');
+  const [dashboards, setDashboards] = useState<Dashboard[]>([]);
+  const [newDashboardName, setNewDashboardName] = useState('');
   const { toast } = useToast();
 
   // Get unique page names from variables
@@ -74,7 +83,76 @@ export default function ConfigurationForm({ onBack }: Props) {
   useEffect(() => {
     loadConfigs();
     loadProjects();
+    loadDashboards();
   }, []);
+
+  const loadDashboards = async () => {
+    const { data, error } = await supabase
+      .from('dashboards')
+      .select('*')
+      .order('name');
+    
+    if (error) {
+      console.error('Error loading dashboards:', error);
+      return;
+    }
+    setDashboards(data || []);
+  };
+
+  const createDashboard = async (name: string) => {
+    if (!name.trim()) return null;
+    
+    const { data, error } = await supabase
+      .from('dashboards')
+      .insert([{ name: name.trim() }])
+      .select()
+      .single();
+    
+    if (error) {
+      toast({ title: 'Error', description: 'Error creating dashboard', variant: 'destructive' });
+      return null;
+    }
+    
+    await loadDashboards();
+    return data;
+  };
+
+  const loadVariableDashboards = async (variableId: string): Promise<string[]> => {
+    const { data, error } = await supabase
+      .from('variable_dashboards')
+      .select('dashboard_id')
+      .eq('variable_id', variableId);
+    
+    if (error) {
+      console.error('Error loading variable dashboards:', error);
+      return [];
+    }
+    return (data || []).map(d => d.dashboard_id);
+  };
+
+  const saveVariableDashboards = async (variableId: string, dashboardIds: string[]) => {
+    // Delete existing associations
+    await supabase
+      .from('variable_dashboards')
+      .delete()
+      .eq('variable_id', variableId);
+    
+    // Insert new associations
+    if (dashboardIds.length > 0) {
+      const inserts = dashboardIds.map(dashboardId => ({
+        variable_id: variableId,
+        dashboard_id: dashboardId
+      }));
+      
+      const { error } = await supabase
+        .from('variable_dashboards')
+        .insert(inserts);
+      
+      if (error) {
+        console.error('Error saving variable dashboards:', error);
+      }
+    }
+  };
 
   useEffect(() => {
     if (selectedProjectId) {
@@ -341,6 +419,8 @@ export default function ConfigurationForm({ onBack }: Props) {
       : -1;
     const calculatedLevel = parentLevel + 1;
 
+    let variableId = editingVar.id_sim_cfg_var;
+    
     if (editingVar.id_sim_cfg_var) {
       const { error } = await (supabase as any)
         .from('simulation_configs_variables')
@@ -367,7 +447,7 @@ export default function ConfigurationForm({ onBack }: Props) {
         return;
       }
     } else {
-      const { error } = await (supabase as any)
+      const { data, error } = await (supabase as any)
         .from('simulation_configs_variables')
         .insert([{
           id_sim_cfg: selectedConfig.id_sim_cfg,
@@ -386,13 +466,23 @@ export default function ConfigurationForm({ onBack }: Props) {
           page_name: editingVar.page_name || 'Main',
           data_origin: editingVar.data_origin || null,
           rollup: editingVar.rollup || 'true'
-        }]);
+        }])
+        .select();
       
       if (error) {
         console.error('Error creating variable:', error);
         toast({ title: 'Error', description: `Error creating variable: ${error.message}`, variant: 'destructive' });
         return;
       }
+      
+      if (data && data[0]) {
+        variableId = data[0].id_sim_cfg_var;
+      }
+    }
+    
+    // Save dashboard associations
+    if (variableId && editingVar.dashboards) {
+      await saveVariableDashboards(variableId, editingVar.dashboards);
     }
       setEditingVar(null);
     loadVariables(selectedConfig.id_sim_cfg);
@@ -808,6 +898,89 @@ export default function ConfigurationForm({ onBack }: Props) {
                         </Select>
                       </div>
                       <div className="mb-3">
+                        <Label className="flex items-center gap-2">
+                          <LayoutDashboard className="h-4 w-4" />
+                          Dashboards (where this variable is used)
+                        </Label>
+                        <div className="flex flex-wrap gap-1 mt-2 mb-2">
+                          {(editingVar.dashboards || []).map(dashId => {
+                            const dash = dashboards.find(d => d.id === dashId);
+                            return dash ? (
+                              <span 
+                                key={dashId} 
+                                className="inline-flex items-center gap-1 text-xs bg-blue-100 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 px-2 py-1 rounded"
+                              >
+                                {dash.name}
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingVar({ 
+                                    ...editingVar, 
+                                    dashboards: (editingVar.dashboards || []).filter(id => id !== dashId) 
+                                  })}
+                                  className="hover:text-red-500"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </span>
+                            ) : null;
+                          })}
+                        </div>
+                        <div className="flex gap-2">
+                          <Select
+                            value=""
+                            onValueChange={(value) => {
+                              if (value && !editingVar.dashboards?.includes(value)) {
+                                setEditingVar({ 
+                                  ...editingVar, 
+                                  dashboards: [...(editingVar.dashboards || []), value] 
+                                });
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="flex-1">
+                              <SelectValue placeholder="Add dashboard..." />
+                            </SelectTrigger>
+                            <SelectContent className="bg-background z-50">
+                              {dashboards
+                                .filter(d => !(editingVar.dashboards || []).includes(d.id))
+                                .map((dashboard) => (
+                                  <SelectItem key={dashboard.id} value={dashboard.id}>
+                                    {dashboard.name}
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                          <div className="flex gap-1">
+                            <Input
+                              value={newDashboardName}
+                              onChange={(e) => setNewDashboardName(e.target.value)}
+                              placeholder="New dashboard..."
+                              className="w-36"
+                            />
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="outline"
+                              onClick={async () => {
+                                if (newDashboardName.trim()) {
+                                  const newDash = await createDashboard(newDashboardName.trim());
+                                  if (newDash) {
+                                    setEditingVar({ 
+                                      ...editingVar, 
+                                      dashboards: [...(editingVar.dashboards || []), newDash.id] 
+                                    });
+                                  }
+                                  setNewDashboardName('');
+                                }
+                              }}
+                              disabled={!newDashboardName.trim()}
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mb-3">
                         <Label>Calculation Type</Label>
                         <Select
                           value={editingVar.calculation_type || 'MANUAL'}
@@ -910,6 +1083,7 @@ export default function ConfigurationForm({ onBack }: Props) {
                                {variable.page_name}
                              </span>
                            )}
+                           {/* Dashboard indicator - we'll load on hover/click */}
                            {variable.blocked && <span className="text-xs" title="Blocked">🔒</span>}
                            {variable.calculation_type === 'FORMULA' && (
                              <div className="flex items-center gap-1">
@@ -944,13 +1118,16 @@ export default function ConfigurationForm({ onBack }: Props) {
                              <Plus className="h-4 w-4" />
                            </Button>
                            <Button
-                             variant="ghost"
-                             size="icon"
-                             className="h-8 w-8"
-                             onClick={() => setEditingVar(variable)}
-                           >
-                             <Edit3 className="h-4 w-4" />
-                           </Button>
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={async () => {
+                                const dashboardIds = await loadVariableDashboards(variable.id_sim_cfg_var);
+                                setEditingVar({ ...variable, dashboards: dashboardIds });
+                              }}
+                            >
+                              <Edit3 className="h-4 w-4" />
+                            </Button>
                            <Button
                              variant="ghost"
                              size="icon"
