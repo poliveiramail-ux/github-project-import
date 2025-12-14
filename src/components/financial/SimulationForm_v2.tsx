@@ -1224,18 +1224,18 @@ export default function SimulationForm_v2({ onMenuClick }: Props) {
                                           step="0.0001"
                                           value={value}
                                           onChange={(e) => updateValue(variable.account_code, period.year, period.month, variable.id_lang, variable.lob, vd.versionId, e.target.value)}
-                                          className="w-full text-right h-6 text-xs bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900/30 focus:ring-green-500"
+                                          className="w-full text-right h-5 text-[10px] bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900/30 focus:ring-green-500"
                                         />
-                                        <span className="text-[9px] text-muted-foreground leading-none">
+                                        <span className="text-[8px] text-muted-foreground leading-none">
                                           {compareSymbol} {originalValue.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
                                         </span>
                                       </>
                                     ) : (
                                       <>
-                                        <span className={isParent || calcType === 'FORMULA' ? 'font-semibold text-xs' : 'text-xs'}>
+                                        <span className={isParent || calcType === 'FORMULA' ? 'font-semibold text-[10px]' : 'text-[10px]'}>
                                           {value.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
                                         </span>
-                                        <span className="text-[9px] text-muted-foreground leading-none">
+                                        <span className="text-[8px] text-muted-foreground leading-none">
                                           {compareSymbol} {originalValue.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
                                         </span>
                                       </>
@@ -1246,10 +1246,10 @@ export default function SimulationForm_v2({ onMenuClick }: Props) {
                             })}
                             <td className="px-3 py-1 text-right bg-muted/30">
                               <div className="flex flex-col items-end gap-0.5">
-                                <span className="font-semibold text-xs">
+                                <span className="font-semibold text-[10px]">
                                   {versionVar ? getTotal(versionVar, vd.versionId).toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '-'}
                                 </span>
-                                <span className="text-[9px] text-muted-foreground leading-none">
+                                <span className="text-[8px] text-muted-foreground leading-none">
                                   {(() => {
                                     if (!versionVar) return '-';
                                     const totalValue = getTotal(versionVar, vd.versionId);
