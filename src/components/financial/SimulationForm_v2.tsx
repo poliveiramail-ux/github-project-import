@@ -777,6 +777,7 @@ export default function SimulationForm_v2({ onMenuClick }: Props) {
     
     const isLangRollUp = selectedLanguage === 'ROLLUP';
     const isLobRollUp = selectedLob === 'ROLLUP';
+    const isLangDrillDown = selectedLanguage === 'DRILLDOWN' || selectedLanguage === '';
     
     if (isLangRollUp || isLobRollUp) {
       const uniqueVarsForDisplayMap = new Map<string, Variable>();
@@ -796,7 +797,15 @@ export default function SimulationForm_v2({ onMenuClick }: Props) {
         }
       });
       
-      return Array.from(uniqueVarsForDisplayMap.values()).sort((a, b) => a.row_index - b.row_index);
+      return Array.from(uniqueVarsForDisplayMap.values()).sort((a, b) => {
+        // When language is DrillDown and LOB is RollUp, sort by language first
+        if (isLangDrillDown && isLobRollUp) {
+          const langCompare = (a.id_lang || '').localeCompare(b.id_lang || '');
+          if (langCompare !== 0) return langCompare;
+        }
+        // Then sort by row_index within each group
+        return a.row_index - b.row_index;
+      });
     }
     
     // Dedupe by account_code + lang + lob (ignore version)
@@ -808,18 +817,18 @@ export default function SimulationForm_v2({ onMenuClick }: Props) {
       }
     });
     
-    const isLangDrillDown = selectedLanguage === 'DRILLDOWN' || selectedLanguage === '';
-    const isLobDrillDown = selectedLob === 'DRILLDOWN' || selectedLob === '';
+    const isLangDrillDownFinal = selectedLanguage === 'DRILLDOWN' || selectedLanguage === '';
+    const isLobDrillDownFinal = selectedLob === 'DRILLDOWN' || selectedLob === '';
     
     return Array.from(uniqueVarsMap.values()).sort((a, b) => {
       // When language is DrillDown, sort by language first
-      if (isLangDrillDown) {
+      if (isLangDrillDownFinal) {
         const langCompare = (a.id_lang || '').localeCompare(b.id_lang || '');
         if (langCompare !== 0) return langCompare;
       }
       
       // When LOB is DrillDown, sort by LOB within each language group
-      if (isLobDrillDown) {
+      if (isLobDrillDownFinal) {
         const lobCompare = (a.lob || '').localeCompare(b.lob || '');
         if (lobCompare !== 0) return lobCompare;
       }
