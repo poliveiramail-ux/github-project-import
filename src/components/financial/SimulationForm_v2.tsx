@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Menu, Plus, Save, CheckCircle, XCircle, Lock, ChevronDown, ChevronRight, Loader2, X, FunctionSquare, FileSpreadsheet, Check } from 'lucide-react';
+import { Menu, Plus, Save, CheckCircle, XCircle, Lock, ChevronDown, ChevronRight, Loader2, X, FunctionSquare, FileSpreadsheet, Check, LayoutDashboard } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -109,6 +109,10 @@ export default function SimulationForm_v2({ onMenuClick }: Props) {
   const [versionCreationType, setVersionCreationType] = useState<'last' | 'template'>('template');
   const [blockedVariables, setBlockedVariables] = useState<Set<string>>(new Set());
   const [activePage, setActivePage] = useState<string>('Main');
+  const [dashboards, setDashboards] = useState<Array<{ id: string; name: string }>>([]);
+  const [selectedDashboard, setSelectedDashboard] = useState<string>('');
+  const [dashboardVariables, setDashboardVariables] = useState<Variable[]>([]);
+  const [dashboardLoading, setDashboardLoading] = useState(false);
   const { toast } = useToast();
 
   // Combine all variables from selected versions for page names
@@ -148,6 +152,7 @@ export default function SimulationForm_v2({ onMenuClick }: Props) {
 
   useEffect(() => {
     loadProjects();
+    loadDashboards();
   }, []);
 
   useEffect(() => {
@@ -189,6 +194,72 @@ export default function SimulationForm_v2({ onMenuClick }: Props) {
     setProjects((data || []).map(p => ({ id_prj: p.id_prj, desc_prj: p.desc_prj })));
     setLoading(false);
   };
+
+  const loadDashboards = async () => {
+    const { data } = await supabase.from('dashboards').select('id, name').order('name');
+    setDashboards(data || []);
+  };
+
+  const loadDashboardVariables = async (dashboardId: string) => {
+    if (!dashboardId || !selectedProject || selectedVersionIds.length === 0) {
+      setDashboardVariables([]);
+      return;
+    }
+    
+    setDashboardLoading(true);
+    
+    // Get variable IDs linked to this dashboard
+    const { data: varLinks } = await supabase
+      .from('variable_dashboards')
+      .select('variable_id')
+      .eq('dashboard_id', dashboardId);
+    
+    if (!varLinks?.length) {
+      setDashboardVariables([]);
+      setDashboardLoading(false);
+      return;
+    }
+
+    const variableIds = varLinks.map(v => v.variable_id);
+
+    // Get simulation data for these variables from all selected versions
+    const { data: simData } = await (supabase as any)
+      .from('simulation')
+      .select('*')
+      .eq('id_proj', selectedProject)
+      .in('id_sim_ver', selectedVersionIds)
+      .in('id_sim_cfg_var', variableIds)
+      .order('row_index');
+
+    if (simData) {
+      const vars = simData.map((v: any) => ({
+        ...v,
+        uniqueId: getUniqueId(v.account_num, v.month || 1, v.year || new Date().getFullYear(), v.id_lang, v.id_lob, v.id_sim_ver),
+        account_code: v.account_num,
+        calculation_type: 'MANUAL' as const,
+        month: v.month || 1,
+        year: v.year || new Date().getFullYear(),
+        lob: v.id_lob,
+        id_lang: v.id_lang,
+        level: parseInt(v.level || '0', 10),
+        id_sim_cfg_var: v.id_sim_cfg_var,
+        row_index: v.row_index || 0,
+        value: v.value !== undefined ? v.value : 0,
+        version_id: v.id_sim_ver
+      })) as Variable[];
+      
+      setDashboardVariables(vars);
+    }
+    
+    setDashboardLoading(false);
+  };
+
+  // Load dashboard variables when dashboard or versions change
+  useEffect(() => {
+    if (activePage === 'Dashboards' && selectedDashboard) {
+      loadDashboardVariables(selectedDashboard);
+    }
+  }, [selectedDashboard, selectedVersionIds, selectedProject, activePage]);
 
   const loadSimulationLevelOptions = async (projectId: string) => {
     if (!projectId) {
@@ -1078,26 +1149,183 @@ export default function SimulationForm_v2({ onMenuClick }: Props) {
                 </button>
               ))}
             </div>
-            {pageNames.includes('Simulation') && (
+            <div className="flex items-center gap-1">
+              {pageNames.includes('Simulation') && (
+                <button
+                  onClick={() => setActivePage('Simulation')}
+                  className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium transition-colors border-b-2 -mb-px whitespace-nowrap ${
+                    activePage === 'Simulation'
+                      ? 'border-primary text-primary bg-background'
+                      : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                  }`}
+                >
+                  <FileSpreadsheet className="h-4 w-4" />
+                  Simulation
+                </button>
+              )}
               <button
-                onClick={() => setActivePage('Simulation')}
-                className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium transition-colors border-b-2 -mb-px whitespace-nowrap ml-auto ${
-                  activePage === 'Simulation'
+                onClick={() => setActivePage('Dashboards')}
+                className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium transition-colors border-b-2 -mb-px whitespace-nowrap ${
+                  activePage === 'Dashboards'
                     ? 'border-primary text-primary bg-background'
                     : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50'
                 }`}
               >
-                <FileSpreadsheet className="h-4 w-4" />
-                Simulation
+                <LayoutDashboard className="h-4 w-4" />
+                Dashboards
               </button>
-            )}
+            </div>
           </div>
         )}
       </div>
 
       {/* Table */}
       <div className="container mx-auto p-6 pt-4">
-        {selectedVersionIds.length > 0 ? (
+        {activePage === 'Dashboards' ? (
+          // Dashboards content
+          <Card className="p-4">
+            <div className="flex items-center gap-4 mb-4">
+              <Label className="text-sm font-medium">Dashboard:</Label>
+              <Select value={selectedDashboard} onValueChange={(v) => setSelectedDashboard(v)}>
+                <SelectTrigger className="w-64">
+                  <SelectValue placeholder="Select Dashboard" />
+                </SelectTrigger>
+                <SelectContent>
+                  {dashboards.map(d => (
+                    <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {dashboardLoading ? (
+              <div className="py-12 text-center">
+                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-primary" />
+                <p className="text-muted-foreground text-sm">Loading...</p>
+              </div>
+            ) : selectedDashboard ? (
+              dashboardVariables.length === 0 ? (
+                <p className="text-muted-foreground text-center py-8">No variables linked to this dashboard for the selected project/versions.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-muted/50 border-b">
+                        <th className="px-2 py-1 text-left font-semibold w-16 text-xs" rowSpan={2}>Lang</th>
+                        <th className="px-2 py-1 text-left font-semibold w-20 text-xs" rowSpan={2}>LOB</th>
+                        <th className="px-2 py-1 text-left font-semibold min-w-[140px] text-xs" rowSpan={2}>Name</th>
+                        {selectedVersionsData.map(vd => {
+                          const versionPeriods = [...new Set(dashboardVariables
+                            .filter(v => v.version_id === vd.versionId)
+                            .map(v => `${v.year}-${v.month}`))]
+                            .map(key => {
+                              const [year, month] = key.split('-').map(Number);
+                              return { year, month, label: `${monthNames[month - 1]}/${year}` };
+                            })
+                            .sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
+                          
+                          return (
+                            <th 
+                              key={vd.versionId} 
+                              className="px-2 py-1 text-center font-semibold text-xs border-l bg-primary/5"
+                              colSpan={versionPeriods.length || 1}
+                            >
+                              {vd.versionName}
+                            </th>
+                          );
+                        })}
+                      </tr>
+                      <tr className="bg-muted border-b">
+                        {selectedVersionsData.map(vd => {
+                          const versionPeriods = [...new Set(dashboardVariables
+                            .filter(v => v.version_id === vd.versionId)
+                            .map(v => `${v.year}-${v.month}`))]
+                            .map(key => {
+                              const [year, month] = key.split('-').map(Number);
+                              return { year, month, label: `${monthNames[month - 1]}/${year}` };
+                            })
+                            .sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
+                          
+                          return (
+                            <React.Fragment key={`header-${vd.versionId}`}>
+                              {versionPeriods.length > 0 ? versionPeriods.map(period => (
+                                <th 
+                                  key={`${vd.versionId}-${period.year}-${period.month}`} 
+                                  className="px-3 py-1.5 text-right font-semibold min-w-[80px] text-xs border-l first:border-l-0"
+                                >
+                                  {period.label}
+                                </th>
+                              )) : (
+                                <th className="px-3 py-1.5 text-right font-semibold min-w-[80px] text-xs border-l">-</th>
+                              )}
+                            </React.Fragment>
+                          );
+                        })}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(() => {
+                        // Group dashboard variables by name + lang + lob for display
+                        const uniqueVarsMap = new Map<string, Variable>();
+                        dashboardVariables.forEach(v => {
+                          const key = `${v.name}_${v.id_lang || 'null'}_${v.lob || 'null'}`;
+                          if (!uniqueVarsMap.has(key)) {
+                            uniqueVarsMap.set(key, v);
+                          }
+                        });
+                        
+                        return Array.from(uniqueVarsMap.values()).map((variable, idx) => (
+                          <tr key={idx} className="border-b hover:bg-muted/50 transition-colors">
+                            <td className="px-2 py-1 text-xs">{variable.id_lang || '-'}</td>
+                            <td className="px-2 py-1 text-xs">{variable.lob || '-'}</td>
+                            <td className="px-2 py-1 text-xs">{variable.name}</td>
+                            {selectedVersionsData.map(vd => {
+                              const versionPeriods = [...new Set(dashboardVariables
+                                .filter(v => v.version_id === vd.versionId)
+                                .map(v => `${v.year}-${v.month}`))]
+                                .map(key => {
+                                  const [year, month] = key.split('-').map(Number);
+                                  return { year, month };
+                                })
+                                .sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
+                              
+                              return (
+                                <React.Fragment key={`cells-${vd.versionId}`}>
+                                  {versionPeriods.length > 0 ? versionPeriods.map(period => {
+                                    const val = dashboardVariables.find(v => 
+                                      v.name === variable.name &&
+                                      v.id_lang === variable.id_lang &&
+                                      v.lob === variable.lob &&
+                                      v.version_id === vd.versionId &&
+                                      v.month === period.month &&
+                                      v.year === period.year
+                                    );
+                                    return (
+                                      <td key={`${vd.versionId}-${period.year}-${period.month}`} className="px-3 py-1 text-right text-xs border-l">
+                                        {val?.value != null ? val.value.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '-'}
+                                      </td>
+                                    );
+                                  }) : (
+                                    <td className="px-3 py-1 text-right text-xs border-l">-</td>
+                                  )}
+                                </React.Fragment>
+                              );
+                            })}
+                          </tr>
+                        ));
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+              )
+            ) : (
+              <div className="py-12 text-center text-muted-foreground">
+                <LayoutDashboard className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>Select a dashboard to view its variables</p>
+              </div>
+            )}
+          </Card>
+        ) : selectedVersionIds.length > 0 ? (
           <Card className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
