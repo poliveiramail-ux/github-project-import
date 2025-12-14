@@ -32,6 +32,7 @@ interface SimulationVersion {
   id_prj: string;
   id_lang: string;
   created_at: string;
+  status: string | null;
 }
 
 interface Variable {
@@ -286,7 +287,7 @@ export default function SimulationForm_v2({ onMenuClick }: Props) {
       
       const { data: versionData } = await (supabase as any)
         .from('simulation_versions')
-        .select('id_sim_ver, name, created_at, id_prj')
+        .select('id_sim_ver, name, created_at, id_prj, status')
         .in('id_sim_ver', uniqueVersionIds)
         .order('created_at', { ascending: false });
       
@@ -296,7 +297,8 @@ export default function SimulationForm_v2({ onMenuClick }: Props) {
           name: v.name,
           id_prj: v.id_prj,
           id_lang: '',
-          created_at: v.created_at
+          created_at: v.created_at,
+          status: v.status
         }));
         
         setVersions(mappedData);
@@ -1118,9 +1120,17 @@ export default function SimulationForm_v2({ onMenuClick }: Props) {
                   const isExpanded = expandedRows.has(varKey);
                   const calcType = variable.calculation_type || 'AUTO';
                   const isBlocked = blockedVariables.has(variable.account_code);
+                  
+                  // Check if any selected version is not Draft - block editing on Simulation tab
+                  const isSimulationTabLocked = activePage === 'Simulation' && selectedVersionIds.some(vId => {
+                    const version = versions.find(v => v.id === vId);
+                    return version && version.status !== 'Draft';
+                  });
+                  
                   const isEditable = isLeafAccount(variable.account_code, allVariables) && 
                                     calcType !== 'FORMULA' &&
-                                    !isBlocked;
+                                    !isBlocked &&
+                                    !isSimulationTabLocked;
                   
                   return (
                     <tr key={varKey} className="border-b hover:bg-muted/50 transition-colors">
