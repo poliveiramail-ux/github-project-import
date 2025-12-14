@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Menu, Plus, Save, CheckCircle, XCircle, Lock, ChevronDown, ChevronRight, Loader2, X, FunctionSquare, FileSpreadsheet, Check } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -620,13 +620,12 @@ export default function SimulationForm_v2({ onMenuClick }: Props) {
         const matchingVar = variables.find(v => 
           v.account_code === variable.account_code && 
           v.year === year && 
-          v.month === month && 
-          v.lob === variable.lob &&
-          v.id_lang === variable.id_lang
+          v.month === month
         );
         return matchingVar?.value || 0;
       }
       
+      // For RollUp, aggregate all variables with same name (ignoring lang/lob when in rollup mode)
       const matchingVars = variables.filter(v => {
         if (v.name !== variable.name) return false;
         if (v.year !== year) return false;
@@ -634,8 +633,10 @@ export default function SimulationForm_v2({ onMenuClick }: Props) {
         if ((v.page_name || 'Main') !== (variable.page_name || 'Main')) return false;
         if (v.page_name === 'Simulation') return false;
         if (v.rollup === 'false' || v.rollup === 'hidden') return false;
-        if (!isLangRollUp && v.id_lang !== variable.id_lang) return false;
-        if (!isLobRollUp && v.lob !== variable.lob) return false;
+        // When in DrillDown for language, match by actual language (not ROLLUP)
+        if (!isLangRollUp && variable.id_lang !== 'ROLLUP' && v.id_lang !== variable.id_lang) return false;
+        // When in DrillDown for LOB, match by actual LOB (not ROLLUP) 
+        if (!isLobRollUp && variable.lob !== 'ROLLUP' && v.lob !== variable.lob) return false;
         return true;
       });
       
@@ -672,9 +673,7 @@ export default function SimulationForm_v2({ onMenuClick }: Props) {
         const matchingVar = variables.find(v => 
           v.account_code === variable.account_code && 
           v.year === year && 
-          v.month === month && 
-          v.lob === variable.lob &&
-          v.id_lang === variable.id_lang
+          v.month === month
         );
         return matchingVar?.value_orig || 0;
       }
@@ -686,8 +685,8 @@ export default function SimulationForm_v2({ onMenuClick }: Props) {
         if ((v.page_name || 'Main') !== (variable.page_name || 'Main')) return false;
         if (v.page_name === 'Simulation') return false;
         if (v.rollup === 'false' || v.rollup === 'hidden') return false;
-        if (!isLangRollUp && v.id_lang !== variable.id_lang) return false;
-        if (!isLobRollUp && v.lob !== variable.lob) return false;
+        if (!isLangRollUp && variable.id_lang !== 'ROLLUP' && v.id_lang !== variable.id_lang) return false;
+        if (!isLobRollUp && variable.lob !== 'ROLLUP' && v.lob !== variable.lob) return false;
         return true;
       });
       
@@ -1093,7 +1092,7 @@ export default function SimulationForm_v2({ onMenuClick }: Props) {
                 {/* Period header row */}
                 <tr className="bg-muted border-b">
                   {selectedVersionsData.map(vd => (
-                    <>
+                    <React.Fragment key={`header-${vd.versionId}`}>
                       {combinedPeriods.map(period => (
                         <th 
                           key={`${vd.versionId}-${period.year}-${period.month}`} 
@@ -1108,13 +1107,13 @@ export default function SimulationForm_v2({ onMenuClick }: Props) {
                       >
                         Total
                       </th>
-                    </>
+                    </React.Fragment>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {getVisibleVariables().map(variable => {
-                  const varKey = `${variable.account_code}_${variable.id_lang}_${variable.lob}`;
+                {getVisibleVariables().map((variable, varIndex) => {
+                  const varKey = `${varIndex}_${variable.account_code}_${variable.id_lang || 'null'}_${variable.lob || 'null'}`;
                   const isParent = hasChildren(variable.uniqueId, allVariables);
                   const isExpanded = expandedRows.has(varKey);
                   const calcType = variable.calculation_type || 'AUTO';
@@ -1157,15 +1156,25 @@ export default function SimulationForm_v2({ onMenuClick }: Props) {
                       </td>
                       
                       {selectedVersionsData.map(vd => {
-                        // Find variable in this version's data
-                        const versionVar = vd.variables.find(v => 
-                          v.account_code === variable.account_code && 
-                          v.id_lang === variable.id_lang &&
-                          v.lob === variable.lob
-                        );
+                        // Find variable in this version's data - when in RollUp mode, find by name instead of exact match
+                        const isLangRollUp = selectedLanguage === 'ROLLUP';
+                        const isLobRollUp = selectedLob === 'ROLLUP';
+                        
+                        let versionVar = vd.variables.find(v => {
+                          if (isLangRollUp && isLobRollUp) {
+                            return v.name === variable.name;
+                          } else if (isLangRollUp) {
+                            return v.name === variable.name && (variable.lob === 'ROLLUP' || v.lob === variable.lob);
+                          } else if (isLobRollUp) {
+                            return v.name === variable.name && (variable.id_lang === 'ROLLUP' || v.id_lang === variable.id_lang);
+                          }
+                          return v.account_code === variable.account_code && 
+                            v.id_lang === variable.id_lang &&
+                            v.lob === variable.lob;
+                        });
                         
                         return (
-                          <>
+                          <React.Fragment key={`cells-${vd.versionId}`}>
                             {combinedPeriods.map((period) => {
                               const value = versionVar ? getValue(versionVar, period.year, period.month, vd.versionId) : 0;
                               const originalValue = versionVar ? getOriginalValue(versionVar, period.year, period.month, vd.versionId) : 0;
@@ -1201,7 +1210,7 @@ export default function SimulationForm_v2({ onMenuClick }: Props) {
                                 </td>
                               );
                             })}
-                            <td key={`${vd.versionId}-total`} className="px-3 py-1 text-right bg-muted/30">
+                            <td className="px-3 py-1 text-right bg-muted/30">
                               <div className="flex flex-col items-end gap-0.5">
                                 <span className="font-semibold text-xs">
                                   {versionVar ? getTotal(versionVar, vd.versionId).toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '-'}
@@ -1211,13 +1220,13 @@ export default function SimulationForm_v2({ onMenuClick }: Props) {
                                     if (!versionVar) return '-';
                                     const totalValue = getTotal(versionVar, vd.versionId);
                                     const totalOriginal = getOriginalTotal(versionVar, vd.versionId);
-                                    const compareSymbol = totalValue === totalOriginal ? '=' : totalValue < totalOriginal ? '<' : '>';
-                                    return `${compareSymbol} ${totalOriginal.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`;
+                                    const sym = totalValue === totalOriginal ? '=' : totalValue < totalOriginal ? '<' : '>';
+                                    return `${sym} ${totalOriginal.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`;
                                   })()}
                                 </span>
                               </div>
                             </td>
-                          </>
+                          </React.Fragment>
                         );
                       })}
                     </tr>
