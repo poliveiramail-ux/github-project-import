@@ -845,7 +845,7 @@ export default function SimulationForm_v2({ onMenuClick }: Props) {
               <Button variant="ghost" size="icon" onClick={onMenuClick}>
                 <Menu className="h-5 w-5" />
               </Button>
-              <h1 className="text-xl font-bold">SimulationForm V2</h1>
+              <h1 className="text-xl font-bold">SimulationForm v2</h1>
               {selectedVersionIds.length > 1 && (
                 <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
                   {selectedVersionIds.length} versões selecionadas

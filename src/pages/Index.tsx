@@ -7,7 +7,7 @@ import MasterDataManager from '@/components/financial/MasterDataManager';
 import SideMenu from '@/components/financial/SideMenu';
 
 const Index = () => {
-  const [currentView, setCurrentView] = useState('simulation');
+  const [currentView, setCurrentView] = useState('simulation_v2');
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
