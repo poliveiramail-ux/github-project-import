@@ -808,7 +808,25 @@ export default function SimulationForm_v2({ onMenuClick }: Props) {
       }
     });
     
-    return Array.from(uniqueVarsMap.values()).sort((a, b) => a.row_index - b.row_index);
+    const isLangDrillDown = selectedLanguage === 'DRILLDOWN' || selectedLanguage === '';
+    const isLobDrillDown = selectedLob === 'DRILLDOWN' || selectedLob === '';
+    
+    return Array.from(uniqueVarsMap.values()).sort((a, b) => {
+      // When language is DrillDown, sort by language first
+      if (isLangDrillDown) {
+        const langCompare = (a.id_lang || '').localeCompare(b.id_lang || '');
+        if (langCompare !== 0) return langCompare;
+      }
+      
+      // When LOB is DrillDown, sort by LOB within each language group
+      if (isLobDrillDown) {
+        const lobCompare = (a.lob || '').localeCompare(b.lob || '');
+        if (lobCompare !== 0) return lobCompare;
+      }
+      
+      // Then sort by row_index within each group
+      return a.row_index - b.row_index;
+    });
   };
 
   const selectedVersionsData = Array.from(versionDataMap.values());
