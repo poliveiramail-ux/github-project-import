@@ -149,7 +149,7 @@ export default function VersionsManager({ onBack }: Props) {
                         <td className="px-4 py-3">{version.id_lang || '-'}</td>
                         <td className="px-4 py-3">
                           <span className="px-2 py-1 rounded text-sm bg-muted">
-                            {version.status || 'draft'}
+                            {version.status || 'Open'}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-right">
