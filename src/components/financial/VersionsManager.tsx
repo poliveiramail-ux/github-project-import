@@ -18,6 +18,7 @@ interface SimulationVersion {
   id_prj: string;
   id_lang: string | null;
   created_at: string;
+  status: string | null;
 }
 
 interface Props {
@@ -61,7 +62,8 @@ export default function VersionsManager({ onBack }: Props) {
       name: v.name,
       id_prj: v.id_prj,
       id_lang: v.id_lang,
-      created_at: v.created_at
+      created_at: v.created_at,
+      status: v.status
     }));
     setVersions(mappedData);
     setLoading(false);
@@ -129,6 +131,7 @@ export default function VersionsManager({ onBack }: Props) {
                     <th className="px-4 py-3 text-left font-semibold">Created Date</th>
                     <th className="px-4 py-3 text-left font-semibold">Project</th>
                     <th className="px-4 py-3 text-left font-semibold">Language</th>
+                    <th className="px-4 py-3 text-left font-semibold">Status</th>
                     <th className="px-4 py-3 text-right font-semibold">Actions</th>
                   </tr>
                 </thead>
@@ -144,6 +147,11 @@ export default function VersionsManager({ onBack }: Props) {
                         </td>
                         <td className="px-4 py-3 font-mono text-sm">{project?.id_prj}</td>
                         <td className="px-4 py-3">{version.id_lang || '-'}</td>
+                        <td className="px-4 py-3">
+                          <span className="px-2 py-1 rounded text-sm bg-muted">
+                            {version.status || 'draft'}
+                          </span>
+                        </td>
                         <td className="px-4 py-3 text-right">
                           <Button
                             variant="ghost"

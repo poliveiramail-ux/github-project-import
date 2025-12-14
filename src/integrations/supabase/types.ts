@@ -657,6 +657,7 @@ export type Database = {
           name: string
           notes: string | null
           order_index: number | null
+          status: string | null
           updated_at: string | null
           user_id: string | null
         }
@@ -669,6 +670,7 @@ export type Database = {
           name: string
           notes?: string | null
           order_index?: number | null
+          status?: string | null
           updated_at?: string | null
           user_id?: string | null
         }
@@ -681,6 +683,7 @@ export type Database = {
           name?: string
           notes?: string | null
           order_index?: number | null
+          status?: string | null
           updated_at?: string | null
           user_id?: string | null
         }
