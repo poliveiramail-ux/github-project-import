@@ -151,16 +151,18 @@ export default function SimulationForm_PivotCollapsible({ onMenuClick }: Props) 
     allVars.forEach(v => varById.set(v.id_sim_cfg_var, v));
     
     // Group children by parent_account_id
+    // A variable is a root if: no parent_account_id OR parent_account_id equals its own id_sim_cfg_var (self-reference)
     const childrenByParent = new Map<string, Variable[]>();
     const rootVars: Variable[] = [];
     
     allVars.forEach(v => {
-      if (v.parent_account_id) {
+      const isRoot = !v.parent_account_id || v.parent_account_id === v.id_sim_cfg_var;
+      if (isRoot) {
+        rootVars.push(v);
+      } else {
         const children = childrenByParent.get(v.parent_account_id) || [];
         children.push(v);
         childrenByParent.set(v.parent_account_id, children);
-      } else {
-        rootVars.push(v);
       }
     });
     
@@ -189,8 +191,9 @@ export default function SimulationForm_PivotCollapsible({ onMenuClick }: Props) 
   const parentChildMap = useMemo(() => {
     const map = new Map<string, string[]>();
     uniqueVars.forEach(v => {
-      if (v.parent_account_id) {
-        // parent_account_id directly references the parent's id_sim_cfg_var
+      // Skip self-references and null parents
+      const isRoot = !v.parent_account_id || v.parent_account_id === v.id_sim_cfg_var;
+      if (!isRoot) {
         const parentKey = v.parent_account_id;
         const children = map.get(parentKey) || [];
         children.push(v.id_sim_cfg_var);
