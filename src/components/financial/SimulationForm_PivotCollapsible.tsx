@@ -227,6 +227,13 @@ export default function SimulationForm_PivotCollapsible({ onMenuClick }: Props) 
     return parents;
   }, [uniqueVars, parentChildMap]);
 
+  // Collapse all parents by default when data loads
+  useEffect(() => {
+    if (parentVarIds.size > 0) {
+      setCollapsedParents(new Set(parentVarIds));
+    }
+  }, [parentVarIds]);
+
   // Get all descendants of a collapsed parent
   const getDescendants = (parentId: string, visited = new Set<string>()): Set<string> => {
     if (visited.has(parentId)) return new Set();
