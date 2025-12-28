@@ -1,18 +1,35 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Menu, Loader2, ChevronDown, X } from 'lucide-react';
+import { Menu, Loader2, ChevronDown, Save } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useToast } from '@/hooks/use-toast';
 
 interface Project { id_prj: string; desc_prj: string | null; }
+interface Language { id_lang: string; desc_lang: string | null; }
 interface SimulationVersion { id: string; name: string; }
-interface Dashboard { id: string; name: string; }
-interface Variable { name: string; id_lang: string | null; id_lob: string | null; version_id: string; month: number; year: number; value: number | null; }
+interface Variable {
+  uniqueId: string;
+  version_id: string;
+  account_code: string;
+  name: string;
+  month: number;
+  year: number;
+  id_lang: string | null;
+  id_lob: string | null;
+  level: number;
+  id_sim_cfg_var: string;
+  value: number | null;
+  row_index: number;
+  page_name: string | null;
+}
 
 interface Props { onMenuClick: () => void; }
 
@@ -24,25 +41,31 @@ export default function SimulationForm_CalendarGrid({ onMenuClick }: Props) {
   const [selectedProject, setSelectedProject] = useState('');
   const [versions, setVersions] = useState<SimulationVersion[]>([]);
   const [selectedVersionIds, setSelectedVersionIds] = useState<string[]>([]);
-  const [dashboards, setDashboards] = useState<Dashboard[]>([]);
-  const [selectedDashboard, setSelectedDashboard] = useState('');
+  const [languages, setLanguages] = useState<Language[]>([]);
+  const [selectedLanguage, setSelectedLanguage] = useState('');
+  const [lobs, setLobs] = useState<Array<{ id_lob: string; name: string }>>([]);
+  const [selectedLob, setSelectedLob] = useState('');
   const [variables, setVariables] = useState<Variable[]>([]);
+  const [variableValues, setVariableValues] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const [dataLoading, setDataLoading] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving'>('idle');
+  const [activePage, setActivePage] = useState('Main');
   const [expandedMonth, setExpandedMonth] = useState<number | null>(null);
+  const { toast } = useToast();
 
-  useEffect(() => { loadProjects(); loadDashboards(); }, []);
-  useEffect(() => { if (selectedProject) loadVersions(); else { setVersions([]); setSelectedVersionIds([]); } }, [selectedProject]);
-  useEffect(() => { if (selectedDashboard && selectedProject && selectedVersionIds.length > 0) loadData(); else setVariables([]); }, [selectedDashboard, selectedProject, selectedVersionIds]);
+  useEffect(() => { loadProjects(); }, []);
+  useEffect(() => { if (selectedProject) loadVersions(); else reset(); }, [selectedProject]);
+  useEffect(() => { if (selectedProject && selectedVersionIds.length > 0) loadLanguages(); }, [selectedProject, selectedVersionIds]);
+  useEffect(() => { if (selectedProject && selectedVersionIds.length > 0 && selectedLanguage) loadLobs(); }, [selectedProject, selectedVersionIds, selectedLanguage]);
+  useEffect(() => { if (selectedProject && selectedVersionIds.length > 0) loadData(); }, [selectedProject, selectedVersionIds, selectedLanguage, selectedLob]);
+
+  const reset = () => { setVersions([]); setSelectedVersionIds([]); setLanguages([]); setSelectedLanguage(''); setLobs([]); setSelectedLob(''); setVariables([]); };
 
   const loadProjects = async () => {
     const { data } = await supabase.from('project').select('id_prj, desc_prj').order('id_prj');
-    setProjects(data || []); setLoading(false);
-  };
-
-  const loadDashboards = async () => {
-    const { data } = await supabase.from('dashboards').select('id, name').order('name');
-    setDashboards(data || []);
+    setProjects(data || []);
+    setLoading(false);
   };
 
   const loadVersions = async () => {
@@ -54,87 +77,192 @@ export default function SimulationForm_CalendarGrid({ onMenuClick }: Props) {
         setVersions(data.map(v => ({ id: v.id_sim_ver, name: v.name })));
         if (data.length > 0) setSelectedVersionIds([data[0].id_sim_ver]);
       }
-    } else { setVersions([]); setSelectedVersionIds([]); }
+    } else reset();
+  };
+
+  const loadLanguages = async () => {
+    const { data } = await supabase.from('simulation').select('id_lang').eq('id_proj', selectedProject).in('id_sim_ver', selectedVersionIds).not('id_lang', 'is', null);
+    if (data) {
+      const uniqueLangs = [...new Set(data.map(d => d.id_lang).filter(Boolean))] as string[];
+      setLanguages(uniqueLangs.map(l => ({ id_lang: l, desc_lang: l })));
+    }
+  };
+
+  const loadLobs = async () => {
+    let query = supabase.from('simulation').select('id_lob').eq('id_proj', selectedProject).in('id_sim_ver', selectedVersionIds).not('id_lob', 'is', null);
+    if (selectedLanguage && selectedLanguage !== 'DRILLDOWN') query = query.eq('id_lang', selectedLanguage);
+    const { data } = await query;
+    if (data) {
+      const uniqueLobs = [...new Set(data.map(d => d.id_lob).filter(Boolean))] as string[];
+      setLobs(uniqueLobs.map(l => ({ id_lob: l, name: l })));
+    }
   };
 
   const loadData = async () => {
+    if (!selectedProject || selectedVersionIds.length === 0) { setVariables([]); return; }
     setDataLoading(true);
-    const { data: links } = await supabase.from('variable_dashboards').select('variable_id').eq('dashboard_id', selectedDashboard);
-    if (!links?.length) { setVariables([]); setDataLoading(false); return; }
-    const { data } = await supabase.from('simulation').select('*').eq('id_proj', selectedProject).in('id_sim_ver', selectedVersionIds).in('id_sim_cfg_var', links.map(v => v.variable_id)).order('row_index');
-    if (data) setVariables(data.map(v => ({ name: v.name, id_lang: v.id_lang, id_lob: v.id_lob, version_id: v.id_sim_ver, month: v.month, year: v.year, value: v.value })));
+    
+    let query = supabase.from('simulation').select('*').eq('id_proj', selectedProject).in('id_sim_ver', selectedVersionIds).order('row_index');
+    if (selectedLanguage && selectedLanguage !== 'DRILLDOWN') query = query.eq('id_lang', selectedLanguage);
+    if (selectedLob && selectedLob !== 'DRILLDOWN') query = query.eq('id_lob', selectedLob);
+    
+    const { data } = await query;
+    if (data) {
+      setVariables(data.map(v => ({
+        uniqueId: `${v.account_num}_${v.month}_${v.year}_${v.id_lang}_${v.id_lob}_${v.id_sim_ver}`,
+        version_id: v.id_sim_ver,
+        account_code: v.account_num,
+        name: v.name,
+        month: v.month,
+        year: v.year,
+        id_lang: v.id_lang,
+        id_lob: v.id_lob,
+        level: parseInt(v.level || '0', 10),
+        id_sim_cfg_var: v.id_sim_cfg_var,
+        value: v.value,
+        row_index: v.row_index,
+        page_name: v.page_name || 'Main'
+      })));
+    }
     setDataLoading(false);
   };
 
   const handleVersionToggle = (id: string) => setSelectedVersionIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
 
-  const uniqueVars = useMemo(() => {
-    const map = new Map<string, { name: string; id_lang: string | null; id_lob: string | null }>();
-    variables.forEach(v => { const key = `${v.name}_${v.id_lang}_${v.id_lob}`; if (!map.has(key)) map.set(key, { name: v.name, id_lang: v.id_lang, id_lob: v.id_lob }); });
-    return Array.from(map.values());
-  }, [variables]);
-
+  const pageNames = useMemo(() => [...new Set(variables.map(v => v.page_name).filter(Boolean))].sort() as string[], [variables]);
+  const months = useMemo(() => [...new Set(variables.map(v => v.month))].sort((a, b) => a - b), [variables]);
   const selectedVersions = useMemo(() => versions.filter(v => selectedVersionIds.includes(v.id)), [versions, selectedVersionIds]);
 
-  const getValue = (name: string, lang: string | null, lob: string | null, month: number, versionId: string) => {
-    return variables.find(v => v.name === name && v.id_lang === lang && v.id_lob === lob && v.month === month && v.version_id === versionId)?.value ?? null;
+  const uniqueVars = useMemo(() => {
+    const pageVars = variables.filter(v => v.page_name === activePage);
+    const map = new Map<string, Variable>();
+    pageVars.forEach(v => {
+      const key = `${v.account_code}_${v.id_lang}_${v.id_lob}`;
+      if (!map.has(key) || v.month === months[0]) map.set(key, v);
+    });
+    return Array.from(map.values()).sort((a, b) => a.row_index - b.row_index);
+  }, [variables, activePage, months]);
+
+  const getValue = (accountCode: string, lang: string | null, lob: string | null, month: number, versionId: string): number | null => {
+    const key = `${accountCode}-${lang}-${lob}-${month}-${versionId}`;
+    if (variableValues.has(key)) return variableValues.get(key)!;
+    const v = variables.find(x => x.account_code === accountCode && x.id_lang === lang && x.id_lob === lob && x.month === month && x.version_id === versionId);
+    return v?.value ?? null;
+  };
+
+  const updateValue = (accountCode: string, lang: string | null, lob: string | null, month: number, versionId: string, value: number) => {
+    const key = `${accountCode}-${lang}-${lob}-${month}-${versionId}`;
+    setVariableValues(prev => new Map(prev).set(key, value));
   };
 
   const getMonthTotal = (month: number, versionId: string) => {
-    return variables.filter(v => v.month === month && v.version_id === versionId).reduce((sum, v) => sum + (v.value || 0), 0);
+    return variables.filter(v => v.month === month && v.version_id === versionId && v.page_name === activePage).reduce((sum, v) => sum + (v.value || 0), 0);
   };
 
   const getMonthVarCount = (month: number) => {
-    return variables.filter(v => v.month === month).length / selectedVersionIds.length;
+    const count = variables.filter(v => v.month === month && v.page_name === activePage).length;
+    return selectedVersionIds.length > 0 ? count / selectedVersionIds.length : 0;
+  };
+
+  const handleSave = async () => {
+    if (variableValues.size === 0) { toast({ title: 'Nada para guardar' }); return; }
+    setSaveStatus('saving');
+    try {
+      for (const [key, value] of variableValues) {
+        const [accountCode, lang, lob, month, versionId] = key.split('-');
+        await supabase.from('simulation').update({ value }).eq('account_num', accountCode).eq('month', parseInt(month)).eq('id_sim_ver', versionId).eq('id_lang', lang === 'null' ? null : lang).eq('id_lob', lob === 'null' ? null : lob);
+      }
+      const count = variableValues.size;
+      setVariableValues(new Map());
+      await loadData();
+      toast({ title: 'Sucesso', description: `${count} valores guardados` });
+    } catch (e) {
+      toast({ title: 'Erro', description: 'Erro ao guardar', variant: 'destructive' });
+    }
+    setSaveStatus('idle');
   };
 
   if (loading) return <div className="flex items-center justify-center h-screen"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="bg-card border-b sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-3 flex items-center gap-4 flex-wrap">
+      <header className="bg-card border-b sticky top-0 z-20">
+        <div className="container mx-auto px-4 py-3 flex items-center gap-3 flex-wrap">
           <Button variant="ghost" size="icon" onClick={onMenuClick}><Menu className="h-5 w-5" /></Button>
           <h1 className="text-lg font-bold">Calendar Grid</h1>
+          
           <div className="flex items-center gap-2">
             <Label className="text-xs">Project:</Label>
             <Select value={selectedProject} onValueChange={setSelectedProject}>
-              <SelectTrigger className="h-8 w-36 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+              <SelectTrigger className="h-8 w-32 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
               <SelectContent>{projects.map(p => <SelectItem key={p.id_prj} value={p.id_prj} className="text-xs">{p.id_prj}</SelectItem>)}</SelectContent>
             </Select>
           </div>
+
           <div className="flex items-center gap-2">
             <Label className="text-xs">Versions:</Label>
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" className="h-8 w-36 text-xs justify-between" disabled={!selectedProject}>{selectedVersionIds.length === 0 ? 'Select' : `${selectedVersionIds.length} sel.`}<ChevronDown className="h-3 w-3" /></Button>
+                <Button variant="outline" className="h-8 w-32 text-xs justify-between" disabled={!selectedProject}>
+                  {selectedVersionIds.length === 0 ? 'Select' : `${selectedVersionIds.length} sel.`}<ChevronDown className="h-3 w-3" />
+                </Button>
               </PopoverTrigger>
               <PopoverContent className="w-56 p-2 bg-popover">
                 <div className="space-y-1 max-h-48 overflow-y-auto">
                   {versions.map(v => (
                     <div key={v.id} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-muted cursor-pointer" onClick={() => handleVersionToggle(v.id)}>
-                      <Checkbox checked={selectedVersionIds.includes(v.id)} className="h-4 w-4" /><span className="text-xs truncate">{v.name}</span>
+                      <Checkbox checked={selectedVersionIds.includes(v.id)} className="h-4 w-4" />
+                      <span className="text-xs truncate">{v.name}</span>
                     </div>
                   ))}
                 </div>
               </PopoverContent>
             </Popover>
           </div>
+
           <div className="flex items-center gap-2">
-            <Label className="text-xs">Dashboard:</Label>
-            <Select value={selectedDashboard} onValueChange={setSelectedDashboard}>
-              <SelectTrigger className="h-8 w-44 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
-              <SelectContent>{dashboards.map(d => <SelectItem key={d.id} value={d.id} className="text-xs">{d.name}</SelectItem>)}</SelectContent>
+            <Label className="text-xs">Language:</Label>
+            <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
+              <SelectTrigger className="h-8 w-28 text-xs"><SelectValue placeholder="All" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="DRILLDOWN" className="text-xs">All</SelectItem>
+                {languages.map(l => <SelectItem key={l.id_lang} value={l.id_lang} className="text-xs">{l.desc_lang || l.id_lang}</SelectItem>)}
+              </SelectContent>
             </Select>
           </div>
+
+          <div className="flex items-center gap-2">
+            <Label className="text-xs">LOB:</Label>
+            <Select value={selectedLob} onValueChange={setSelectedLob}>
+              <SelectTrigger className="h-8 w-28 text-xs"><SelectValue placeholder="All" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="DRILLDOWN" className="text-xs">All</SelectItem>
+                {lobs.map(l => <SelectItem key={l.id_lob} value={l.id_lob} className="text-xs">{l.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Button variant="default" size="sm" className="ml-auto h-8" onClick={handleSave} disabled={saveStatus === 'saving' || variableValues.size === 0}>
+            <Save className="h-4 w-4 mr-1" />{saveStatus === 'saving' ? 'Saving...' : 'Save'}
+          </Button>
         </div>
+
+        {pageNames.length > 1 && (
+          <div className="container mx-auto px-4 pb-2">
+            <Tabs value={activePage} onValueChange={setActivePage}>
+              <TabsList className="h-8">
+                {pageNames.map(p => <TabsTrigger key={p} value={p} className="text-xs h-7">{p}</TabsTrigger>)}
+              </TabsList>
+            </Tabs>
+          </div>
+        )}
       </header>
 
       <main className="container mx-auto p-4">
         {dataLoading ? (
           <div className="py-12 text-center"><Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" /></div>
-        ) : !selectedDashboard || uniqueVars.length === 0 ? (
-          <Card className="p-12 text-center text-muted-foreground">Select a dashboard to view data</Card>
+        ) : uniqueVars.length === 0 ? (
+          <Card className="p-12 text-center text-muted-foreground">Select project and versions to view data</Card>
         ) : (
           <div className="space-y-4">
             {/* Calendar Grid: 4 columns (quarters) x 3 rows (months in quarter) */}
@@ -144,7 +272,7 @@ export default function SimulationForm_CalendarGrid({ onMenuClick }: Props) {
                   <div className="text-center font-semibold text-sm text-muted-foreground">{q}</div>
                   {[0, 1, 2].map(offset => {
                     const month = qIdx * 3 + offset + 1;
-                    const hasData = variables.some(v => v.month === month);
+                    const hasData = months.includes(month);
                     return (
                       <Card 
                         key={month} 
@@ -154,7 +282,7 @@ export default function SimulationForm_CalendarGrid({ onMenuClick }: Props) {
                         <CardHeader className="py-2 px-3">
                           <CardTitle className="text-sm flex justify-between items-center">
                             <span>{monthNames[month - 1]}</span>
-                            {hasData && <span className="text-xs text-muted-foreground">{getMonthVarCount(month)} vars</span>}
+                            {hasData && <span className="text-xs text-muted-foreground">{Math.round(getMonthVarCount(month))} vars</span>}
                           </CardTitle>
                         </CardHeader>
                         {hasData && (
@@ -182,7 +310,7 @@ export default function SimulationForm_CalendarGrid({ onMenuClick }: Props) {
                 <span className="font-semibold">Year Total</span>
                 <div className="flex gap-6">
                   {selectedVersions.map(v => {
-                    const total = Array.from({ length: 12 }, (_, i) => i + 1).reduce((sum, m) => sum + getMonthTotal(m, v.id), 0);
+                    const total = months.reduce((sum, m) => sum + getMonthTotal(m, v.id), 0);
                     return (
                       <div key={v.id} className="text-right">
                         <span className="text-sm text-muted-foreground mr-2">{v.name}:</span>
@@ -199,7 +327,7 @@ export default function SimulationForm_CalendarGrid({ onMenuClick }: Props) {
 
       {/* Modal for expanded month */}
       <Dialog open={expandedMonth !== null} onOpenChange={() => setExpandedMonth(null)}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{expandedMonth && monthNames[expandedMonth - 1]} Details</DialogTitle>
           </DialogHeader>
@@ -216,13 +344,19 @@ export default function SimulationForm_CalendarGrid({ onMenuClick }: Props) {
               <tbody>
                 {uniqueVars.map((uv, idx) => (
                   <tr key={idx} className="border-b last:border-0 hover:bg-muted/30">
-                    <td className="px-3 py-2 font-medium">{uv.name}</td>
-                    <td className="px-3 py-2">{uv.id_lang || '-'}</td>
-                    <td className="px-3 py-2">{uv.id_lob || '-'}</td>
-                    {selectedVersions.map(v => {
-                      const val = getValue(uv.name, uv.id_lang, uv.id_lob, expandedMonth, v.id);
-                      return <td key={v.id} className="px-3 py-2 text-right">{val !== null ? val.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}</td>;
-                    })}
+                    <td className="px-3 py-1" style={{ paddingLeft: `${12 + uv.level * 12}px` }}>{uv.name}</td>
+                    <td className="px-3 py-1">{uv.id_lang || '-'}</td>
+                    <td className="px-3 py-1">{uv.id_lob || '-'}</td>
+                    {selectedVersions.map(v => (
+                      <td key={v.id} className="px-2 py-0.5">
+                        <Input
+                          type="number"
+                          value={getValue(uv.account_code, uv.id_lang, uv.id_lob, expandedMonth, v.id) ?? ''}
+                          onChange={e => updateValue(uv.account_code, uv.id_lang, uv.id_lob, expandedMonth, v.id, parseFloat(e.target.value) || 0)}
+                          className="h-7 text-xs text-right w-24 ml-auto"
+                        />
+                      </td>
+                    ))}
                   </tr>
                 ))}
               </tbody>
