@@ -146,14 +146,15 @@ export default function SimulationForm_PivotCollapsible({ onMenuClick }: Props) 
     return Array.from(map.values()).sort((a, b) => a.row_index - b.row_index);
   }, [variables, activePage, months]);
 
-  // Build parent-child relationships
+  // Build parent-child relationships using id_sim_cfg_var as parent reference
   const parentChildMap = useMemo(() => {
     const map = new Map<string, string[]>();
     uniqueVars.forEach(v => {
       if (v.parent_account_id) {
-        const parentKey = `${v.parent_account_id}_${v.id_lang}_${v.id_lob}`;
+        // parent_account_id directly references the parent's id_sim_cfg_var
+        const parentKey = v.parent_account_id;
         const children = map.get(parentKey) || [];
-        children.push(`${v.id_sim_cfg_var}_${v.id_lang}_${v.id_lob}`);
+        children.push(v.id_sim_cfg_var);
         map.set(parentKey, children);
       }
     });
@@ -164,9 +165,8 @@ export default function SimulationForm_PivotCollapsible({ onMenuClick }: Props) 
   const parentVarIds = useMemo(() => {
     const parents = new Set<string>();
     uniqueVars.forEach(v => {
-      const key = `${v.id_sim_cfg_var}_${v.id_lang}_${v.id_lob}`;
-      if (parentChildMap.has(key)) {
-        parents.add(key);
+      if (parentChildMap.has(v.id_sim_cfg_var)) {
+        parents.add(v.id_sim_cfg_var);
       }
     });
     return parents;
@@ -198,18 +198,14 @@ export default function SimulationForm_PivotCollapsible({ onMenuClick }: Props) 
       descendants.forEach(d => hiddenIds.add(d));
     });
     
-    return uniqueVars.filter(v => {
-      const key = `${v.id_sim_cfg_var}_${v.id_lang}_${v.id_lob}`;
-      return !hiddenIds.has(key);
-    });
+    return uniqueVars.filter(v => !hiddenIds.has(v.id_sim_cfg_var));
   }, [uniqueVars, collapsedParents, parentChildMap]);
 
-  const toggleCollapse = (varId: string, lang: string | null, lob: string | null) => {
-    const key = `${varId}_${lang}_${lob}`;
+  const toggleCollapse = (varId: string) => {
     setCollapsedParents(prev => {
       const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
+      if (next.has(varId)) next.delete(varId);
+      else next.add(varId);
       return next;
     });
   };
@@ -387,9 +383,8 @@ export default function SimulationForm_PivotCollapsible({ onMenuClick }: Props) 
                 {visibleVars.map((uv, idx) => {
                   const rowTotals = selectedVersions.map(v => months.reduce((sum, m) => sum + (getValue(uv.account_code, uv.id_lang, uv.id_lob, m, v.id) || 0), 0));
                   const totalDelta = selectedVersions.length === 2 ? rowTotals[0] - rowTotals[1] : null;
-                  const varKey = `${uv.id_sim_cfg_var}_${uv.id_lang}_${uv.id_lob}`;
-                  const isParent = parentVarIds.has(varKey);
-                  const isCollapsed = collapsedParents.has(varKey);
+                  const isParent = parentVarIds.has(uv.id_sim_cfg_var);
+                  const isCollapsed = collapsedParents.has(uv.id_sim_cfg_var);
                   
                   return (
                     <tr key={idx} className={`border-b hover:bg-muted/30 ${isParent ? 'bg-muted/20 font-medium' : ''}`}>
@@ -397,7 +392,7 @@ export default function SimulationForm_PivotCollapsible({ onMenuClick }: Props) 
                         <div className="flex items-center gap-1">
                           {isParent ? (
                             <button
-                              onClick={() => toggleCollapse(uv.id_sim_cfg_var, uv.id_lang, uv.id_lob)}
+                              onClick={() => toggleCollapse(uv.id_sim_cfg_var)}
                               className="p-0.5 hover:bg-muted rounded flex-shrink-0"
                             >
                               {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
