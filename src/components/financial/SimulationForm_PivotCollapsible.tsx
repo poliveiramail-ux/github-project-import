@@ -136,6 +136,7 @@ export default function SimulationForm_PivotCollapsible({ onMenuClick }: Props) 
   const selectedVersions = useMemo(() => versions.filter(v => selectedVersionIds.includes(v.id)), [versions, selectedVersionIds]);
 
   // Get unique variables for display (one per account/lang/lob combination)
+  // Ordered hierarchically: parents followed by their children sorted by account_num
   const uniqueVars = useMemo(() => {
     const pageVars = variables.filter(v => v.page_name === activePage);
     const map = new Map<string, Variable>();
@@ -143,7 +144,45 @@ export default function SimulationForm_PivotCollapsible({ onMenuClick }: Props) 
       const key = `${v.account_code}_${v.id_lang}_${v.id_lob}`;
       if (!map.has(key) || v.month === months[0]) map.set(key, v);
     });
-    return Array.from(map.values()).sort((a, b) => a.row_index - b.row_index);
+    const allVars = Array.from(map.values());
+    
+    // Build a map of id_sim_cfg_var to variable for quick lookup
+    const varById = new Map<string, Variable>();
+    allVars.forEach(v => varById.set(v.id_sim_cfg_var, v));
+    
+    // Group children by parent_account_id
+    const childrenByParent = new Map<string, Variable[]>();
+    const rootVars: Variable[] = [];
+    
+    allVars.forEach(v => {
+      if (v.parent_account_id) {
+        const children = childrenByParent.get(v.parent_account_id) || [];
+        children.push(v);
+        childrenByParent.set(v.parent_account_id, children);
+      } else {
+        rootVars.push(v);
+      }
+    });
+    
+    // Sort children by account_num within each parent group
+    childrenByParent.forEach((children, parentId) => {
+      children.sort((a, b) => a.account_code.localeCompare(b.account_code));
+    });
+    
+    // Sort root vars by account_num
+    rootVars.sort((a, b) => a.account_code.localeCompare(b.account_code));
+    
+    // Build ordered list: recursively add parent then children
+    const orderedVars: Variable[] = [];
+    const addVarWithChildren = (v: Variable) => {
+      orderedVars.push(v);
+      const children = childrenByParent.get(v.id_sim_cfg_var) || [];
+      children.forEach(child => addVarWithChildren(child));
+    };
+    
+    rootVars.forEach(v => addVarWithChildren(v));
+    
+    return orderedVars;
   }, [variables, activePage, months]);
 
   // Build parent-child relationships using id_sim_cfg_var as parent reference
