@@ -149,30 +149,43 @@ export default function SimulationForm_PivotCollapsible({ onMenuClick }: Props) 
     // Build a map of id_sim_cfg_var to variable for quick lookup
     const varById = new Map<string, Variable>();
     allVars.forEach(v => varById.set(v.id_sim_cfg_var, v));
-    
+
+    const compareAccountNum = (a: string, b: string) => {
+      const ap = a.split('.').map(n => parseInt(n, 10));
+      const bp = b.split('.').map(n => parseInt(n, 10));
+      const len = Math.max(ap.length, bp.length);
+      for (let i = 0; i < len; i++) {
+        const av = Number.isFinite(ap[i]) ? ap[i] : -1;
+        const bv = Number.isFinite(bp[i]) ? bp[i] : -1;
+        if (av !== bv) return av - bv;
+      }
+      return a.localeCompare(b);
+    };
+
     // Group children by parent_account_id
-    // A variable is a root if: no parent_account_id OR parent_account_id equals its own id_sim_cfg_var (self-reference)
+    // Treat as root when: no parent OR self-reference OR parent not present in current filtered set
     const childrenByParent = new Map<string, Variable[]>();
     const rootVars: Variable[] = [];
-    
+
     allVars.forEach(v => {
-      const isRoot = !v.parent_account_id || v.parent_account_id === v.id_sim_cfg_var;
-      if (isRoot) {
+      const parentId = v.parent_account_id;
+      const hasValidParent = !!parentId && parentId !== v.id_sim_cfg_var && varById.has(parentId);
+      if (!hasValidParent) {
         rootVars.push(v);
       } else {
-        const children = childrenByParent.get(v.parent_account_id) || [];
+        const children = childrenByParent.get(parentId) || [];
         children.push(v);
-        childrenByParent.set(v.parent_account_id, children);
+        childrenByParent.set(parentId, children);
       }
     });
-    
+
     // Sort children by account_num within each parent group
-    childrenByParent.forEach((children, parentId) => {
-      children.sort((a, b) => a.account_code.localeCompare(b.account_code));
+    childrenByParent.forEach(children => {
+      children.sort((a, b) => compareAccountNum(a.account_code, b.account_code));
     });
-    
+
     // Sort root vars by account_num
-    rootVars.sort((a, b) => a.account_code.localeCompare(b.account_code));
+    rootVars.sort((a, b) => compareAccountNum(a.account_code, b.account_code));
     
     // Build ordered list: recursively add parent then children
     const orderedVars: Variable[] = [];
