@@ -19,6 +19,7 @@ export default function SideMenu({ isOpen, onClose, onNavigate }: Props) {
     { id: 'collapsible_months', label: 'Collapsible Months', icon: <Table className="h-5 w-5" /> },
     { id: 'calendar_grid', label: 'Calendar Grid', icon: <Calendar className="h-5 w-5" /> },
     { id: 'pivot', label: 'Pivot Table', icon: <BarChart3 className="h-5 w-5" /> },
+    { id: 'pivot_collapsible', label: 'Pivot Collapsible', icon: <BarChart3 className="h-5 w-5" /> },
     { id: 'enhanced', label: 'Enhanced Layout', icon: <Table className="h-5 w-5" /> },
   ];
 

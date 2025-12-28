@@ -7,6 +7,7 @@ import SimulationForm_MonthCards from '@/components/financial/SimulationForm_Mon
 import SimulationForm_CollapsibleMonths from '@/components/financial/SimulationForm_CollapsibleMonths';
 import SimulationForm_CalendarGrid from '@/components/financial/SimulationForm_CalendarGrid';
 import SimulationForm_Pivot from '@/components/financial/SimulationForm_Pivot';
+import SimulationForm_PivotCollapsible from '@/components/financial/SimulationForm_PivotCollapsible';
 import SimulationForm_Enhanced from '@/components/financial/SimulationForm_Enhanced';
 import VersionsManager from '@/components/financial/VersionsManager';
 import ConfigurationForm from '@/components/financial/ConfigurationForm';
@@ -32,6 +33,7 @@ const Index = () => {
       {currentView === 'collapsible_months' && <SimulationForm_CollapsibleMonths onMenuClick={handleMenuClick} />}
       {currentView === 'calendar_grid' && <SimulationForm_CalendarGrid onMenuClick={handleMenuClick} />}
       {currentView === 'pivot' && <SimulationForm_Pivot onMenuClick={handleMenuClick} />}
+      {currentView === 'pivot_collapsible' && <SimulationForm_PivotCollapsible onMenuClick={handleMenuClick} />}
       {currentView === 'enhanced' && <SimulationForm_Enhanced onMenuClick={handleMenuClick} />}
       {currentView === 'versions' && <VersionsManager onBack={() => setCurrentView('simulation')} />}
       {currentView === 'configurations' && <ConfigurationForm onBack={() => setCurrentView('simulation')} />}
