@@ -16,7 +16,7 @@ import DashboardsView from '@/components/financial/DashboardsView';
 import SideMenu from '@/components/financial/SideMenu';
 
 const Index = () => {
-  const [currentView, setCurrentView] = useState('simulation_v2');
+  const [currentView, setCurrentView] = useState('pivot_collapsible');
   const [menuOpen, setMenuOpen] = useState(false);
 
   const handleMenuClick = () => setMenuOpen(true);
