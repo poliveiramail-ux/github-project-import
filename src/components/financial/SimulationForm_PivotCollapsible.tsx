@@ -46,7 +46,7 @@ export default function SimulationForm_PivotCollapsible({ onMenuClick }: Props) 
   const [selectedLob, setSelectedLob] = useState('');
   const [variables, setVariables] = useState<Variable[]>([]);
   const [variableValues, setVariableValues] = useState<Map<string, number>>(new Map());
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving'>('idle');
   const [activePage, setActivePage] = useState('Main');
@@ -307,7 +307,7 @@ export default function SimulationForm_PivotCollapsible({ onMenuClick }: Props) 
     setSaveStatus('idle');
   };
 
-  if (loading) return <div className="flex items-center justify-center h-screen"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
+  
 
   return (
     <div className="min-h-screen bg-background">
